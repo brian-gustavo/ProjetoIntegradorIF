@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 
 class Category(models.Model):
     name = models.CharField(max_length=100, verbose_name="Nome")
-    slug = models.SlugField(unique=True, verbose_name="URL")
+    slug = models.SlugField(unique=True, verbose_name="URL") 
 
     class Meta:
         verbose_name = "Categoria"
@@ -23,7 +23,7 @@ class Product(models.Model):
     title = models.CharField(max_length=255, verbose_name="Título")
     description = models.TextField(verbose_name="Descrição")
     price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Preço")
-    condition = models.CharField(max_length=4, choices=CONDITION_CHOICES, default='USED', verbose_name="Condição")
+    condition = models.CharField(max_length=4, choices=CONDITION_CHOICES, default='NEW', verbose_name="Condição")
     location = models.CharField(max_length=100, help_text="Cidade/Estado", verbose_name="Localização")
     
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Criado em")

@@ -1,0 +1,18 @@
+<h1>Bem-vindo ao MegaGame</h1>
+
+{% if user.is_authenticated %}
+    <p>Olá, {{ user.username }}! <a href="{% url 'logout' %}">Sair</a></p>
+{% else %}
+    <p><a href="{% url 'login' %}">Fazer login</a></p>
+{% endif %}
+
+<hr>
+
+<h3>Categorias</h3>
+<ul>
+    {% for cat in categorias %}
+        <li>{{ cat.name }} (Slug: {{ cat.slug }})</li>
+    {% empty %}
+        <li>Nenhuma categoria cadastrada ainda.</li>
+    {% endfor %}
+</ul>

@@ -1,6 +1,7 @@
 from django.contrib import admin
 from .models import Category, Product, ProductImage
 
+# Facilita inserção de imagens
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
     extra = 1
@@ -8,7 +9,7 @@ class ProductImageInline(admin.TabularInline):
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
     list_display = ('name', 'slug')
-    prepopulated_fields = {'slug': ('name',)} # Gera a URL (slug) automaticamente quando o nome é digitado
+    prepopulated_fields = {'slug': ('name',)} # Gera a URL automaticamente quando o nome é digitado
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
