@@ -18,6 +18,7 @@ class Product(models.Model):
         ('USED', 'Usado'),
     ]
 
+    # Separar produto de estoque, e inserir ao menos parâmetro de quantidade
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products', verbose_name="Categoria")
     seller = models.ForeignKey(User, on_delete=models.CASCADE, related_name='products', verbose_name="Vendedor")
     title = models.CharField(max_length=255, verbose_name="Título")
