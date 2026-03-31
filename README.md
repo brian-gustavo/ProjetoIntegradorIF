@@ -9,13 +9,13 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
 *Requisitos do primeiro semestre:*
 - Criar o fluxo principal do administrador do site
 - Criar o fluxo principal dos usuários do site (cadastro/login, publicação de anúncios de venda, implementação da funcionalidade de compra, etc.)
-- Implementar a negociação entre usuários (sistema de mensagens; definição das regras de negócio, especialmente no que tange às políticas anti-fraude; etc.)
+- Definir as regras de negócio referentes à logística (estoque, precificação, etc.)
+- Definir as regras da negociação entre usuários, especialmente no que tange às políticas anti-fraude
 - Estudar como monetizar o projeto (opções incluem anúncios *pop-up*, comissão sobre vendas, etc.)
 - Criar o sistema de busca
 - Desenvolver um *dashboard* para vendedores
 - Implementar um sistema de avaliação de vendedores
 
 *Requisitos do segundo semestre:*
-- Estudar a utilização de métodos mais complexos de comunicação entre usuários
 - Implementar aspectos secundários (gamificação, cupons de desconto, etc.)
 - Estudar a possibilidade de permitir trocas na plataforma
