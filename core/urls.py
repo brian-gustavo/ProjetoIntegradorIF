@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from catalog.views import home
+from catalog.views import home, create_product
 from accounts.views import register
 
 urlpatterns = [
@@ -10,6 +10,7 @@ urlpatterns = [
     path('accounts/', include('django.contrib.auth.urls')),
     path('accounts/register/', register, name='register'),
     path('', home, name='home'),
+    path('anuncios/novo/', create_product, name='create_product'),
 ]
 
 if settings.DEBUG:

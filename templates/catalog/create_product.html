@@ -1,0 +1,9 @@
+<h2>Novo anúncio</h2>
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ product_form.as_p }}
+    {{ image_form.as_p }}
+    <button type="submit">Publicar anúncio</button>
+</form>
+
+<p><a href="{% url 'home' %}">Voltar</a></p>

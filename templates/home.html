@@ -1,7 +1,7 @@
 <h1>Bem-vindo ao MegaGame</h1>
 
 {% if user.is_authenticated %}
-    <p>Olá, {{ user.username }}! <a href="{% url 'logout' %}">Sair</a></p>
+    <p>Olá, {{ user.username }}! <a href="{% url 'logout' %}">Sair</a> | <a href="{% url 'create_product' %}">Novo anúncio</a></p>
 {% else %}
     <p><a href="{% url 'login' %}">Fazer login</a></p>
 {% endif %}
