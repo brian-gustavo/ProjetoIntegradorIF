@@ -1,16 +1,16 @@
 from django import forms
 from django.forms import inlineformset_factory
-from .models import Product, ProductImage
+from .models import Product, ProductImage, Stock
 
 class ProductForm(forms.ModelForm):
     class Meta:
         model = Product
         fields = ('title', 'description', 'category', 'price', 'condition', 'location')
 
-class ProductImageForm(forms.ModelForm):
+class StockForm(forms.ModelForm):
     class Meta:
-        model = ProductImage
-        fields = ('image',)
+        model = Stock
+        fields = ('quantity',)
 
 # Permite inserir mais de uma imagem na criação de um produto
 ProductImageFormSet = inlineformset_factory(

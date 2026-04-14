@@ -2,6 +2,7 @@
 <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     {{ product_form.as_p }}
+    {{ stock_form.as_p }}
     {{ image_formset.management_form }}
     {% for form in image_formset %}
         {{ form.as_p }}
