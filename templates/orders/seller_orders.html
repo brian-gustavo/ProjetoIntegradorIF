@@ -1,0 +1,17 @@
+<h2>Pedidos recebidos</h2>
+
+{% for order in orders %}
+    <div style="border: 1px solid #ccc; padding: 15px; margin-bottom: 10px; border-radius: 8px;">
+        <p><strong>{{ order.product.title }}</strong></p>
+        <p>Comprador: {{ order.buyer.username }} — Quantidade: {{ order.quantity }} — Total: R$ {{ order.total_price }}</p>
+        <p>Status: {{ order.get_status_display }}</p>
+
+        {% if order.status == 'PAID' %}
+            <a href="{% url 'confirm_delivery' order.pk %}">Confirmar entrega</a>
+        {% endif %}
+    </div>
+{% empty %}
+    <p>Nenhum pedido recebido ainda.</p>
+{% endfor %}
+
+<p><a href="{% url 'home' %}">Voltar</a></p>

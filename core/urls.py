@@ -11,6 +11,7 @@ urlpatterns = [
     path('accounts/register/', register, name='register'),
     path('', home, name='home'),
     path('anuncios/novo/', create_product, name='create_product'),
+    path('', include('orders.urls')),
 ]
 
 if settings.DEBUG:

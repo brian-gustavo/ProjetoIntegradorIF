@@ -1,0 +1,18 @@
+<h2>Confirmar pedido</h2>
+
+<p><strong>Produto:</strong> {{ product.title }}</p>
+<p><strong>Preço unitário:</strong> R$ {{ product.price }}</p>
+<p><strong>Estoque disponível:</strong> {{ product.stock.quantity }}</p>
+
+{% if error %}
+    <p style="color: red;">{{ error }}</p>
+{% endif %}
+
+<form method="post">
+    {% csrf_token %}
+    <label for="quantity">Quantidade:</label>
+    <input type="number" name="quantity" id="quantity" value="1" min="1" max="{{ product.stock.quantity }}">
+    <button type="submit">Realizar pedido</button>
+</form>
+
+<p><a href="{% url 'home' %}">Voltar</a></p>

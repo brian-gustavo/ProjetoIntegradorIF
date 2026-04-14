@@ -1,0 +1,17 @@
+<h2>Meus pedidos</h2>
+
+{% for order in orders %}
+    <div style="border: 1px solid #ccc; padding: 15px; margin-bottom: 10px; border-radius: 8px;">
+        <p><strong>{{ order.product.title }}</strong></p>
+        <p>Quantidade: {{ order.quantity }} — Total: R$ {{ order.total_price }}</p>
+        <p>Status: {{ order.get_status_display }}</p>
+
+        {% if order.status == 'PENDING' %}
+            <a href="{% url 'simulate_payment' order.pk %}">Simular pagamento</a>
+        {% endif %}
+    </div>
+{% empty %}
+    <p>Você ainda não realizou nenhum pedido.</p>
+{% endfor %}
+
+<p><a href="{% url 'home' %}">Voltar</a></p>
