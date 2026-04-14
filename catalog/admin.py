@@ -1,7 +1,6 @@
 from django.contrib import admin
 from .models import Category, Product, ProductImage
 
-# Facilita inserção de imagens
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
     extra = 1

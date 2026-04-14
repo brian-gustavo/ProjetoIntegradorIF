@@ -2,7 +2,10 @@
 <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     {{ product_form.as_p }}
-    {{ image_form.as_p }}
+    {{ image_formset.management_form }}
+    {% for form in image_formset %}
+        {{ form.as_p }}
+    {% endfor %}
     <button type="submit">Publicar anúncio</button>
 </form>
 
