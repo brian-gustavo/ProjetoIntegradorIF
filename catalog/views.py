@@ -1,7 +1,8 @@
-from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-from .models import Category, Product
+from django.shortcuts import render, redirect
+
 from .forms import ProductForm, ProductImageFormSet, StockForm
+from .models import Category, Product
 
 def home(request):
     categorias = Category.objects.all()

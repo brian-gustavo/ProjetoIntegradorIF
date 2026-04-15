@@ -1,4 +1,5 @@
 from django.contrib import admin
+
 from .models import Category, Product, ProductImage, Stock
 
 # As classes inline facilitam a inserção de informações referentes às classes alheias ao produto em si (colocando-as na mesma página que todo o resto)
