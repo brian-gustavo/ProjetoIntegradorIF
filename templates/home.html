@@ -1,46 +1,25 @@
-<h1>Bem-vindo ao MegaGame</h1>
+{% extends 'base.html' %}
 
-{% if user.is_authenticated %}
-    <p>
-        Olá, {{ user.username }}!
-        <form method="post" action="{% url 'logout' %}" style="display: inline;">
-            {% csrf_token %}
-            <button type="submit">Sair</button>
-        </form>
-        | <a href="{% url 'create_product' %}">Novo anúncio</a>
-        | <a href="{% url 'my_orders' %}">Meus pedidos</a>
-        | <a href="{% url 'seller_orders' %}">Minhas vendas</a>
-    </p>
-{% else %}
-    <p><a href="{% url 'login' %}">Fazer login</a></p>
-{% endif %}
+{% block title %}Início — MegaGame{% endblock %}
 
-<hr>
-
-<h3>Categorias</h3>
-<ul>
-    {% for cat in categorias %}
-        <li><a href="{% url 'category_detail' cat.slug %}">{{ cat.name }}</a></li>
-    {% empty %}
-        <li>Nenhuma categoria cadastrada ainda.</li>
-    {% endfor %}
-</ul>
-
-<hr>
-
-<h3>Produtos anunciados</h3>
-<div style="display: flex; gap: 20px; flex-wrap: wrap;">
+{% block content %}
+<h2 class="section-header">Ofertas mais novas</h2>
+<div class="product-grid">
     {% for prod in produtos %}
-        <div style="border: 1px solid #ccc; padding: 15px; border-radius: 8px; width: 200px;">
+        <a href="{% url 'product_detail' prod.pk %}" class="product-card">
             {% if prod.images.all %}
-                <img src="{{ prod.images.first.image.url }}" alt="{{ prod.title }}" style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px;">
+                <img class="product-card-img" src="{{ prod.images.first.image.url }}" alt="{{ prod.title }}">
             {% else %}
-                <div style="width: 100%; height: 150px; background: #eee; display: flex; align-items: center; justify-content: center;">Sem foto</div>
+                <div class="product-card-img-placeholder">Sem foto</div>
             {% endif %}
-
-            <h4><a href="{% url 'product_detail' prod.pk %}">{{ prod.title }}</a></h4>
-            <p><strong>R$ {{ prod.price }}</strong></p>
-            <p><small>Vendedor: {{ prod.seller.username }}</small></p>
-        </div>
+            <div class="product-card-body">
+                <div class="product-card-title">{{ prod.title }}</div>
+                <div class="product-card-price">R$ {{ prod.price }}</div>
+                <div class="product-card-meta">{{ prod.location }} · {{ prod.seller.username }}</div>
+            </div>
+        </a>
+    {% empty %}
+        <p>Nenhum produto anunciado ainda.</p>
     {% endfor %}
 </div>
+{% endblock %}

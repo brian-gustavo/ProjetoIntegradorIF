@@ -22,6 +22,10 @@ def category_detail(request, slug):
         'produtos': produtos,
     })
 
+def category_list(request):
+    categorias = Category.objects.all()
+    return render(request, 'catalog/category_list.html', {'categorias': categorias})
+
 @login_required
 def create_product(request):
     if request.method == 'POST':

@@ -1,8 +1,23 @@
-<h2>Login MegaGame</h2>
-<form method="post">
-    {% csrf_token %} <!-- Token de segurança, obrigatório pro Django -->
-    {{ form.as_p }}
-    <button type="submit">Entrar</button>
-</form>
+{% extends 'base.html' %}
 
-<p>Ainda não tem conta? <a href="{% url 'register' %}">Cadastre-se</a></p>
+{% block title %}Login — MegaGame{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <h2 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:26px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:32px;text-align:center;">
+        Entrar
+    </h2>
+    <form method="post">
+        {% csrf_token %} <!-- Token de segurança, obrigatório pro Django -->
+        {% for field in form %}
+            <div class="form-group">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {{ field.errors }}
+            </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary" style="width:100%;">Entrar</button>
+    </form>
+    <p class="form-footer">Ainda não tem conta? <a href="{% url 'register' %}">Cadastre-se</a></p>
+</div>
+{% endblock %}

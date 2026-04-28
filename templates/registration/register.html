@@ -1,8 +1,23 @@
-<h2>Cadastro MegaGame</h2>
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Cadastrar</button>
-</form>
+{% extends 'base.html' %}
 
-<p>Já tem conta? <a href="{% url 'login' %}">Faça login</a></p>
+{% block title %}Cadastro — MegaGame{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <h2 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:26px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:32px;text-align:center;">
+        Cadastrar-se
+    </h2>
+    <form method="post">
+        {% csrf_token %}
+        {% for field in form %}
+            <div class="form-group">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {{ field.errors }}
+            </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary" style="width:100%;">Cadastrar-se</button>
+    </form>
+    <p class="form-footer">Já possui cadastro? Faça <a href="{% url 'login' %}">login</a>!</p>
+</div>
+{% endblock %}

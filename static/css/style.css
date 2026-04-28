@@ -1,0 +1,382 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;700;800&family=Barlow:wght@400;500;600&display=swap');
+
+:root {
+    --green: #22c55e;
+    --green-dark: #16a34a;
+    --black: #0a0a0a;
+    --white: #ffffff;
+    --gray-100: #f4f4f4;
+    --gray-300: #d1d1d1;
+    --gray-500: #737373;
+    --red: #ef4444;
+    --star: #f59e0b;
+    --navbar-height: 80px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Barlow', sans-serif;
+    background: var(--white);
+    color: var(--black);
+    min-height: 100vh;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+nav.navbar {
+    height: var(--navbar-height);
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 0 32px;
+    border-bottom: 1px solid var(--gray-300);
+    position: sticky;
+    top: 0;
+    background: var(--white);
+    z-index: 100;
+}
+
+.navbar-logo img {
+    height: 52px;
+    width: 52px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.navbar-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 2px solid var(--black);
+    border-radius: 999px;
+    padding: 8px 16px;
+    flex: 0 1 340px;
+}
+
+.navbar-search input {
+    border: none;
+    outline: none;
+    font-family: 'Barlow', sans-serif;
+    font-size: 14px;
+    width: 100%;
+    background: transparent;
+}
+
+.navbar-search button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    padding: 0;
+}
+
+.navbar-center {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+}
+
+.navbar-center a {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    transition: color 0.15s;
+}
+
+.navbar-center a:hover {
+    color: var(--green);
+}
+
+.navbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+}
+
+.navbar-login-link {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.navbar-login-link:hover {
+    color: var(--green);
+}
+
+.user-menu-trigger {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.user-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--gray-300);
+    border: 2px solid var(--black);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    overflow: hidden;
+}
+
+.user-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 12px);
+    right: 0;
+    background: var(--white);
+    border: 2px solid var(--black);
+    border-radius: 8px;
+    min-width: 220px;
+    box-shadow: 4px 4px 0 var(--black);
+    z-index: 200;
+}
+
+.user-dropdown a,
+.user-dropdown button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 14px 20px;
+    font-family: 'Barlow', sans-serif;
+    font-size: 15px;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--gray-100);
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.user-dropdown a:last-child,
+.user-dropdown button:last-child {
+    border-bottom: none;
+}
+
+.user-dropdown a:hover,
+.user-dropdown button:hover {
+    background: var(--gray-100);
+}
+
+.user-dropdown .logout-btn {
+    color: var(--red);
+    font-weight: 600;
+}
+
+.navbar-right:focus-within .user-dropdown,
+.navbar-right.open .user-dropdown {
+    display: block;
+}
+
+main {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 40px 32px;
+}
+
+.btn {
+    display: inline-block;
+    padding: 12px 28px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-radius: 6px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+}
+
+.btn-primary {
+    background: var(--green);
+    color: var(--white);
+    border-color: var(--green);
+}
+
+.btn-primary:hover {
+    background: var(--green-dark);
+    border-color: var(--green-dark);
+}
+
+.btn:active {
+    transform: scale(0.97);
+}
+
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.product-card {
+    border: 2px solid var(--black);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: box-shadow 0.15s, transform 0.15s;
+}
+
+.product-card:hover {
+    box-shadow: 4px 4px 0 var(--black);
+    transform: translate(-2px, -2px);
+}
+
+.product-card-img {
+    width: 100%;
+    aspect-ratio: 4/3;
+    object-fit: cover;
+    display: block;
+    background: var(--gray-100);
+}
+
+.product-card-img-placeholder {
+    width: 100%;
+    aspect-ratio: 4/3;
+    background: var(--gray-100);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gray-500);
+    font-size: 13px;
+}
+
+.product-card-body {
+    padding: 12px;
+}
+
+.product-card-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.product-card-price {
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--black);
+}
+
+.product-card-meta {
+    font-size: 12px;
+    color: var(--gray-500);
+    margin-top: 6px;
+}
+
+.section-header {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    margin-top: 40px;
+}
+
+.section-header:first-child {
+    margin-top: 0;
+}
+
+.form-card {
+    border: 2px solid var(--black);
+    border-radius: 16px;
+    padding: 48px 40px;
+    max-width: 480px;
+    margin: 60px auto;
+}
+
+.form-group {
+    margin-bottom: 24px;
+}
+
+.form-group label {
+    display: block;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px 14px;
+    border: 2px solid var(--black);
+    border-radius: 6px;
+    font-family: 'Barlow', sans-serif;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    border-color: var(--green);
+}
+
+.form-footer {
+    text-align: center;
+    margin-top: 16px;
+    font-size: 14px;
+    color: var(--gray-500);
+}
+
+.form-footer a {
+    color: var(--green-dark);
+    font-weight: 600;
+}
+
+.errorlist {
+    list-style: none;
+    color: var(--red);
+    font-size: 13px;
+    margin-top: 4px;
+}
+
+.messages {
+    list-style: none;
+    margin-bottom: 24px;
+}
+
+.messages li {
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    margin-bottom: 8px;
+    border: 1px solid transparent;
+}
+
+.messages .error { background: #fef2f2; border-color: var(--red); color: var(--red); }
+.messages .success { background: #f0fdf4; border-color: var(--green); color: var(--green-dark); }

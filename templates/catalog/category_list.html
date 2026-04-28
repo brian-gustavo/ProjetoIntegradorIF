@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block title %}Categorias — MegaGame{% endblock %}
+
+{% block content %}
+<h2 class="section-header">Categorias</h2>
+<ul>
+    {% for cat in categorias %}
+        <li><a href="{% url 'category_detail' cat.slug %}">{{ cat.name }}</a></li>
+    {% empty %}
+        <p>Nenhuma categoria cadastrada ainda.</p>
+    {% endfor %}
+</ul>
+{% endblock %}
