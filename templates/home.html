@@ -1,7 +1,16 @@
 <h1>Bem-vindo ao MegaGame</h1>
 
 {% if user.is_authenticated %}
-    <p>Olá, {{ user.username }}! <a href="{% url 'logout' %}">Sair</a> | <a href="{% url 'create_product' %}">Novo anúncio</a></p>
+    <p>
+        Olá, {{ user.username }}!
+        <form method="post" action="{% url 'logout' %}" style="display: inline;">
+            {% csrf_token %}
+            <button type="submit">Sair</button>
+        </form>
+        | <a href="{% url 'create_product' %}">Novo anúncio</a>
+        | <a href="{% url 'my_orders' %}">Meus pedidos</a>
+        | <a href="{% url 'seller_orders' %}">Minhas vendas</a>
+    </p>
 {% else %}
     <p><a href="{% url 'login' %}">Fazer login</a></p>
 {% endif %}
@@ -11,7 +20,7 @@
 <h3>Categorias</h3>
 <ul>
     {% for cat in categorias %}
-        <li>{{ cat.name }}</li>
+        <li><a href="{% url 'category_detail' cat.slug %}">{{ cat.name }}</a></li>
     {% empty %}
         <li>Nenhuma categoria cadastrada ainda.</li>
     {% endfor %}

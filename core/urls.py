@@ -3,7 +3,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
 
-from catalog.views import home, create_product, product_detail
+from catalog.views import home, create_product, product_detail, category_detail
 from accounts.views import register
 
 urlpatterns = [
@@ -14,6 +14,7 @@ urlpatterns = [
     path('anuncios/novo/', create_product, name='create_product'),
     path('anuncios/<int:product_id>/', product_detail, name='product_detail'),
     path('', include('orders.urls')),
+    path('categorias/<slug:slug>/', category_detail, name='category_detail'),
 ]
 
 if settings.DEBUG:

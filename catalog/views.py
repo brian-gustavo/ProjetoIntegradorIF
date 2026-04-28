@@ -14,6 +14,14 @@ def product_detail(request, product_id):
     product = get_object_or_404(Product, pk=product_id)
     return render(request, 'catalog/product_detail.html', {'product': product})
 
+def category_detail(request, slug):
+    category = get_object_or_404(Category, slug=slug)
+    produtos = Product.objects.filter(category=category)
+    return render(request, 'catalog/category_detail.html', {
+        'category': category,
+        'produtos': produtos,
+    })
+
 @login_required
 def create_product(request):
     if request.method == 'POST':
