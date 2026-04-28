@@ -29,7 +29,7 @@
                 <div style="width: 100%; height: 150px; background: #eee; display: flex; align-items: center; justify-content: center;">Sem foto</div>
             {% endif %}
 
-            <h4>{{ prod.title }}</h4>
+            <h4><a href="{% url 'product_detail' prod.pk %}">{{ prod.title }}</a></h4>
             <p><strong>R$ {{ prod.price }}</strong></p>
             <p><small>Vendedor: {{ prod.seller.username }}</small></p>
         </div>

@@ -1,5 +1,5 @@
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 
 from .forms import ProductForm, ProductImageFormSet, StockForm
 from .models import Category, Product
@@ -9,6 +9,10 @@ def home(request):
     produtos = Product.objects.all()
 
     return render(request, 'home.html', {'categorias': categorias, 'produtos': produtos})
+
+def product_detail(request, product_id):
+    product = get_object_or_404(Product, pk=product_id)
+    return render(request, 'catalog/product_detail.html', {'product': product})
 
 @login_required
 def create_product(request):
