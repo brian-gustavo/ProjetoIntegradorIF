@@ -64,3 +64,8 @@ def create_product(request):
         'image_formset': image_formset,
         'stock_form': stock_form,
     })
+
+@login_required
+def my_products(request):
+    produtos = Product.objects.filter(seller=request.user).order_by('-created_at')
+    return render(request, 'catalog/my_products.html', {'produtos': produtos})

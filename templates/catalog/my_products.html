@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}Meus anúncios — MegaGame{% endblock %}
+
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:32px;">
+    <h2 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:32px;text-transform:uppercase;letter-spacing:0.06em;">
+        Meus anúncios
+    </h2>
+    <a href="{% url 'create_product' %}" class="btn btn-primary">Novo anúncio</a>
+</div>
+
+<div class="product-grid">
+    {% for prod in produtos %}
+        <a href="{% url 'product_detail' prod.pk %}" class="product-card">
+            {% if prod.images.all %}
+                <img class="product-card-img" src="{{ prod.images.first.image.url }}" alt="{{ prod.title }}">
+            {% else %}
+                <div class="product-card-img-placeholder">Sem foto</div>
+            {% endif %}
+            <div class="product-card-body">
+                <div class="product-card-title">{{ prod.title }}</div>
+                <div class="product-card-price">R$ {{ prod.price }}</div>
+                <div class="product-card-meta">Estoque: {{ prod.stock.quantity }} unidade{{ prod.stock.quantity|pluralize }}</div>
+            </div>
+        </a>
+    {% empty %}
+        <p style="color:var(--gray-500);">Você ainda não publicou nenhum anúncio</p>
+    {% endfor %}
+</div>
+{% endblock %}

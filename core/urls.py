@@ -3,7 +3,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
 
-from catalog.views import home, create_product, product_detail, category_detail, category_list
+from catalog.views import home, create_product, product_detail, category_detail, category_list, my_products
 from accounts.views import register, profile_settings
 
 urlpatterns = [
@@ -17,6 +17,7 @@ urlpatterns = [
     path('categorias/<slug:slug>/', category_detail, name='category_detail'),
     path('categorias/', category_list, name='category_list'),
     path('accounts/profile/', profile_settings, name='profile_settings'),
+    path('anuncios/', my_products, name='my_products'),
 ]
 
 if settings.DEBUG:

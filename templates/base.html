@@ -27,7 +27,7 @@
     <div class="navbar-center">
         <a href="{% url 'category_list' %}">Categorias</a>
         {% if user.is_authenticated %}
-            <a href="{% url 'create_product' %}">Meus anúncios</a>
+            <a href="{% url 'my_products' %}">Meus anúncios</a>
         {% endif %}
     </div>
 
