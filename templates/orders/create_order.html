@@ -1,18 +1,38 @@
-<h2>Confirmar pedido</h2>
+{% extends 'base.html' %}
 
-<p><strong>Produto:</strong> {{ product.title }}</p>
-<p><strong>Preço unitário:</strong> R$ {{ product.price }}</p>
-<p><strong>Estoque disponível:</strong> {{ product.stock.quantity }}</p>
+{% block title %}Confirmar pedido — MegaGame{% endblock %}
 
-{% if error %}
-    <p style="color: red;">{{ error }}</p>
-{% endif %}
+{% block content %}
+<div style="max-width:480px;margin:0 auto;">
+    <h2 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:32px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:32px;">
+        Confirmar pedido
+    </h2>
 
-<form method="post">
-    {% csrf_token %}
-    <label for="quantity">Quantidade:</label>
-    <input type="number" name="quantity" id="quantity" value="1" min="1" max="{{ product.stock.quantity }}">
-    <button type="submit">Realizar pedido</button>
-</form>
+    <div style="border:2px solid var(--black);border-radius:8px;padding:24px;margin-bottom:28px;">
+        <p style="font-size:13px;color:var(--gray-500);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Produto</p>
+        <p style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:22px;margin-bottom:16px;">{{ product.title }}</p>
 
-<p><a href="{% url 'home' %}">Voltar</a></p>
+        <div style="display:flex;justify-content:space-between;font-size:15px;padding-top:16px;border-top:1px solid var(--gray-300);">
+            <span style="color:var(--gray-500);">Preço unitário</span>
+            <span style="font-weight:600;">R$ {{ product.price }}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:15px;padding-top:12px;">
+            <span style="color:var(--gray-500);">Estoque disponível</span>
+            <span style="font-weight:600;">{{ product.stock.quantity }} unidade{{ product.stock.quantity|pluralize }}</span>
+        </div>
+    </div>
+
+    {% if error %}
+        <p style="color:var(--red);font-size:14px;margin-bottom:16px;">{{ error }}</p>
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="quantity">Quantidade</label>
+            <input type="number" name="quantity" id="quantity" value="1" min="1" max="{{ product.stock.quantity }}">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;">Realizar pedido</button>
+    </form>
+</div>
+{% endblock %}

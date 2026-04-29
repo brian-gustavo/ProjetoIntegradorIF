@@ -1,25 +1,71 @@
-<h2>{{ product.title }}</h2>
+{% extends 'base.html' %}
 
-<p><strong>Categoria:</strong> {{ product.category.name }}</p>
-<p><strong>Condição:</strong> {{ product.get_condition_display }}</p>
-<p><strong>Localização:</strong> {{ product.location }}</p>
-<p><strong>Preço:</strong> R$ {{ product.price }}</p>
-<p><strong>Estoque disponível:</strong> {{ product.stock.quantity }}</p>
-<p><strong>Vendedor:</strong> {{ product.seller.username }}</p>
-<p>{{ product.description }}</p>
+{% block title %}{{ product.title }} — MegaGame{% endblock %}
 
-{% if product.images.all %}
-    {% for img in product.images.all %}
-        <img src="{{ img.image.url }}" alt="{{ product.title }}" style="max-width: 300px; margin: 5px;">
-    {% endfor %}
-{% else %}
-    <p>Sem imagens.</p>
-{% endif %}
+{% block content %}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start;">
 
-{% if user.is_authenticated and user != product.seller %}
-    <a href="{% url 'create_order' product.pk %}">Comprar</a>
-{% elif not user.is_authenticated %}
-    <p><a href="{% url 'login' %}">Faça login</a> para comprar.</p>
-{% endif %}
+    <div>
+        {% if product.images.all %}
+            <img src="{{ product.images.first.image.url }}" alt="{{ product.title }}"
+                 style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;border:2px solid var(--black);">
+            {% if product.images.count > 1 %}
+                <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+                    {% for img in product.images.all %}
+                        <img src="{{ img.image.url }}" alt="{{ product.title }}"
+                             style="width:72px;height:72px;object-fit:cover;border-radius:4px;border:2px solid var(--gray-300);cursor:pointer;">
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% else %}
+            <div style="width:100%;aspect-ratio:4/3;background:var(--gray-100);border-radius:8px;border:2px solid var(--black);display:flex;align-items:center;justify-content:center;color:var(--gray-500);">
+                Sem imagens
+            </div>
+        {% endif %}
+    </div>
 
-<p><a href="{% url 'home' %}">Voltar</a></p>
+    <div>
+        <p style="font-size:13px;text-transform:uppercase;letter-spacing:0.1em;color:var(--gray-500);margin-bottom:8px;">
+            {{ product.category.name }}
+        </p>
+        <h1 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:36px;line-height:1.1;margin-bottom:16px;">
+            {{ product.title }}
+        </h1>
+        <p style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:32px;margin-bottom:24px;">
+            R$ {{ product.price }}
+        </p>
+
+        <div style="display:flex;gap:12px;margin-bottom:24px;">
+            <span style="background:var(--gray-100);border:1px solid var(--gray-300);border-radius:4px;padding:4px 12px;font-size:13px;font-weight:600;">
+                {{ product.get_condition_display }}
+            </span>
+            <span style="background:var(--gray-100);border:1px solid var(--gray-300);border-radius:4px;padding:4px 12px;font-size:13px;">
+                📍 {{ product.location }}
+            </span>
+        </div>
+
+        <p style="font-size:15px;line-height:1.6;color:#333;margin-bottom:24px;">{{ product.description }}</p>
+
+        <div style="border-top:1px solid var(--gray-300);padding-top:20px;margin-bottom:24px;">
+            <p style="font-size:13px;color:var(--gray-500);">Vendedor</p>
+            <p style="font-weight:600;font-size:16px;">{{ product.seller.username }}</p>
+        </div>
+
+        <div style="border-top:1px solid var(--gray-300);padding-top:20px;margin-bottom:28px;">
+            <p style="font-size:13px;color:var(--gray-500);">Estoque disponível</p>
+            <p style="font-weight:600;font-size:16px;">{{ product.stock.quantity }} unidade{{ product.stock.quantity|pluralize }}</p>
+        </div>
+
+        {% if user.is_authenticated and user != product.seller %}
+            <a href="{% url 'create_order' product.pk %}" class="btn btn-primary" style="width:100%;text-align:center;display:block;">
+                Comprar
+            </a>
+        {% elif not user.is_authenticated %}
+            <a href="{% url 'login' %}" class="btn btn-primary" style="width:100%;text-align:center;display:block;">
+                Faça login para comprar
+            </a>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

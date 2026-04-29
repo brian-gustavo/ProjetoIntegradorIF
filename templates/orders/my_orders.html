@@ -1,17 +1,35 @@
-<h2>Meus pedidos</h2>
+{% extends 'base.html' %}
+
+{% block title %}Meus pedidos — MegaGame{% endblock %}
+
+{% block content %}
+<h2 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:32px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:32px;">
+    Meus pedidos
+</h2>
 
 {% for order in orders %}
-    <div style="border: 1px solid #ccc; padding: 15px; margin-bottom: 10px; border-radius: 8px;">
-        <p><strong>{{ order.product.title }}</strong></p>
-        <p>Quantidade: {{ order.quantity }} — Total: R$ {{ order.total_price }}</p>
-        <p>Status: {{ order.get_status_display }}</p>
-
-        {% if order.status == 'PENDING' %}
-            <a href="{% url 'simulate_payment' order.pk %}">Simular pagamento</a>
-        {% endif %}
+    <div style="border:2px solid var(--black);border-radius:8px;padding:24px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;gap:24px;">
+        <div style="flex:1;">
+            <p style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;margin-bottom:8px;">
+                {{ order.product.title }}
+            </p>
+            <p style="font-size:14px;color:var(--gray-500);">
+                {{ order.quantity }} unidade{{ order.quantity|pluralize }} ·
+                <strong style="color:var(--black);">R$ {{ order.total_price }}</strong>
+            </p>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:12px;">
+            <span class="badge {% if order.status == 'PENDING' %}badge-pending{% elif order.status == 'PAID' %}badge-paid{% elif order.status == 'DELIVERED' %}badge-delivered{% else %}badge-default{% endif %}">
+                {{ order.get_status_display }}
+            </span>
+            {% if order.status == 'PENDING' %}
+                <a href="{% url 'simulate_payment' order.pk %}" class="btn btn-primary" style="padding:8px 20px;font-size:14px;">
+                    Simular pagamento
+                </a>
+            {% endif %}
+        </div>
     </div>
 {% empty %}
-    <p>Você ainda não realizou nenhum pedido.</p>
+    <p style="color:var(--gray-500);">Você ainda não realizou nenhum pedido</p>
 {% endfor %}
-
-<p><a href="{% url 'home' %}">Voltar</a></p>
+{% endblock %}
