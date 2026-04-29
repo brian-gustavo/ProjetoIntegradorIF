@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Configurações do perfil — MegaGame{% endblock %}
+
+{% block content %}
+<div style="max-width:560px;margin:0 auto;">
+    <h2 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:32px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:40px;">
+        Configurações do perfil
+    </h2>
+
+    <div style="border:2px solid var(--black);border-radius:12px;padding:32px;margin-bottom:24px;">
+        <h3 style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:24px;padding-bottom:12px;border-bottom:2px solid var(--black);">
+            Dados da conta
+        </h3>
+        <form method="post">
+            {% csrf_token %}
+            {% for field in profile_form %}
+                <div class="form-group">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {{ field.errors }}
+                </div>
+            {% endfor %}
+            <button type="submit" name="save_profile" class="btn btn-primary" style="width:100%;margin-top:8px;">
+                Salvar dados
+            </button>
+        </form>
+    </div>
+
+    <div style="border:2px solid var(--black);border-radius:12px;padding:32px;">
+        <h3 style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:24px;padding-bottom:12px;border-bottom:2px solid var(--black);">
+            Alterar senha
+        </h3>
+        <form method="post">
+            {% csrf_token %}
+            {% for field in password_form %}
+                <div class="form-group">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {{ field.errors }}
+                </div>
+            {% endfor %}
+            <button type="submit" name="save_password" class="btn btn-primary" style="width:100%;margin-top:8px;">
+                Alterar senha
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

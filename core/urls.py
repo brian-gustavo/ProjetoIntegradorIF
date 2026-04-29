@@ -4,7 +4,7 @@ from django.contrib import admin
 from django.urls import path, include
 
 from catalog.views import home, create_product, product_detail, category_detail, category_list
-from accounts.views import register
+from accounts.views import register, profile_settings
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -16,6 +16,7 @@ urlpatterns = [
     path('', include('orders.urls')),
     path('categorias/<slug:slug>/', category_detail, name='category_detail'),
     path('categorias/', category_list, name='category_list'),
+    path('accounts/profile/', profile_settings, name='profile_settings'),
 ]
 
 if settings.DEBUG:
