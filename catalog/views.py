@@ -6,9 +6,17 @@ from .models import Category, Product
 
 def home(request):
     categorias = Category.objects.all()
-    produtos = Product.objects.all()
+    query = request.GET.get('q', '').strip()
 
-    return render(request, 'home.html', {'categorias': categorias, 'produtos': produtos})
+    produtos = Product.objects.all()
+    if query:
+        produtos = produtos.filter(title__icontains=query)
+
+    return render(request, 'home.html', {
+        'categorias': categorias,
+        'produtos': produtos,
+        'query': query,
+    })
 
 def product_detail(request, product_id):
     product = get_object_or_404(Product, pk=product_id)

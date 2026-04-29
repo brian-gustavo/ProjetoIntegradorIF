@@ -3,7 +3,12 @@
 {% block title %}Início — MegaGame{% endblock %}
 
 {% block content %}
-<h2 class="section-header">Ofertas mais novas</h2>
+{% if query %}
+    <h2 class="section-header">Resultados para "{{ query }}"</h2>
+{% else %}
+    <h2 class="section-header">Ofertas mais novas</h2>
+{% endif %}
+
 <div class="product-grid">
     {% for prod in produtos %}
         <a href="{% url 'product_detail' prod.pk %}" class="product-card">
@@ -19,7 +24,7 @@
             </div>
         </a>
     {% empty %}
-        <p>Nenhum produto anunciado ainda.</p>
+        <p style="color:var(--gray-500);">Nenhum produto encontrado</p>
     {% endfor %}
 </div>
 {% endblock %}
