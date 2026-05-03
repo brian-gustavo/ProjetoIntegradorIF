@@ -5,7 +5,7 @@ from .models import Order
 from catalog.models import Category, Product, Stock
 
 class OrderTest(TestCase):
-    def setup(self):
+    def setUp(self):
         self.vendedor = User.objects.create_user(username='vendedor', password='seller890')
         self.comprador = User.objects.create_user(username='comprador', password='buyer890')
         category = Category.objects.create(name='Jogos', slug='jogos')

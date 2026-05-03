@@ -10,7 +10,7 @@ class RegisterTest(TestCase):
             'password2': 'loremipsum123',
         })
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(User.objects.filter(username='testuser').exists())
+        self.assertTrue(User.objects.filter(username='exemplo').exists())
 
     def test_email_duplicado(self):
         User.objects.create_user(username='exemplo1', email='exemplodois@gmail.com', password='321loremipsum')

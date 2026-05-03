@@ -4,7 +4,7 @@ from django.test import TestCase
 from .models import Category, Product, Stock
 
 class ProductTest(TestCase):
-    def setup(self):
+    def setUp(self):
         self.user = User.objects.create_user(username='vendedor', password='seller890')
         self.category = Category.objects.create(name='Jogos', slug='jogos')
 
@@ -18,10 +18,10 @@ class ProductTest(TestCase):
             'condition': 'NEW',
             'location': 'São Paulo/SP',
             'quantity': 1,
-            'productimage_set-TOTAL_FORMS': '0',
-            'productimage_set-INITIAL_FORMS': '0',
-            'productimage_set-MIN_NUM_FORMS': '0',
-            'productimage_set-MAX_NUM_FORMS': '5',
+            'images-TOTAL_FORMS': '0',
+            'images-INITIAL_FORMS': '0',
+            'images-MIN_NUM_FORMS': '0',
+            'images-MAX_NUM_FORMS': '5',
         })
         self.assertEqual(response.status_code, 302)
         self.assertTrue(Product.objects.filter(title='GTA VI').exists())
