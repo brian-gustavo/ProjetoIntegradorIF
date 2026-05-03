@@ -1,8 +1,8 @@
-from catalog.models import Product
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 
 from .models import Order
+from catalog.models import Product
 
 @login_required
 def create_order(request, product_id):

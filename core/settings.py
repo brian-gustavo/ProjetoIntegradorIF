@@ -1,4 +1,4 @@
-import os
+import os, sys
 from decouple import config
 from pathlib import Path
 
@@ -61,6 +61,13 @@ DATABASES = {
         'PORT': config('DB_PORT'),
     }
 }
+
+# Para os testes
+if 'test' in sys.argv:
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'test_db.sqlite3',
+    }
 
 # Caso seja necessário rodar o site localmente ao invés de usar o Supabase
 '''

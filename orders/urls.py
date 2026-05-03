@@ -1,5 +1,5 @@
-from django.urls import path
 from . import views
+from django.urls import path
 
 urlpatterns = [
     path('pedidos/', views.my_orders, name='my_orders'),
