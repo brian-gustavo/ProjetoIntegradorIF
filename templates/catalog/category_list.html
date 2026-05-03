@@ -8,7 +8,7 @@
     {% for cat in categorias %}
         <li><a href="{% url 'category_detail' cat.slug %}">{{ cat.name }}</a></li>
     {% empty %}
-        <p>Nenhuma categoria cadastrada ainda.</p>
+        <p style="color:var(--gray-500);"">Nenhuma categoria cadastrada ainda</p>
     {% endfor %}
 </ul>
 {% endblock %}

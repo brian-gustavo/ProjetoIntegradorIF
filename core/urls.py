@@ -3,8 +3,8 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
 
-from catalog.views import home, create_product, product_detail, category_detail, category_list, my_products
 from accounts.views import register, profile_settings
+from catalog.views import home, create_product, product_detail, category_detail, category_list, my_products
 
 urlpatterns = [
     path('admin/', admin.site.urls),
