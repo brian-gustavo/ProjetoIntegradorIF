@@ -1,4 +1,5 @@
 from django.contrib.auth.decorators import login_required
+from django.db.models import Sum, Count
 from django.shortcuts import render, redirect, get_object_or_404
 
 from .models import Order
@@ -69,3 +70,30 @@ def confirm_delivery(request, order_id):
         order.save()
 
     return redirect('seller_orders')
+
+@login_required
+def seller_dashboard(request):
+    orders = Order.objects.filter(product__seller=request.user)
+
+    total_vendas = orders.filter(status__in=['PAID', 'DELIVERED']).count()
+
+    total_arrecadado = orders.filter(
+        status__in=['PAID', 'DELIVERED']
+    ).aggregate(total=Sum('total_price'))['total'] or 0
+
+    pendentes = orders.filter(status='PAID').count()
+
+    produto_mais_vendido = (
+        orders.filter(status__in=['PAID', 'DELIVERED'])
+        .values('product__title')
+        .annotate(total=Count('id'))
+        .order_by('-total')
+        .first()
+    )
+
+    return render(request, 'orders/seller_dashboard.html', {
+        'total_vendas': total_vendas,
+        'total_arrecadado': total_arrecadado,
+        'pendentes': pendentes,
+        'produto_mais_vendido': produto_mais_vendido,
+    })

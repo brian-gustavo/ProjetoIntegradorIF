@@ -40,7 +40,7 @@
             </button>
             <div class="user-dropdown" id="userDropdown">
                 <a href="{% url 'profile_settings' %}">Configurações do perfil</a>
-                <a href="{% url 'seller_orders' %}">Minhas estatísticas de vendedor</a>
+                <a href="{% url 'seller_dashboard' %}">Minhas estatísticas de vendedor</a>
                 <a href="{% url 'my_orders' %}">Meus pedidos</a>
                 <form method="post" action="{% url 'logout' %}">
                     {% csrf_token %}
