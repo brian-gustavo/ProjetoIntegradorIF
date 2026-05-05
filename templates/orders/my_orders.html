@@ -27,6 +27,11 @@
                     Simular pagamento
                 </a>
             {% endif %}
+            {% if order.status == 'DELIVERED' and not order.seller_reviewed %}
+                <a href="{% url 'review_seller' order.product.seller.pk %}" class="btn btn-primary" style="padding:8px 20px;font-size:14px;">
+                    Avaliar vendedor
+                </a>
+            {% endif %}
         </div>
     </div>
 {% empty %}

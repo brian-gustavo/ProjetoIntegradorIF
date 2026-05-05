@@ -3,6 +3,7 @@ from django.db.models import Sum, Count
 from django.shortcuts import render, redirect, get_object_or_404
 
 from .models import Order
+from accounts.models import SellerReview
 from catalog.models import Product
 
 @login_required
@@ -19,7 +20,7 @@ def create_order(request, product_id):
         if quantity > stock.quantity:
             return render(request, 'orders/create_order.html', {
                 'product': product,
-                'error': 'Quantidade indisponível em estoque.',
+                'error': 'Quantidade indisponível em estoque',
             })
 
         Order.objects.create(
@@ -33,12 +34,18 @@ def create_order(request, product_id):
 
     return render(request, 'orders/create_order.html', {'product': product})
 
-
 @login_required
 def my_orders(request):
     orders = Order.objects.filter(buyer=request.user).order_by('-created_at')
-    return render(request, 'orders/my_orders.html', {'orders': orders})
 
+    reviewed_sellers = set(
+        SellerReview.objects.filter(reviewer=request.user).values_list('seller_id', flat=True)
+    )
+
+    for order in orders:
+        order.seller_reviewed = order.product.seller.pk in reviewed_sellers
+
+    return render(request, 'orders/my_orders.html', {'orders': orders})
 
 @login_required
 def simulate_payment(request, order_id):
@@ -54,12 +61,10 @@ def simulate_payment(request, order_id):
 
     return redirect('my_orders')
 
-
 @login_required
 def seller_orders(request):
     orders = Order.objects.filter(product__seller=request.user).order_by('-created_at')
     return render(request, 'orders/seller_orders.html', {'orders': orders})
-
 
 @login_required
 def confirm_delivery(request, order_id):
