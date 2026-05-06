@@ -6,16 +6,32 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
 
 *Produtos a serem vendidos:* Jogos físicos, consoles, acessórios para consoles, jogos de tabuleiro, keys para jogos digitais, itens *in-game*, pôsteres, *action figures* e *buttons*
 
-*Requisitos do primeiro semestre:*
-- Criar o fluxo principal do administrador do site
-- Criar o fluxo principal dos usuários do site (cadastro/login, publicação de anúncios de venda, implementação da funcionalidade de compra, etc.)
-- Definir as regras de negócio referentes à logística (estoque, precificação, etc.)
-- Definir as regras da negociação entre usuários, especialmente no que tange às políticas anti-fraude
-- Estudar como monetizar o projeto (opções incluem anúncios *pop-up*, comissão sobre vendas, etc.)
-- Criar o sistema de busca
-- Desenvolver um *dashboard* para vendedores
-- Implementar um sistema de avaliação de vendedores
+*Requisitos faltantes:*
+- Fazer uma separação maior entre admin e usuário comum (o admin não deve ser capaz de publicar anúncios, por exemplo)
+- Colocar autocomplete nas buscas
+- Implementar um sistema de avaliação de produtos, além do sistema já existente de vendedores (e mostrar tudo no front-end)
+- Inserir a parte financeira do admin (implementar a comissão sobre as vendas, etc.)
+    - Refletir a comissão no *dashboard* do vendedor (para mostrar o lucro real)
+- Aprimorar o usuário para inserir mais campos (localização é a prioridade, mas dá pra pensar em outros)
+    - Tirar a localização dos produtos
+    - Definir a especificidade da localização
+- Aprimorar a questão de estoque (possível variabilidade entre produtos, intermediar a compra e o fluxo de envio do produto, etc.)
+    - Estoque só deve dar baixa após o produto ser entregue
+    - Revisar o *dashboard* quanto ao produto com mais vendas (deve ser por unidade ou por lote comprado?)
+- Detalhar melhor o fluxo de envio do produto (ao invés de criação do pedido -> pagamento -> confirmação de entrega, deve ser no mínimo criação do pedido -> pagamento -> verificação no estoque -> preparação do produto -> envio -> trajeto -> confirmação de entrega)
+    - Considerar a criação de uma opção para cancelar um pedido; se não for possível, remover "Cancelado" do banco de dados
+    - Tentar fazer um detalhamento na parte de trajeto (rastreio, previsão de entrega...)
+    - A confirmação de entrega deve vir do comprador, não do vendedor
+- Ao criar um anúncio, deve-se poder inserir todas as imagens (dentro do limite definido) simultaneamente a partir de um único ponto
+    - Especificar a moeda a ser usada (será o real)
+- Pedir para o usuário confirmar ações que sejam potencialmente danosas (publicar um anúncio, fazer uma compra...)
+- Implementar um carrinho
+- Descobrir o porquê da fixture não estar funcionando (será essencial fazer testes em maior escala)
+- Deixar a tela das categorias mais esteticamente agradável
+- Considerar a possibilidade do usuário editar anúncios (mas apenas o que não for potencialmente danoso!)
+- Estudar exemplos reais mais a fundo para tentar descobrir outras lacunas
 
-*Requisitos do segundo semestre:*
+*Ideias pro segundo semestre:*
 - Implementar aspectos secundários (gamificação, cupons de desconto, etc.)
+- Implementar uma API de pagamento real (provavelmente Stripe)
 - Estudar a possibilidade de permitir trocas na plataforma
