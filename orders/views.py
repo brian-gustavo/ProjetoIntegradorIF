@@ -8,6 +8,9 @@ from catalog.models import Product
 
 @login_required
 def create_order(request, product_id):
+    if request.user.is_staff:
+        return redirect('home')
+    
     product = get_object_or_404(Product, pk=product_id)
 
     if product.seller == request.user:

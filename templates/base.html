@@ -17,17 +17,18 @@
     </a>
 
     <form class="navbar-search" method="get" action="{% url 'home' %}">
-        <input type="text" name="q" placeholder="Buscar produtos..." value="{{ request.GET.q }}">
+        <input type="text" name="q" id="searchInput" placeholder="Buscar produtos..." value="{{ request.GET.q }}">
         <button type="submit">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
         </button>
+        <ul id="autocomplete-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--white);border:2px solid var(--black);border-radius:8px;margin-top:4px;list-style:none;z-index:300;box-shadow:4px 4px 0 var(--black);"></ul>
     </form>
 
     <div class="navbar-center">
         <a href="{% url 'category_list' %}">Categorias</a>
-        {% if user.is_authenticated %}
+        {% if user.is_authenticated and not user.is_staff %}
             <a href="{% url 'my_products' %}">Meus anúncios</a>
         {% endif %}
     </div>
@@ -40,8 +41,10 @@
             </button>
             <div class="user-dropdown" id="userDropdown">
                 <a href="{% url 'profile_settings' %}">Configurações do perfil</a>
-                <a href="{% url 'seller_dashboard' %}">Minhas estatísticas de vendedor</a>
-                <a href="{% url 'my_orders' %}">Meus pedidos</a>
+                {% if not user.is_staff %}
+                    <a href="{% url 'seller_dashboard' %}">Minhas estatísticas de vendedor</a>
+                    <a href="{% url 'my_orders' %}">Meus pedidos</a>
+                {% endif %}
                 <form method="post" action="{% url 'logout' %}">
                     {% csrf_token %}
                     <button type="submit" class="logout-btn">Logout</button>
@@ -76,6 +79,56 @@
     }
 </script>
 
-{% block extra_js %}{% endblock %}
+{% block extra_js %}
+<script>
+    const searchInput = document.getElementById('searchInput');
+    const autocompleteList = document.getElementById('autocomplete-list');
+    let debounceTimer;
+
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            const query = searchInput.value.trim();
+
+            if (query.length < 2) {
+                autocompleteList.style.display = 'none';
+                return;
+            }
+
+            debounceTimer = setTimeout(() => {
+                fetch(`/autocomplete/?q=${encodeURIComponent(query)}`)
+                    .then(res => res.json())
+                    .then(results => {
+                        autocompleteList.innerHTML = '';
+
+                        if (results.length === 0) {
+                            autocompleteList.style.display = 'none';
+                            return;
+                        }
+
+                        results.forEach(title => {
+                            const li = document.createElement('li');
+                            li.textContent = title;
+                            li.addEventListener('click', () => {
+                                searchInput.value = title;
+                                autocompleteList.style.display = 'none';
+                                searchInput.closest('form').submit();
+                            });
+                            autocompleteList.appendChild(li);
+                        });
+
+                        autocompleteList.style.display = 'block';
+                    });
+            }, 250);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!searchInput.contains(e.target)) {
+                autocompleteList.style.display = 'none';
+            }
+        });
+    }
+</script>
+{% endblock %}
 </body>
 </html>

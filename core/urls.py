@@ -4,7 +4,7 @@ from django.contrib import admin
 from django.urls import path, include
 
 from accounts.views import register, profile_settings, review_seller
-from catalog.views import home, create_product, product_detail, category_detail, category_list, my_products
+from catalog.views import home, create_product, product_detail, category_detail, category_list, my_products, autocomplete
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -19,6 +19,7 @@ urlpatterns = [
     path('accounts/profile/', profile_settings, name='profile_settings'),
     path('anuncios/', my_products, name='my_products'),
     path('vendedor/<int:seller_id>/avaliar/', review_seller, name='review_seller'),
+    path('autocomplete/', autocomplete, name='autocomplete'),
 ]
 
 if settings.DEBUG:

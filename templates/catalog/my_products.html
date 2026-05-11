@@ -7,7 +7,9 @@
     <h2 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:32px;text-transform:uppercase;letter-spacing:0.06em;">
         Meus anúncios
     </h2>
-    <a href="{% url 'create_product' %}" class="btn btn-primary">Novo anúncio</a>
+    {% if not user.is_staff %}
+        <a href="{% url 'create_product' %}" class="btn btn-primary">Novo anúncio</a>
+    {% endif %}
 </div>
 
 <div class="product-grid">

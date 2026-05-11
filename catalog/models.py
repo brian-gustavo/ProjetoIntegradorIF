@@ -23,7 +23,7 @@ class Product(models.Model):
     seller = models.ForeignKey(User, on_delete=models.CASCADE, related_name='products', verbose_name="Vendedor")
     title = models.CharField(max_length=255, verbose_name="Título")
     description = models.TextField(verbose_name="Descrição")
-    price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Preço")
+    price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Preço (em reais)")
     condition = models.CharField(max_length=4, choices=CONDITION_CHOICES, default='NEW', verbose_name="Condição")
     location = models.CharField(max_length=100, help_text="Cidade/Estado", verbose_name="Localização")
 

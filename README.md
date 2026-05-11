@@ -7,8 +7,7 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
 *Produtos a serem vendidos:* Jogos físicos, consoles, acessórios para consoles, jogos de tabuleiro, keys para jogos digitais, itens *in-game*, pôsteres, *action figures* e *buttons*
 
 *Requisitos faltantes:*
-- Fazer uma separação maior entre admin e usuário comum (o admin não deve ser capaz de publicar anúncios, por exemplo)
-- Colocar autocomplete nas buscas
+- Implementar os filtros de busca na pesquisa
 - Implementar um sistema de avaliação de produtos, além do sistema já existente de vendedores (e mostrar tudo no front-end)
 - Inserir a parte financeira do admin (implementar a comissão sobre as vendas, etc.)
     - Refletir a comissão no *dashboard* do vendedor (para mostrar o lucro real)
@@ -23,13 +22,11 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
     - Tentar fazer um detalhamento na parte de trajeto (rastreio, previsão de entrega...)
     - A confirmação de entrega deve vir do comprador, não do vendedor
 - Ao criar um anúncio, deve-se poder inserir todas as imagens (dentro do limite definido) simultaneamente a partir de um único ponto
-    - Especificar a moeda a ser usada (será o real)
 - Pedir para o usuário confirmar ações que sejam potencialmente danosas (publicar um anúncio, fazer uma compra...)
 - Implementar um carrinho
-- Descobrir o porquê da fixture não estar funcionando (será essencial fazer testes em maior escala)
 - Deixar a tela das categorias mais esteticamente agradável
 - Considerar a possibilidade do usuário editar anúncios (mas apenas o que não for potencialmente danoso!)
-- Estudar exemplos reais mais a fundo para tentar descobrir outras lacunas
+- Estudar exemplos reais mais a fundo para tentar descobrir outras lacunas?
 
 *Ideias pro segundo semestre:*
 - Implementar aspectos secundários (gamificação, cupons de desconto, etc.)

@@ -56,7 +56,7 @@
             <p style="font-weight:600;font-size:16px;">{{ product.stock.quantity }} unidade{{ product.stock.quantity|pluralize }}</p>
         </div>
 
-        {% if user.is_authenticated and user != product.seller %}
+        {% if user.is_authenticated and user != product.seller and not user.is_staff %}
             <a href="{% url 'create_order' product.pk %}" class="btn btn-primary" style="width:100%;text-align:center;display:block;">
                 Comprar
             </a>

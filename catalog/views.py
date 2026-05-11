@@ -1,4 +1,5 @@
 from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 
 from .forms import ProductForm, ProductImageFormSet, StockForm
@@ -36,6 +37,9 @@ def category_list(request):
 
 @login_required
 def create_product(request):
+    if request.user.is_staff:
+        return redirect('home')
+    
     if request.method == 'POST':
         product_form = ProductForm(request.POST)
         image_formset = ProductImageFormSet(request.POST, request.FILES)
@@ -69,3 +73,17 @@ def create_product(request):
 def my_products(request):
     produtos = Product.objects.filter(seller=request.user).order_by('-created_at')
     return render(request, 'catalog/my_products.html', {'produtos': produtos})
+
+# Autocomplete por nome nas buscas
+def autocomplete(request):
+    query = request.GET.get('q', '').strip()
+    resultados = []
+
+    if query:
+        resultados = list(
+            Product.objects.filter(title__icontains=query)
+            .values_list('title', flat=True)
+            .distinct()[:8]
+        )
+
+    return JsonResponse(resultados, safe=False)
