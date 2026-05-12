@@ -23,8 +23,6 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
 - Ao criar um anúncio, deve-se poder inserir todas as imagens (dentro do limite definido) simultaneamente a partir de um único ponto
 - Pedir para o usuário confirmar ações que sejam potencialmente danosas (publicar um anúncio, fazer uma compra...)
 - Implementar um carrinho
-- Deixar a tela das categorias mais esteticamente agradável
-    - Considerar organizá-las em ordem alfabética, se possível
 - Considerar a possibilidade do usuário editar anúncios (mas apenas o que não for potencialmente danoso!)
 
 *Ideias pro segundo semestre:*

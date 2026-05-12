@@ -4,11 +4,13 @@
 
 {% block content %}
 <h2 class="section-header">Categorias</h2>
-<ul>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">
     {% for cat in categorias %}
-        <li><a href="{% url 'category_detail' cat.slug %}">{{ cat.name }}</a></li>
+        <a href="{% url 'category_detail' cat.slug %}" class="btn btn-primary" style="text-align:center;">
+            {{ cat.name }}
+        </a>
     {% empty %}
-        <p style="color:var(--gray-500);"">Nenhuma categoria cadastrada ainda</p>
+        <p style="color:var(--gray-500);">Nenhuma categoria cadastrada ainda</p>
     {% endfor %}
-</ul>
+</div>
 {% endblock %}

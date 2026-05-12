@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
 
-{% block title %}Confirmar pedido — MegaGame{% endblock %}
+{% block title %}Concluir pedido — MegaGame{% endblock %}
 
 {% block content %}
 <div style="max-width:480px;margin:0 auto;">
     <h2 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:32px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:32px;">
-        Confirmar pedido
+        Concluir pedido
     </h2>
 
     <div style="border:2px solid var(--black);border-radius:8px;padding:24px;margin-bottom:28px;">
@@ -26,13 +26,54 @@
         <p style="color:var(--red);font-size:14px;margin-bottom:16px;">{{ error }}</p>
     {% endif %}
 
-    <form method="post">
+    <form method="post" id="order-form">
         {% csrf_token %}
         <div class="form-group">
             <label for="quantity">Quantidade</label>
             <input type="number" name="quantity" id="quantity" value="1" min="1" max="{{ product.stock.quantity }}">
         </div>
-        <button type="submit" class="btn btn-primary" style="width:100%;">Realizar pedido</button>
+        <button type="button" class="btn btn-primary" style="width:100%;"
+                data-price="{{ product.price }}"
+                onclick="document.getElementById('confirm-dialog').showModal()">
+            Realizar pedido
+        </button>
     </form>
 </div>
+
+<dialog id="confirm-dialog" style="border:2px solid var(--black);border-radius:12px;padding:32px;max-width:400px;width:100%;">
+    <h3 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:24px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">
+        Confirmar pedido?
+    </h3>
+    <p style="font-size:15px;color:var(--gray-500);margin-bottom:4px;">
+        Produto: <strong style="color:var(--black);">{{ product.title }}</strong>
+    </p>
+    <p style="font-size:15px;color:var(--gray-500);margin-bottom:24px;">
+        Total: <strong style="color:var(--black);">R$ {{ product.price }}</strong> × <span id="dialog-qty">1</span> = <strong style="color:var(--black);" id="dialog-total">R$ {{ product.price }}</strong>
+    </p>
+    <div style="display:flex;gap:12px;">
+        <button type="button" class="btn" style="flex:1;border:2px solid var(--black);"
+                onclick="document.getElementById('confirm-dialog').close()">
+            Cancelar
+        </button>
+        <button type="submit" form="order-form" class="btn btn-primary" style="flex:1;">
+            Confirmar
+        </button>
+    </div>
+</dialog>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+    const qtyInput = document.getElementById('quantity');
+    const dialogQty = document.getElementById('dialog-qty');
+    const dialogTotal = document.getElementById('dialog-total');
+    const unitPrice = parseFloat(document.querySelector('[data-price]').dataset.price);
+
+    qtyInput.addEventListener('input', () => {
+        const qty = parseInt(qtyInput.value) || 1;
+        dialogQty.textContent = qty;
+        dialogTotal.textContent = 'R$ ' + (unitPrice * qty).toFixed(2).replace('.', ',');
+    });
+</script>
 {% endblock %}
