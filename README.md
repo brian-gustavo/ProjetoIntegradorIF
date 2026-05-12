@@ -21,7 +21,6 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
     - Tentar fazer um detalhamento na parte de trajeto (rastreio, previsão de entrega...)
     - Assegurar que a confirmação de entrega deve vir do comprador, não do vendedor
 - Ao criar um anúncio, deve-se poder inserir todas as imagens (dentro do limite definido) simultaneamente a partir de um único ponto
-- Pedir para o usuário confirmar ações que sejam potencialmente danosas (publicar um anúncio, fazer uma compra...)
 - Implementar um carrinho
 - Considerar a possibilidade do usuário editar anúncios (mas apenas o que não for potencialmente danoso!)
 
