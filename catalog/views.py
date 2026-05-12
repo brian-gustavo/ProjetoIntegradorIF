@@ -158,7 +158,7 @@ def review_product(request, product_id):
             review.product = product
             review.reviewer = request.user
             review.save()
-            messages.success(request, 'Avaliação enviada com sucesso.')
+            messages.success(request, 'Avaliação enviada com sucesso')
             return redirect('product_detail', product_id=product_id)
     else:
         form = ProductReviewForm()

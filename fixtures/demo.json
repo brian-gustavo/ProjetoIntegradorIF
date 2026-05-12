@@ -27,7 +27,7 @@
   "model": "catalog.category",
   "pk": 4,
   "fields": {
-    "name": "Acessórios",
+    "name": "Acessï¿½rios",
     "slug": "acessorios"
   }
 },
@@ -51,7 +51,7 @@
   "model": "catalog.category",
   "pk": 7,
   "fields": {
-    "name": "Pôsteres",
+    "name": "Pï¿½steres",
     "slug": "posteres"
   }
 },
@@ -78,10 +78,10 @@
     "category": 1,
     "seller": 2,
     "title": "GTA IV",
-    "description": "Em excelente condição, apesar de usado. Entrega rápida e sem complicações.",
+    "description": "Em excelente condiï¿½ï¿½o, apesar de usado. Entrega rï¿½pida e sem complicaï¿½ï¿½es.",
     "price": "100.00",
     "condition": "USED",
-    "location": "São Paulo",
+    "location": "Sï¿½o Paulo",
     "created_at": "2026-05-11T23:17:35.881Z",
     "updated_at": "2026-05-11T23:17:35.881Z"
   }
@@ -108,7 +108,7 @@
     "category": 1,
     "seller": 4,
     "title": "GTA VI",
-    "description": "Nem lançou mas já tenho disponível! Compre antes que esgote!",
+    "description": "Nem lanï¿½ou mas jï¿½ tenho disponï¿½vel! Compre antes que esgote!",
     "price": "350.00",
     "condition": "NEW",
     "location": "Rio de Janeiro",
@@ -121,7 +121,7 @@
   "pk": 3,
   "fields": {
     "product": 5,
-    "quantity": 5
+    "quantity": 4
   }
 },
 {
@@ -129,7 +129,7 @@
   "pk": 4,
   "fields": {
     "product": 6,
-    "quantity": 3
+    "quantity": 2
   }
 },
 {
@@ -177,17 +177,6 @@
 },
 {
   "model": "accounts.sellerreview",
-  "pk": 2,
-  "fields": {
-    "seller": 2,
-    "reviewer": 4,
-    "rating": "5.0",
-    "comment": "Muito bom!",
-    "created_at": "2026-05-12T00:10:42.678Z"
-  }
-},
-{
-  "model": "accounts.sellerreview",
   "pk": 3,
   "fields": {
     "seller": 4,
@@ -195,6 +184,17 @@
     "rating": "5.0",
     "comment": "Bacana demais!",
     "created_at": "2026-05-12T03:05:10.047Z"
+  }
+},
+{
+  "model": "accounts.sellerreview",
+  "pk": 4,
+  "fields": {
+    "seller": 2,
+    "reviewer": 4,
+    "rating": "4.5",
+    "comment": "",
+    "created_at": "2026-05-12T03:33:28.456Z"
   }
 },
 {
@@ -208,6 +208,32 @@
     "status": "DELIVERED",
     "created_at": "2026-05-12T03:03:40.497Z",
     "updated_at": "2026-05-12T03:04:07.451Z"
+  }
+},
+{
+  "model": "orders.order",
+  "pk": 4,
+  "fields": {
+    "buyer": 2,
+    "product": 6,
+    "quantity": 1,
+    "total_price": "2000.00",
+    "status": "DELIVERED",
+    "created_at": "2026-05-12T03:30:33.226Z",
+    "updated_at": "2026-05-12T03:31:09.947Z"
+  }
+},
+{
+  "model": "orders.order",
+  "pk": 5,
+  "fields": {
+    "buyer": 4,
+    "product": 5,
+    "quantity": 1,
+    "total_price": "100.00",
+    "status": "DELIVERED",
+    "created_at": "2026-05-12T03:32:41.460Z",
+    "updated_at": "2026-05-12T03:33:03.531Z"
   }
 }
 ]

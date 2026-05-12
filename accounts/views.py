@@ -30,7 +30,7 @@ def profile_settings(request):
 
             if profile_form.is_valid():
                 profile_form.save()
-                messages.success(request, 'Dados atualizados com sucesso.')
+                messages.success(request, 'Dados atualizados com sucesso')
                 return redirect('profile_settings')
         elif 'save_password' in request.POST:
             password_form = PasswordChangeForm(user=request.user, data=request.POST)
@@ -38,7 +38,7 @@ def profile_settings(request):
             if password_form.is_valid():
                 password_form.save()
                 update_session_auth_hash(request, password_form.user)
-                messages.success(request, 'Senha alterada com sucesso.')
+                messages.success(request, 'Senha alterada com sucesso')
                 return redirect('profile_settings')
 
     return render(request, 'accounts/profile_settings.html', {
@@ -72,7 +72,7 @@ def review_seller(request, seller_id):
             review.seller = seller
             review.reviewer = request.user
             review.save()
-            messages.success(request, f'Avaliação enviada para {seller.username}.')
+            messages.success(request, f'Avaliação enviada para {seller.username}')
             return redirect('my_orders')
     else:
         form = ReviewForm()
