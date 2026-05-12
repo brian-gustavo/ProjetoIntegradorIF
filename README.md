@@ -8,7 +8,6 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
 
 *Requisitos faltantes:*
 - Implementar os filtros de busca na pesquisa
-- Implementar um sistema de avaliação de produtos, além do sistema já existente de vendedores (e mostrar tudo no front-end)
 - Inserir a parte financeira do admin (implementar a comissão sobre as vendas, etc.)
     - Refletir a comissão no *dashboard* do vendedor (para mostrar o lucro real)
 - Aprimorar o usuário para inserir mais campos (localização é a prioridade, mas dá pra pensar em outros)
@@ -18,15 +17,16 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
     - Estoque só deve dar baixa após o produto ser entregue
     - Revisar o *dashboard* quanto ao produto com mais vendas (deve ser por unidade ou por lote comprado?)
 - Detalhar melhor o fluxo de envio do produto (ao invés de criação do pedido -> pagamento -> confirmação de entrega, deve ser no mínimo criação do pedido -> pagamento -> verificação no estoque -> preparação do produto -> envio -> trajeto -> confirmação de entrega)
-    - Considerar a criação de uma opção para cancelar um pedido; se não for possível, remover "Cancelado" do banco de dados
+    - Considerar a criação de uma opção para cancelar um pedido (aproveitando que existe a opção no banco)
     - Tentar fazer um detalhamento na parte de trajeto (rastreio, previsão de entrega...)
     - A confirmação de entrega deve vir do comprador, não do vendedor
 - Ao criar um anúncio, deve-se poder inserir todas as imagens (dentro do limite definido) simultaneamente a partir de um único ponto
 - Pedir para o usuário confirmar ações que sejam potencialmente danosas (publicar um anúncio, fazer uma compra...)
 - Implementar um carrinho
 - Deixar a tela das categorias mais esteticamente agradável
+    - Considerar organizá-las em ordem alfabética
+    - Considerar torná-las fixas
 - Considerar a possibilidade do usuário editar anúncios (mas apenas o que não for potencialmente danoso!)
-- Estudar exemplos reais mais a fundo para tentar descobrir outras lacunas?
 
 *Ideias pro segundo semestre:*
 - Implementar aspectos secundários (gamificação, cupons de desconto, etc.)

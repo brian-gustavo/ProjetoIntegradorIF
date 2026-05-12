@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block title %}Avaliar produto — MegaGame{% endblock %}
+
+{% block content %}
+<div style="max-width:480px;margin:0 auto;">
+    <h2 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:32px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">
+        Avaliar produto
+    </h2>
+    <p style="font-size:15px;color:var(--gray-500);margin-bottom:32px;">
+        Você está avaliando <strong style="color:var(--black);">{{ product.title }}</strong>
+    </p>
+
+    <div style="border:2px solid var(--black);border-radius:12px;padding:32px;">
+        <form method="post">
+            {% csrf_token %}
+            {% for field in form %}
+                <div class="form-group">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {{ field.errors }}
+                </div>
+            {% endfor %}
+            <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px;">
+                Enviar avaliação
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

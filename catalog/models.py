@@ -1,3 +1,4 @@
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
 from django.contrib.auth.models import User
@@ -56,3 +57,23 @@ class ProductImage(models.Model):
     class Meta:
         verbose_name = "Imagem do produto"
         verbose_name_plural = "Imagens dos produtos"
+
+class ProductReview(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews', verbose_name="Produto")
+    reviewer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='product_reviews', verbose_name="Avaliador")
+    rating = models.DecimalField(
+        max_digits=2,
+        decimal_places=1,
+        validators=[MinValueValidator(0.5), MaxValueValidator(5.0)],
+        verbose_name="Nota"
+    )
+    comment = models.TextField(blank=True, verbose_name="Comentário")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Criado em")
+
+    class Meta:
+        verbose_name = "Avaliação de produto"
+        verbose_name_plural = "Avaliações de produtos"
+        unique_together = ('product', 'reviewer')
+
+    def __str__(self):
+        return f"{self.reviewer.username} → {self.product.title}: {self.rating}"

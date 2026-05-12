@@ -36,4 +36,4 @@ class ReviewForm(forms.ModelForm):
 
     class Meta:
         model = SellerReview
-        fields = ('rating', 'comment')
+        fields = ('rating', )

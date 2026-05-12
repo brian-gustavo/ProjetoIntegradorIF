@@ -39,14 +39,21 @@ def create_order(request, product_id):
 
 @login_required
 def my_orders(request):
+    from accounts.models import SellerReview
+    from catalog.models import ProductReview
+
     orders = Order.objects.filter(buyer=request.user).order_by('-created_at')
 
     reviewed_sellers = set(
         SellerReview.objects.filter(reviewer=request.user).values_list('seller_id', flat=True)
     )
+    reviewed_products = set(
+        ProductReview.objects.filter(reviewer=request.user).values_list('product_id', flat=True)
+    )
 
     for order in orders:
         order.seller_reviewed = order.product.seller.pk in reviewed_sellers
+        order.product_reviewed = order.product.pk in reviewed_products
 
     return render(request, 'orders/my_orders.html', {'orders': orders})
 
