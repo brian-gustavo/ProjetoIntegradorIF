@@ -1,7 +1,6 @@
 from django import forms
-from django.forms import inlineformset_factory
 
-from .models import Product, ProductImage, Stock, ProductReview
+from .models import Product, Stock, ProductReview
 
 class ProductForm(forms.ModelForm):
     class Meta:
@@ -12,15 +11,6 @@ class StockForm(forms.ModelForm):
     class Meta:
         model = Stock
         fields = ('quantity',)
-
-# Permite inserir mais de uma imagem na criação de um produto
-ProductImageFormSet = inlineformset_factory(
-    Product,
-    ProductImage,
-    fields=('image',),
-    extra=5, # Permite cinco imagens (pode ser alterado se necessário)
-    can_delete=False,
-)
 
 class ProductReviewForm(forms.ModelForm):
     rating = forms.DecimalField(

@@ -10,9 +10,6 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
 - Implementar os filtros de busca na pesquisa
 - Inserir a parte financeira do admin (implementar a comissão sobre as vendas, etc.)
     - Refletir a comissão no *dashboard* do vendedor (para mostrar o lucro real)
-- Aprimorar o usuário para inserir mais campos (localização é a prioridade, mas dá pra pensar em outros)
-    - Tirar a localização dos produtos
-    - Definir a especificidade da localização
 - Aprimorar a questão de estoque (possível variabilidade entre produtos, intermediar a compra e o fluxo de envio do produto, etc.)
     - Assegurar que o estoque só deve dar baixa após o produto ser entregue
     - Revisar o *dashboard* quanto ao produto com mais vendas (deve ser por unidade ou por lote comprado?)
@@ -20,7 +17,6 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
     - Considerar a criação de uma opção para cancelar um pedido (aproveitando que existe a opção no banco)
     - Tentar fazer um detalhamento na parte de trajeto (rastreio, previsão de entrega...)
     - Assegurar que a confirmação de entrega deve vir do comprador, não do vendedor
-- Ao criar um anúncio, deve-se poder inserir todas as imagens (dentro do limite definido) simultaneamente a partir de um único ponto
 - Implementar um carrinho
 - Considerar a possibilidade do usuário editar anúncios (mas apenas o que não for potencialmente danoso!)
 

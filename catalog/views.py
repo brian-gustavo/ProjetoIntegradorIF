@@ -4,8 +4,8 @@ from django.db.models import Avg
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 
-from .forms import ProductForm, ProductImageFormSet, StockForm, ProductReviewForm
-from .models import Category, Product, ProductReview
+from .forms import ProductForm, StockForm, ProductReviewForm
+from .models import Category, Product, ProductImage, ProductReview
 from accounts.models import SellerReview
 
 def home(request):
@@ -83,33 +83,35 @@ def category_list(request):
 def create_product(request):
     if request.user.is_staff:
         return redirect('home')
-    
+
     if request.method == 'POST':
         product_form = ProductForm(request.POST)
-        image_formset = ProductImageFormSet(request.POST, request.FILES)
         stock_form = StockForm(request.POST)
 
-        if product_form.is_valid() and image_formset.is_valid() and stock_form.is_valid():
-            product = product_form.save(commit=False)
-            product.seller = request.user
-            product.save()
+        if product_form.is_valid() and stock_form.is_valid():
+            images = request.FILES.getlist('images')
 
-            image_formset.instance = product
-            image_formset.save()
+            if len(images) > 5:
+                product_form.add_error(None, 'Você pode enviar no máximo 5 imagens')
+            else:
+                product = product_form.save(commit=False)
+                product.seller = request.user
+                product.save()
 
-            stock = stock_form.save(commit=False)
-            stock.product = product
-            stock.save()
+                for image in images:
+                    ProductImage.objects.create(product=product, image=image)
 
-            return redirect('home')
+                stock = stock_form.save(commit=False)
+                stock.product = product
+                stock.save()
+
+                return redirect('home')
     else:
         product_form = ProductForm()
-        image_formset = ProductImageFormSet()
         stock_form = StockForm()
 
     return render(request, 'catalog/create_product.html', {
         'product_form': product_form,
-        'image_formset': image_formset,
         'stock_form': stock_form,
     })
 

@@ -35,13 +35,10 @@
         <h3 style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:18px;text-transform:uppercase;letter-spacing:0.06em;margin:32px 0 16px;padding-bottom:8px;border-bottom:2px solid var(--black);">
             Imagens
         </h3>
-        {{ image_formset.management_form }}
-        {% for form in image_formset %}
-            <div class="form-group">
-                {{ form.image }}
-                {{ form.image.errors }}
-            </div>
-        {% endfor %}
+        <div class="form-group">
+            <label for="images">Imagens do produto (máximo 5)</label>
+            <input type="file" name="images" id="images" accept="image/*" multiple>
+        </div>
 
         <button type="button" class="btn btn-primary" style="width:100%;margin-top:16px;"
                 onclick="document.getElementById('confirm-dialog').showModal()">
