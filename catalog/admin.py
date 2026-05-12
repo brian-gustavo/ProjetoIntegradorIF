@@ -26,3 +26,9 @@ class ProductAdmin(admin.ModelAdmin):
     list_filter = ('category', 'condition')
     search_fields = ('title', 'description')
     inlines = [ProductImageInline, StockInline]
+
+@admin.register(ProductReview)
+class ProductReviewAdmin(admin.ModelAdmin):
+    list_display = ('product', 'reviewer', 'rating', 'created_at')
+    list_filter = ('rating',)
+    search_fields = ('product__title', 'reviewer__username')

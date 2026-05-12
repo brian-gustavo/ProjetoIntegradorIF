@@ -20,7 +20,7 @@
             <div class="product-card-body">
                 <div class="product-card-title">{{ prod.title }}</div>
                 <div class="product-card-price">R$ {{ prod.price }}</div>
-                <div class="product-card-meta">{{ prod.location }} · {{ prod.seller.username }}</div>
+                <div class="product-card-meta">{{ prod.seller.profile.city }}, {{ prod.seller.profile.uf }} · {{ prod.seller.username }}</div>
             </div>
         </a>
     {% empty %}

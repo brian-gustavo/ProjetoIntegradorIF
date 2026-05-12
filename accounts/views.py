@@ -5,14 +5,17 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.models import User
 from django.shortcuts import render, redirect, get_object_or_404
 
-from .forms import RegisterForm, ProfileForm, ReviewForm
+from .forms import RegisterForm, ProfileForm, ProfileDetailForm, ReviewForm
 from .models import SellerReview
 
 def register(request):
     if request.method == 'POST':
         form = RegisterForm(request.POST)
         if form.is_valid():
-            form.save()
+            user = form.save()
+            user.profile.city = form.cleaned_data['city']
+            user.profile.uf = form.cleaned_data['uf']
+            user.profile.save()
             return redirect('login')
     else:
         form = RegisterForm()
@@ -22,14 +25,17 @@ def register(request):
 @login_required
 def profile_settings(request):
     profile_form = ProfileForm(instance=request.user)
+    profile_detail_form = ProfileDetailForm(instance=request.user.profile)
     password_form = PasswordChangeForm(user=request.user)
 
     if request.method == 'POST':
         if 'save_profile' in request.POST:
             profile_form = ProfileForm(request.POST, instance=request.user)
+            profile_detail_form = ProfileDetailForm(request.POST, instance=request.user.profile)
 
             if profile_form.is_valid():
                 profile_form.save()
+                profile_detail_form.save()
                 messages.success(request, 'Dados atualizados com sucesso')
                 return redirect('profile_settings')
         elif 'save_password' in request.POST:
@@ -43,6 +49,7 @@ def profile_settings(request):
 
     return render(request, 'accounts/profile_settings.html', {
         'profile_form': profile_form,
+        'profile_detail_form': profile_detail_form,
         'password_form': password_form,
     })
 

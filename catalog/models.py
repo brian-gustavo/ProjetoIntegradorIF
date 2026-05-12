@@ -27,7 +27,6 @@ class Product(models.Model):
     description = models.TextField(verbose_name="Descrição")
     price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Preço (em reais)")
     condition = models.CharField(max_length=4, choices=CONDITION_CHOICES, default='NEW', verbose_name="Condição")
-    location = models.CharField(max_length=100, help_text="Cidade/Estado", verbose_name="Localização")
 
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Criado em")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Atualizado em")

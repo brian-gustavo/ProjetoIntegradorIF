@@ -21,6 +21,13 @@
                     {{ field.errors }}
                 </div>
             {% endfor %}
+            {% for field in profile_detail_form %}
+                <div class="form-group">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {{ field.errors }}
+                </div>
+            {% endfor %}
             <button type="submit" name="save_profile" class="btn btn-primary" style="width:100%;margin-top:8px;">
                 Salvar dados
             </button>
