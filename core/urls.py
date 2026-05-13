@@ -21,6 +21,7 @@ urlpatterns = [
     path('vendedor/<int:seller_id>/avaliar/', review_seller, name='review_seller'),
     path('autocomplete/', autocomplete, name='autocomplete'),
     path('anuncios/<int:product_id>/avaliar/', review_product, name='review_product'),
+    path('anuncios/<int:product_id>/', product_detail, name='product_detail'),
 ]
 
 if settings.DEBUG:

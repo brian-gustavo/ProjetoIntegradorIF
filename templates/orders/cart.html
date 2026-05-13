@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block title %}Carrinho — MegaGame{% endblock %}
+
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:32px;">
+    <h2 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:32px;text-transform:uppercase;letter-spacing:0.06em;">
+        Carrinho
+    </h2>
+</div>
+
+{% if items %}
+    {% for item in items %}
+        <div style="border:2px solid var(--black);border-radius:8px;padding:24px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;gap:24px;">
+            <div style="flex:1;">
+                <p style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;margin-bottom:8px;">
+                    <a href="{% url 'product_detail' item.product.pk %}">{{ item.product.title }}</a>
+                </p>
+                <p style="font-size:14px;color:var(--gray-500);">
+                    {{ item.quantity }} unidade{{ item.quantity|pluralize }} ·
+                    <strong style="color:var(--black);">R$ {{ item.subtotal }}</strong>
+                </p>
+            </div>
+            <form method="post" action="{% url 'remove_from_cart' item.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn" style="border:2px solid var(--black);font-size:14px;padding:8px 20px;">
+                    Remover
+                </button>
+            </form>
+        </div>
+    {% endfor %}
+
+    <div style="border-top:2px solid var(--black);padding-top:24px;margin-top:8px;display:flex;justify-content:space-between;align-items:center;">
+        <p style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:24px;">
+            Total: R$ {{ total }}
+        </p>
+        <form method="post" action="{% url 'checkout' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary">Finalizar pedido</button>
+        </form>
+    </div>
+{% else %}
+    <p style="color:var(--gray-500);">Seu carrinho está vazio</p>
+{% endif %}
+{% endblock %}

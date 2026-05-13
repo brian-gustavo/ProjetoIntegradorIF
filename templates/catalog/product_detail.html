@@ -70,8 +70,8 @@
         </div>
 
         {% if user.is_authenticated and user != product.seller and not user.is_staff %}
-            <a href="{% url 'create_order' product.pk %}" class="btn btn-primary" style="width:100%;text-align:center;display:block;">
-                Comprar
+            <a href="{% url 'add_to_cart' product.pk %}" class="btn btn-primary" style="width:100%;text-align:center;display:block;">
+                Adicionar ao carrinho
             </a>
         {% elif not user.is_authenticated %}
             <a href="{% url 'login' %}" class="btn btn-primary" style="width:100%;text-align:center;display:block;">

@@ -1,16 +1,16 @@
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, Count
 from django.shortcuts import render, redirect, get_object_or_404
 
-from .models import Order
-from accounts.models import SellerReview
+from .models import Order, Cart, CartItem
 from catalog.models import Product
 
 @login_required
-def create_order(request, product_id):
+def add_to_cart(request, product_id):
     if request.user.is_staff:
         return redirect('home')
-    
+
     product = get_object_or_404(Product, pk=product_id)
 
     if product.seller == request.user:
@@ -18,24 +18,72 @@ def create_order(request, product_id):
 
     if request.method == 'POST':
         quantity = int(request.POST.get('quantity', 1))
-        stock = product.stock
 
-        if quantity > stock.quantity:
-            return render(request, 'orders/create_order.html', {
+        if quantity > product.stock.quantity:
+            return render(request, 'orders/add_to_cart.html', {
                 'product': product,
                 'error': 'Quantidade indisponível em estoque',
             })
 
+        cart, _ = Cart.objects.get_or_create(user=request.user)
+
+        item, created = CartItem.objects.get_or_create(
+            cart=cart,
+            product=product,
+            defaults={'quantity': quantity},
+        )
+        if not created:
+            new_quantity = item.quantity + quantity
+            if new_quantity > product.stock.quantity:
+                return render(request, 'orders/add_to_cart.html', {
+                    'product': product,
+                    'error': 'Quantidade indisponível em estoque',
+                })
+            item.quantity = new_quantity
+            item.save()
+
+        messages.success(request, f'"{product.title}" adicionado ao carrinho')
+        return redirect('cart_detail')
+
+    return render(request, 'orders/add_to_cart.html', {'product': product})
+
+@login_required
+def cart_detail(request):
+    cart, _ = Cart.objects.get_or_create(user=request.user)
+    items = cart.items.select_related('product').all()
+    total = sum(item.subtotal for item in items)
+    return render(request, 'orders/cart.html', {'cart': cart, 'items': items, 'total': total})
+
+@login_required
+def remove_from_cart(request, item_id):
+    item = get_object_or_404(CartItem, pk=item_id, cart__user=request.user)
+    item.delete()
+    return redirect('cart_detail')
+
+@login_required
+def checkout(request):
+    cart = get_object_or_404(Cart, user=request.user)
+    items = cart.items.select_related('product__stock').all()
+
+    if not items:
+        return redirect('cart_detail')
+
+    out_of_stock = [item for item in items if item.quantity > item.product.stock.quantity]
+    if out_of_stock:
+        for item in out_of_stock:
+            messages.error(request, f'"{item.product.title}" não tem estoque suficiente para a quantidade selecionada')
+        return redirect('cart_detail')
+
+    for item in items:
         Order.objects.create(
             buyer=request.user,
-            product=product,
-            quantity=quantity,
-            total_price=product.price * quantity,
+            product=item.product,
+            quantity=item.quantity,
+            total_price=item.subtotal,
         )
 
-        return redirect('my_orders')
-
-    return render(request, 'orders/create_order.html', {'product': product})
+    cart.items.all().delete()
+    return redirect('my_orders')
 
 @login_required
 def my_orders(request):

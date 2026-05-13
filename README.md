@@ -7,7 +7,7 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
 *Produtos a serem vendidos:* Jogos físicos, consoles, acessórios para consoles, jogos de tabuleiro, keys para jogos digitais, itens *in-game*, pôsteres, *action figures* e *buttons*
 
 *Requisitos faltantes:*
-- Implementar os filtros de busca na pesquisa
+- Implementar os filtros de busca na pesquisa (localização, média de avaliação, preço...)
 - Inserir a parte financeira do admin (implementar a comissão sobre as vendas, etc.)
     - Refletir a comissão no *dashboard* do vendedor (para mostrar o lucro real)
 - Aprimorar a questão de estoque (possível variabilidade entre produtos, intermediar a compra e o fluxo de envio do produto, etc.)
@@ -17,10 +17,15 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
     - Considerar a criação de uma opção para cancelar um pedido (aproveitando que existe a opção no banco)
     - Tentar fazer um detalhamento na parte de trajeto (rastreio, previsão de entrega...)
     - Assegurar que a confirmação de entrega deve vir do comprador, não do vendedor
-- Implementar um carrinho
-- Considerar a possibilidade do usuário editar anúncios (mas apenas o que não for potencialmente danoso!)
+- Implementar a edição de anúncios/avaliações/etc.
+    - Considerar um limite de edições (mudar a avaliação apenas uma vez, por exemplo)
+    - Deve haver uma opção de mudar a quantidade de um item que esteja no carrinho
+- Inserir um limite de MB em imagens inseridas pelos usuários
+- Mudar o autocomplete para detectar a partir de três ou quatro letras
+- Fazer a validação da quantidade quando o usuário for adicionar algo ao carrinho (atualmente, pode-se inserir manualmente um número que seja maior que o estoque e o sistema não valida isso)
 
 *Ideias pro segundo semestre:*
 - Implementar aspectos secundários (gamificação, cupons de desconto, etc.)
 - Implementar uma API de pagamento real (provavelmente Stripe)
 - Estudar a possibilidade de permitir trocas na plataforma
+- Estudar a melhor forma de povoar o banco para testes em larga escala (arquivo CSV?)

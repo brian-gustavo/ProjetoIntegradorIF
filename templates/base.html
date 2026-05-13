@@ -34,6 +34,11 @@
     </div>
 
     <div class="navbar-right" id="userMenuWrapper">
+        {% if user.is_authenticated and not user.is_staff %}
+            <a href="{% url 'cart_detail' %}" style="display:flex;align-items:center;">
+                <img src="{% static 'img/carrinho.png' %}" alt="Carrinho" style="height:32px;width:32px;object-fit:contain;">
+            </a>
+        {% endif %}
         {% if user.is_authenticated %}
             <button class="user-menu-trigger" id="userMenuTrigger" type="button">
                 <div class="user-avatar">{{ user.username|first|upper }}</div>
