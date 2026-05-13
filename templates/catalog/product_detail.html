@@ -50,7 +50,7 @@
             <p style="font-size:13px;color:var(--gray-500);">Vendedor</p>
             <p style="font-weight:600;font-size:16px;">{{ product.seller.username }}</p>
             {% if seller_rating %}
-                <p style="font-size:14px;color:var(--gray-500);margin-top:4px;">★ {{ seller_rating }} / 5.0</p>
+                <p style="font-size:14px;color:var(--gray-500);margin-top:4px;">★ {{ seller_rating }} / 5,0</p>
             {% else %}
                 <p style="font-size:14px;color:var(--gray-500);margin-top:4px;">Sem avaliações ainda</p>
             {% endif %}
@@ -95,7 +95,7 @@
                 <h2 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:24px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:24px;">
                     Avaliações
                     {% if product_rating %}
-                        <span style="font-size:18px;color:var(--gray-500);font-weight:400;">★ {{ product_rating }} / 5.0</span>
+                        <span style="font-size:18px;color:var(--gray-500);font-weight:400;">★ {{ product_rating }} / 5,0</span>
                     {% endif %}
                 </h2>
                 {% for review in reviews %}
