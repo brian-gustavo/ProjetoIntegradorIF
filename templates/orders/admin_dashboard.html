@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard administrativo — MegaGame{% endblock %}
+
+{% block content %}
+<h2 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:32px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:40px;">
+    Painel administrativo
+</h2>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:20px;margin-bottom:48px;">
+
+    <div style="border:2px solid var(--black);border-radius:8px;padding:28px;">
+        <p style="font-size:13px;text-transform:uppercase;letter-spacing:0.1em;color:var(--gray-500);margin-bottom:12px;">Vendas concluídas</p>
+        <p style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:48px;line-height:1;">{{ total_vendas }}</p>
+    </div>
+
+    <div style="border:2px solid var(--black);border-radius:8px;padding:28px;">
+        <p style="font-size:13px;text-transform:uppercase;letter-spacing:0.1em;color:var(--gray-500);margin-bottom:12px;">Total transacionado</p>
+        <p style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:48px;line-height:1;">R$ {{ total_transacionado }}</p>
+    </div>
+
+    <div style="border:2px solid var(--black);border-radius:8px;padding:28px;">
+        <p style="font-size:13px;text-transform:uppercase;letter-spacing:0.1em;color:var(--gray-500);margin-bottom:12px;">Total em comissões</p>
+        <p style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:48px;line-height:1;color:var(--green);">R$ {{ total_comissao }}</p>
+    </div>
+
+    <div style="border:2px solid var(--black);border-radius:8px;padding:28px;">
+        <p style="font-size:13px;text-transform:uppercase;letter-spacing:0.1em;color:var(--gray-500);margin-bottom:12px;">Taxa de comissão atual</p>
+        <p style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:48px;line-height:1;">{{ taxa_atual }}%</p>
+        <a href="/admin/orders/platformconfig/" style="font-size:13px;color:var(--green-dark);font-weight:600;">Alterar →</a>
+    </div>
+
+</div>
+
+<h3 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:22px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:20px;">
+    Top vendedores
+</h3>
+<div style="border:2px solid var(--black);border-radius:8px;overflow:hidden;">
+    <table style="width:100%;border-collapse:collapse;font-size:15px;">
+        <thead>
+            <tr style="background:var(--black);color:var(--white);">
+                <th style="padding:14px 20px;text-align:left;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.06em;">Vendedor</th>
+                <th style="padding:14px 20px;text-align:right;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.06em;">Vendas</th>
+                <th style="padding:14px 20px;text-align:right;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.06em;">Total bruto</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for v in vendedores %}
+                <tr style="border-top:1px solid var(--gray-300);">
+                    <td style="padding:14px 20px;">{{ v.product__seller__username }}</td>
+                    <td style="padding:14px 20px;text-align:right;">{{ v.total_vendas }}</td>
+                    <td style="padding:14px 20px;text-align:right;font-weight:600;">R$ {{ v.total_bruto }}</td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="3" style="padding:20px;text-align:center;color:var(--gray-500);">Nenhuma venda concluída ainda</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

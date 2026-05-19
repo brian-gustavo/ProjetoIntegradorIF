@@ -7,8 +7,6 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
 *Produtos a serem vendidos:* Jogos físicos, consoles, acessórios para consoles, jogos de tabuleiro, keys para jogos digitais, itens *in-game*, pôsteres, *action figures* e *buttons*
 
 *Requisitos faltantes:*
-- Inserir a parte financeira do admin (implementar a comissão sobre as vendas, etc.)
-    - Refletir a comissão no *dashboard* do vendedor (para mostrar o lucro real)
 - Aprimorar a questão de estoque (possível variabilidade entre produtos, intermediar a compra e o fluxo de envio do produto, etc.)
     - Assegurar que o estoque só deve dar baixa após o produto ser entregue
     - Revisar o *dashboard* quanto ao produto com mais vendas (deve ser por unidade ou por lote comprado?)

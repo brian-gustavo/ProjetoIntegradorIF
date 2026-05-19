@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Order, Cart, CartItem
+from .models import Order, Cart, CartItem, PlatformConfig, Commission
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
@@ -15,3 +15,18 @@ class CartAdmin(admin.ModelAdmin):
 @admin.register(CartItem)
 class CartItemAdmin(admin.ModelAdmin):
     list_display = ('cart', 'product', 'quantity')
+
+@admin.register(PlatformConfig)
+class PlatformConfigAdmin(admin.ModelAdmin):
+    list_display = ('commission_rate',)
+
+    def has_add_permission(self, request):
+        return not PlatformConfig.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+@admin.register(Commission)
+class CommissionAdmin(admin.ModelAdmin):
+    list_display = ('order', 'rate', 'gross_amount', 'commission_amount', 'net_amount', 'created_at')
+    readonly_fields = ('order', 'rate', 'gross_amount', 'commission_amount', 'net_amount', 'created_at')

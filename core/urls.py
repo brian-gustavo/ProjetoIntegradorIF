@@ -5,6 +5,7 @@ from django.urls import path, include
 
 from accounts.views import register, profile_settings, review_seller
 from catalog.views import home, create_product, product_detail, category_detail, category_list, my_products, autocomplete, review_product
+from orders.views import admin_dashboard
 
 urlpatterns = [
     path('admin/', admin.site.urls),

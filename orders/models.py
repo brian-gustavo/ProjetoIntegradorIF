@@ -1,4 +1,5 @@
 import random, string
+from decimal import Decimal
 from django.db import models
 
 from catalog.models import Product
@@ -63,3 +64,38 @@ class CartItem(models.Model):
     @property
     def subtotal(self):
         return self.product.price * self.quantity
+    
+class PlatformConfig(models.Model):
+    commission_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal('10.00'),
+        verbose_name="Taxa de comissão (%)"
+    )
+
+    class Meta:
+        verbose_name = "Configuração da plataforma"
+        verbose_name_plural = "Configurações da plataforma"
+
+    def __str__(self):
+        return f"Comissão: {self.commission_rate}%"
+
+    @classmethod
+    def get_commission_rate(cls):
+        config = cls.objects.first()
+        return config.commission_rate if config else Decimal('10.00')
+
+class Commission(models.Model):
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='commission', verbose_name="Pedido")
+    rate = models.DecimalField(max_digits=5, decimal_places=2, verbose_name="Taxa aplicada (%)")
+    gross_amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Valor bruto")
+    commission_amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Comissão")
+    net_amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Valor líquido")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Criado em")
+
+    class Meta:
+        verbose_name = "Comissão"
+        verbose_name_plural = "Comissões"
+
+    def __str__(self):
+        return f"Comissão do pedido #{self.order.pk}"

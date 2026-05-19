@@ -11,49 +11,38 @@
 </div>
 
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:20px;margin-bottom:48px;">
-
     <div style="border:2px solid var(--black);border-radius:8px;padding:28px;">
-        <p style="font-size:13px;text-transform:uppercase;letter-spacing:0.1em;color:var(--gray-500);margin-bottom:12px;">
-            Vendas realizadas
-        </p>
-        <p style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:48px;line-height:1;">
-            {{ total_vendas }}
-        </p>
+        <p style="font-size:13px;text-transform:uppercase;letter-spacing:0.1em;color:var(--gray-500);margin-bottom:12px;">Vendas realizadas</p>
+        <p style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:48px;line-height:1;">{{ total_vendas }}</p>
     </div>
 
     <div style="border:2px solid var(--black);border-radius:8px;padding:28px;">
-        <p style="font-size:13px;text-transform:uppercase;letter-spacing:0.1em;color:var(--gray-500);margin-bottom:12px;">
-            Total arrecadado
-        </p>
-        <p style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:48px;line-height:1;">
-            R$ {{ total_arrecadado }}
-        </p>
+        <p style="font-size:13px;text-transform:uppercase;letter-spacing:0.1em;color:var(--gray-500);margin-bottom:12px;">Total bruto</p>
+        <p style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:48px;line-height:1;">R$ {{ total_bruto }}</p>
     </div>
 
     <div style="border:2px solid var(--black);border-radius:8px;padding:28px;">
-        <p style="font-size:13px;text-transform:uppercase;letter-spacing:0.1em;color:var(--gray-500);margin-bottom:12px;">
-            Entregas pendentes
-        </p>
-        <p style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:48px;line-height:1;">
-            {{ pendentes }}
-        </p>
+        <p style="font-size:13px;text-transform:uppercase;letter-spacing:0.1em;color:var(--gray-500);margin-bottom:12px;">Comissão da plataforma</p>
+        <p style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:48px;line-height:1;color:var(--red);">− R$ {{ total_comissao }}</p>
     </div>
 
     <div style="border:2px solid var(--black);border-radius:8px;padding:28px;">
-        <p style="font-size:13px;text-transform:uppercase;letter-spacing:0.1em;color:var(--gray-500);margin-bottom:12px;">
-            Produto mais vendido
-        </p>
+        <p style="font-size:13px;text-transform:uppercase;letter-spacing:0.1em;color:var(--gray-500);margin-bottom:12px;">Lucro líquido</p>
+        <p style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:48px;line-height:1;color:var(--green);">R$ {{ total_liquido }}</p>
+    </div>
+
+    <div style="border:2px solid var(--black);border-radius:8px;padding:28px;">
+        <p style="font-size:13px;text-transform:uppercase;letter-spacing:0.1em;color:var(--gray-500);margin-bottom:12px;">Entregas pendentes</p>
+        <p style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:48px;line-height:1;">{{ pendentes }}</p>
+    </div>
+
+    <div style="border:2px solid var(--black);border-radius:8px;padding:28px;">
+        <p style="font-size:13px;text-transform:uppercase;letter-spacing:0.1em;color:var(--gray-500);margin-bottom:12px;">Produto mais vendido</p>
         {% if produto_mais_vendido %}
-            <p style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:24px;line-height:1.2;">
-                {{ produto_mais_vendido.product__title }}
-            </p>
-            <p style="font-size:13px;color:var(--gray-500);margin-top:8px;">
-                {{ produto_mais_vendido.total }} venda{{ produto_mais_vendido.total|pluralize }}
-            </p>
+            <p style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:24px;line-height:1.2;">{{ produto_mais_vendido.product__title }}</p>
+            <p style="font-size:13px;color:var(--gray-500);margin-top:8px;">{{ produto_mais_vendido.total }} venda{{ produto_mais_vendido.total|pluralize }}</p>
         {% else %}
-            <p style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:24px;color:var(--gray-300);">
-                —
-            </p>
+            <p style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:24px;color:var(--gray-300);">—</p>
         {% endif %}
     </div>
 </div>

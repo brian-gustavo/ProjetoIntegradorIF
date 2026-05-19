@@ -1,9 +1,10 @@
+from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, Count
 from django.shortcuts import render, redirect, get_object_or_404
 
-from .models import Order, Cart, CartItem, generate_tracking_code
+from .models import Order, Cart, CartItem, generate_tracking_code, PlatformConfig, Commission
 from catalog.models import Product
 
 @login_required
@@ -190,6 +191,19 @@ def confirm_delivery(request, order_id):
     order = get_object_or_404(Order, pk=order_id, buyer=request.user)
 
     if order.status == 'SHIPPED':
+        rate = PlatformConfig.get_commission_rate()
+        gross = order.total_price
+        commission_amount = (gross * rate / Decimal('100')).quantize(Decimal('0.01'))
+        net = gross - commission_amount
+
+        Commission.objects.create(
+            order=order,
+            rate=rate,
+            gross_amount=gross,
+            commission_amount=commission_amount,
+            net_amount=net,
+        )
+
         order.status = 'DELIVERED'
         order.save()
 
@@ -199,16 +213,24 @@ def confirm_delivery(request, order_id):
 def seller_dashboard(request):
     orders = Order.objects.filter(product__seller=request.user)
 
-    total_vendas = orders.filter(status__in=['SHIPPED', 'DELIVERED']).count()
+    delivered_orders = orders.filter(status='DELIVERED')
 
-    total_arrecadado = orders.filter(
-        status__in=['SHIPPED', 'DELIVERED']
-    ).aggregate(total=Sum('total_price'))['total'] or 0
+    total_vendas = delivered_orders.count()
+
+    total_bruto = delivered_orders.aggregate(
+        total=Sum('total_price')
+    )['total'] or Decimal('0')
+
+    total_comissao = Commission.objects.filter(
+        order__product__seller=request.user
+    ).aggregate(total=Sum('commission_amount'))['total'] or Decimal('0')
+
+    total_liquido = total_bruto - total_comissao
 
     pendentes = orders.filter(status__in=['PAID', 'CONFIRMED', 'PREPARING']).count()
 
     produto_mais_vendido = (
-        orders.filter(status__in=['SHIPPED', 'DELIVERED'])
+        delivered_orders
         .values('product__title')
         .annotate(total=Count('id'))
         .order_by('-total')
@@ -217,7 +239,46 @@ def seller_dashboard(request):
 
     return render(request, 'orders/seller_dashboard.html', {
         'total_vendas': total_vendas,
-        'total_arrecadado': total_arrecadado,
+        'total_bruto': total_bruto,
+        'total_comissao': total_comissao,
+        'total_liquido': total_liquido,
         'pendentes': pendentes,
         'produto_mais_vendido': produto_mais_vendido,
+    })
+
+@login_required
+def admin_dashboard(request):
+    if not request.user.is_staff:
+        return redirect('home')
+
+    from accounts.models import Profile
+
+    total_vendas = Order.objects.filter(status='DELIVERED').count()
+
+    total_transacionado = Order.objects.filter(
+        status='DELIVERED'
+    ).aggregate(total=Sum('total_price'))['total'] or Decimal('0')
+
+    total_comissao = Commission.objects.aggregate(
+        total=Sum('commission_amount')
+    )['total'] or Decimal('0')
+
+    taxa_atual = PlatformConfig.get_commission_rate()
+
+    vendedores = (
+        Order.objects.filter(status='DELIVERED')
+        .values('product__seller__username')
+        .annotate(
+            total_vendas=Count('id'),
+            total_bruto=Sum('total_price'),
+        )
+        .order_by('-total_bruto')[:10]
+    )
+
+    return render(request, 'orders/admin_dashboard.html', {
+        'total_vendas': total_vendas,
+        'total_transacionado': total_transacionado,
+        'total_comissao': total_comissao,
+        'taxa_atual': taxa_atual,
+        'vendedores': vendedores,
     })
