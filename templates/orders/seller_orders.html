@@ -11,7 +11,7 @@
     <div style="border:2px solid var(--black);border-radius:8px;padding:24px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;gap:24px;">
         <div style="flex:1;">
             <p style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;margin-bottom:8px;">
-                {{ order.product.title }}
+                {{ order.product.title }} — {{ order.variant.name }}
             </p>
             <p style="font-size:14px;color:var(--gray-500);">
                 Comprador: <strong style="color:var(--black);">{{ order.buyer.username }}</strong> ·

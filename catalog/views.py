@@ -4,18 +4,16 @@ from django.db.models import Avg
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 
-from .forms import ProductForm, StockForm, ProductReviewForm
-from .models import Category, Product, ProductImage, ProductReview
+from .forms import ProductForm, ProductVariantFormSet, ProductReviewForm
+from .models import Category, Product, ProductImage, ProductVariant, ProductReview
 from accounts.models import SellerReview
 
 def home(request):
     categorias = Category.objects.all()
     query = request.GET.get('q', '').strip()
-
     produtos = Product.objects.all()
     if query:
         produtos = produtos.filter(title__icontains=query)
-
     return render(request, 'home.html', {
         'categorias': categorias,
         'produtos': produtos,
@@ -24,6 +22,7 @@ def home(request):
 
 def product_detail(request, product_id):
     product = get_object_or_404(Product, pk=product_id)
+    variants = product.variants.all()
 
     seller_rating = SellerReview.objects.filter(
         seller=product.seller
@@ -58,6 +57,7 @@ def product_detail(request, product_id):
 
     return render(request, 'catalog/product_detail.html', {
         'product': product,
+        'variants': variants,
         'seller_rating': round(seller_rating, 1) if seller_rating else None,
         'product_rating': round(product_rating, 1) if product_rating else None,
         'reviews': reviews,
@@ -86,11 +86,10 @@ def create_product(request):
 
     if request.method == 'POST':
         product_form = ProductForm(request.POST)
-        stock_form = StockForm(request.POST)
+        variant_formset = ProductVariantFormSet(request.POST)
 
-        if product_form.is_valid() and stock_form.is_valid():
+        if product_form.is_valid() and variant_formset.is_valid():
             images = request.FILES.getlist('images')
-
             if len(images) > 5:
                 product_form.add_error(None, 'Você pode enviar no máximo 5 imagens')
             else:
@@ -98,21 +97,20 @@ def create_product(request):
                 product.seller = request.user
                 product.save()
 
+                variant_formset.instance = product
+                variant_formset.save()
+
                 for image in images:
                     ProductImage.objects.create(product=product, image=image)
-
-                stock = stock_form.save(commit=False)
-                stock.product = product
-                stock.save()
 
                 return redirect('home')
     else:
         product_form = ProductForm()
-        stock_form = StockForm()
+        variant_formset = ProductVariantFormSet()
 
     return render(request, 'catalog/create_product.html', {
         'product_form': product_form,
-        'stock_form': stock_form,
+        'variant_formset': variant_formset,
     })
 
 @login_required
@@ -120,18 +118,15 @@ def my_products(request):
     produtos = Product.objects.filter(seller=request.user).order_by('-created_at')
     return render(request, 'catalog/my_products.html', {'produtos': produtos})
 
-# Autocomplete por nome nas buscas
 def autocomplete(request):
     query = request.GET.get('q', '').strip()
     resultados = []
-
     if query:
         resultados = list(
             Product.objects.filter(title__icontains=query)
             .values_list('title', flat=True)
             .distinct()[:8]
         )
-
     return JsonResponse(resultados, safe=False)
 
 @login_required

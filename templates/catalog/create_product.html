@@ -22,13 +22,23 @@
         {% endfor %}
 
         <h3 style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:18px;text-transform:uppercase;letter-spacing:0.06em;margin:32px 0 16px;padding-bottom:8px;border-bottom:2px solid var(--black);">
-            Estoque
+            Variações
         </h3>
-        {% for field in stock_form %}
-            <div class="form-group">
-                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                {{ field }}
-                {{ field.errors }}
+        <p style="font-size:14px;color:var(--gray-500);margin-bottom:16px;">
+            Adicione ao menos uma variação com nome, preço e quantidade. Exemplo: "Edição Standard", "PS5", "Azul", etc.
+        </p>
+        {{ variant_formset.management_form }}
+        {% for form in variant_formset %}
+            <div style="border:1px solid var(--gray-300);border-radius:8px;padding:20px;margin-bottom:12px;">
+                {% for field in form %}
+                    {% if field.html_name != 'DELETE' %}
+                        <div class="form-group">
+                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {{ field.errors }}
+                        </div>
+                    {% endif %}
+                {% endfor %}
             </div>
         {% endfor %}
 

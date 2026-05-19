@@ -22,8 +22,8 @@
             {% endif %}
             <div class="product-card-body">
                 <div class="product-card-title">{{ prod.title }}</div>
-                <div class="product-card-price">R$ {{ prod.price }}</div>
-                <div class="product-card-meta">Estoque: {{ prod.stock.quantity }} unidade{{ prod.stock.quantity|pluralize }}</div>
+                <div class="product-card-price">a partir de R$ {{ prod.base_price }}</div>
+                <div class="product-card-meta">Estoque total: {{ prod.total_stock }} unidade{{ prod.total_stock|pluralize }}</div>
             </div>
         </a>
     {% empty %}

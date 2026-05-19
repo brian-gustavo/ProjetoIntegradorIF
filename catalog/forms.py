@@ -1,16 +1,27 @@
 from django import forms
+from django.forms import inlineformset_factory
 
-from .models import Product, Stock, ProductReview
+from .models import Product, ProductVariant, ProductReview
 
 class ProductForm(forms.ModelForm):
     class Meta:
         model = Product
-        fields = ('title', 'description', 'category', 'price', 'condition')
+        fields = ('title', 'description', 'category', 'condition')
 
-class StockForm(forms.ModelForm):
+class ProductVariantForm(forms.ModelForm):
     class Meta:
-        model = Stock
-        fields = ('quantity',)
+        model = ProductVariant
+        fields = ('name', 'price', 'quantity')
+
+ProductVariantFormSet = inlineformset_factory(
+    Product,
+    ProductVariant,
+    form=ProductVariantForm,
+    extra=1,
+    min_num=1,
+    validate_min=True,
+    can_delete=False,
+)
 
 class ProductReviewForm(forms.ModelForm):
     rating = forms.DecimalField(

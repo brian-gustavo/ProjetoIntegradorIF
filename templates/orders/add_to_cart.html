@@ -13,12 +13,12 @@
         <p style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:22px;margin-bottom:16px;">{{ product.title }}</p>
 
         <div style="display:flex;justify-content:space-between;font-size:15px;padding-top:16px;border-top:1px solid var(--gray-300);">
-            <span style="color:var(--gray-500);">Preço unitário</span>
-            <span style="font-weight:600;">R$ {{ product.price }}</span>
+            <span style="color:var(--gray-500);">Preço</span>
+            <span style="font-weight:600;" id="selected-price">—</span>
         </div>
         <div style="display:flex;justify-content:space-between;font-size:15px;padding-top:12px;">
             <span style="color:var(--gray-500);">Estoque disponível</span>
-            <span style="font-weight:600;">{{ product.stock.quantity }} unidade{{ product.stock.quantity|pluralize }}</span>
+            <span style="font-weight:600;" id="selected-stock">—</span>
         </div>
     </div>
 
@@ -29,11 +29,24 @@
     <form method="post" id="cart-form">
         {% csrf_token %}
         <div class="form-group">
+            <label for="variant_id">Variação</label>
+            <select name="variant_id" id="variant_id">
+                <option value="">Selecione...</option>
+                {% for variant in product.variants.all %}
+                    <option value="{{ variant.pk }}"
+                            data-price="{{ variant.price }}"
+                            data-stock="{{ variant.quantity }}">
+                        {{ variant.name }} — R$ {{ variant.price }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
             <label for="quantity">Quantidade</label>
-            <input type="number" name="quantity" id="quantity" value="1" min="1" max="{{ product.stock.quantity }}">
+            <input type="number" name="quantity" id="quantity" value="1" min="1" max="1">
         </div>
         <button type="button" class="btn btn-primary" style="width:100%;"
-                data-price="{{ product.price }}"
+                id="open-dialog-btn" disabled
                 onclick="document.getElementById('confirm-dialog').showModal()">
             Adicionar ao carrinho
         </button>
@@ -47,8 +60,11 @@
     <p style="font-size:15px;color:var(--gray-500);margin-bottom:4px;">
         Produto: <strong style="color:var(--black);">{{ product.title }}</strong>
     </p>
+    <p style="font-size:15px;color:var(--gray-500);margin-bottom:4px;">
+        Variação: <strong style="color:var(--black);" id="dialog-variant">—</strong>
+    </p>
     <p style="font-size:15px;color:var(--gray-500);margin-bottom:24px;">
-        Total: <strong style="color:var(--black);">R$ {{ product.price }}</strong> × <span id="dialog-qty">1</span> = <strong style="color:var(--black);" id="dialog-total">R$ {{ product.price }}</strong>
+        Total: <strong style="color:var(--black);" id="dialog-total">—</strong>
     </p>
     <div style="display:flex;gap:12px;">
         <button type="button" class="btn" style="flex:1;border:2px solid var(--black);"
@@ -65,15 +81,38 @@
 {% block extra_js %}
 {{ block.super }}
 <script>
+    const variantSelect = document.getElementById('variant_id');
     const qtyInput = document.getElementById('quantity');
-    const dialogQty = document.getElementById('dialog-qty');
+    const priceDisplay = document.getElementById('selected-price');
+    const stockDisplay = document.getElementById('selected-stock');
+    const openBtn = document.getElementById('open-dialog-btn');
+    const dialogVariant = document.getElementById('dialog-variant');
     const dialogTotal = document.getElementById('dialog-total');
-    const unitPrice = parseFloat(document.querySelector('[data-price]').dataset.price);
 
-    qtyInput.addEventListener('input', () => {
+    function updateUI() {
+        const opt = variantSelect.options[variantSelect.selectedIndex];
+        if (!opt.value) {
+            priceDisplay.textContent = '—';
+            stockDisplay.textContent = '—';
+            qtyInput.max = 1;
+            openBtn.disabled = true;
+            return;
+        }
+
+        const price = parseFloat(opt.dataset.price);
+        const stock = parseInt(opt.dataset.stock);
+
+        priceDisplay.textContent = 'R$ ' + price.toFixed(2).replace('.', ',');
+        stockDisplay.textContent = stock + ' unidade' + (stock !== 1 ? 's' : '');
+        qtyInput.max = stock;
+        openBtn.disabled = false;
+
         const qty = parseInt(qtyInput.value) || 1;
-        dialogQty.textContent = qty;
-        dialogTotal.textContent = 'R$ ' + (unitPrice * qty).toFixed(2).replace('.', ',');
-    });
+        dialogVariant.textContent = opt.text;
+        dialogTotal.textContent = 'R$ ' + (price * qty).toFixed(2).replace('.', ',');
+    }
+
+    variantSelect.addEventListener('change', updateUI);
+    qtyInput.addEventListener('input', updateUI);
 </script>
 {% endblock %}

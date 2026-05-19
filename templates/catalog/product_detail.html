@@ -65,8 +65,14 @@
         </div>
 
         <div style="border-top:1px solid var(--gray-300);padding-top:20px;margin-bottom:28px;">
-            <p style="font-size:13px;color:var(--gray-500);">Estoque disponível</p>
-            <p style="font-weight:600;font-size:16px;">{{ product.stock.quantity }} unidade{{ product.stock.quantity|pluralize }}</p>
+            <p style="font-size:13px;color:var(--gray-500);margin-bottom:12px;">Variações disponíveis</p>
+            {% for variant in variants %}
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-100);">
+                    <span style="font-weight:600;">{{ variant.name }}</span>
+                    <span style="font-size:15px;">R$ {{ variant.price }}</span>
+                    <span style="font-size:13px;color:var(--gray-500);">{{ variant.quantity }} un.</span>
+                </div>
+            {% endfor %}
         </div>
 
         {% if user.is_authenticated and user != product.seller and not user.is_staff %}

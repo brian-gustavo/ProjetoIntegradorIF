@@ -2,7 +2,7 @@ import random, string
 from decimal import Decimal
 from django.db import models
 
-from catalog.models import Product
+from catalog.models import Product, ProductVariant
 from django.contrib.auth.models import User
 
 def generate_tracking_code():
@@ -23,6 +23,7 @@ class Order(models.Model):
 
     buyer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders', verbose_name="Comprador")
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='orders', verbose_name="Produto")
+    variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, related_name='orders', verbose_name="Variação")
     quantity = models.PositiveIntegerField(default=1, verbose_name="Quantidade")
     total_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Preço total")
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='PENDING', verbose_name="Status")
@@ -35,7 +36,7 @@ class Order(models.Model):
         verbose_name_plural = "Pedidos"
 
     def __str__(self):
-        return f"Pedido #{self.pk} — {self.product.title}"
+        return f"Pedido #{self.pk} — {self.product.title} ({self.variant.name})"
 
 class Cart(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='cart', verbose_name="Usuário")
@@ -51,20 +52,21 @@ class Cart(models.Model):
 class CartItem(models.Model):
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items', verbose_name="Carrinho")
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='cart_items', verbose_name="Produto")
+    variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, related_name='cart_items', verbose_name="Variação")
     quantity = models.PositiveIntegerField(default=1, verbose_name="Quantidade")
 
     class Meta:
         verbose_name = "Item do carrinho"
         verbose_name_plural = "Itens do carrinho"
-        unique_together = ('cart', 'product')
+        unique_together = ('cart', 'variant')
 
     def __str__(self):
-        return f"{self.quantity}x {self.product.title}"
+        return f"{self.quantity}× {self.product.title} ({self.variant.name})"
 
     @property
     def subtotal(self):
-        return self.product.price * self.quantity
-    
+        return self.variant.price * self.quantity
+
 class PlatformConfig(models.Model):
     commission_rate = models.DecimalField(
         max_digits=5,

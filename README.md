@@ -7,15 +7,13 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
 *Produtos a serem vendidos:* Jogos físicos, consoles, acessórios para consoles, jogos de tabuleiro, keys para jogos digitais, itens *in-game*, pôsteres, *action figures* e *buttons*
 
 *Requisitos faltantes:*
-- Aprimorar a questão de estoque (possível variabilidade entre produtos, intermediar a compra e o fluxo de envio do produto, etc.)
-    - Assegurar que o estoque só deve dar baixa após o produto ser entregue
-    - Revisar o *dashboard* quanto ao produto com mais vendas (deve ser por unidade ou por lote comprado?)
 - Implementar a edição de anúncios/avaliações/etc.
     - Considerar um limite de edições (mudar a avaliação apenas uma vez, por exemplo)
     - Deve haver uma opção de mudar a quantidade de um item que esteja no carrinho
 - Inserir um limite de MB em imagens inseridas pelos usuários
 - Mudar o autocomplete para detectar a partir de três ou quatro letras
 - Fazer a validação da quantidade quando o usuário for adicionar algo ao carrinho (atualmente, pode-se inserir manualmente um número que seja maior que o estoque e o sistema não valida isso)
+- Colocar mais opções de variação (por enquanto só tem 2)
 
 *Ideias pro segundo semestre:*
 - Implementar aspectos secundários (gamificação, cupons de desconto, etc.)

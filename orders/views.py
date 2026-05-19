@@ -5,7 +5,7 @@ from django.db.models import Sum, Count
 from django.shortcuts import render, redirect, get_object_or_404
 
 from .models import Order, Cart, CartItem, generate_tracking_code, PlatformConfig, Commission
-from catalog.models import Product
+from catalog.models import Product, ProductVariant
 
 @login_required
 def add_to_cart(request, product_id):
@@ -18,9 +18,11 @@ def add_to_cart(request, product_id):
         return redirect('home')
 
     if request.method == 'POST':
+        variant_id = request.POST.get('variant_id')
+        variant = get_object_or_404(ProductVariant, pk=variant_id, product=product)
         quantity = int(request.POST.get('quantity', 1))
 
-        if quantity > product.stock.quantity:
+        if quantity > variant.quantity:
             return render(request, 'orders/add_to_cart.html', {
                 'product': product,
                 'error': 'Quantidade indisponível em estoque',
@@ -29,12 +31,12 @@ def add_to_cart(request, product_id):
         cart, _ = Cart.objects.get_or_create(user=request.user)
         item, created = CartItem.objects.get_or_create(
             cart=cart,
-            product=product,
-            defaults={'quantity': quantity},
+            variant=variant,
+            defaults={'product': product, 'quantity': quantity},
         )
         if not created:
             new_quantity = item.quantity + quantity
-            if new_quantity > product.stock.quantity:
+            if new_quantity > variant.quantity:
                 return render(request, 'orders/add_to_cart.html', {
                     'product': product,
                     'error': 'Quantidade indisponível em estoque',
@@ -42,15 +44,17 @@ def add_to_cart(request, product_id):
             item.quantity = new_quantity
             item.save()
 
-        messages.success(request, f'"{product.title}" adicionado ao carrinho')
+        messages.success(request, f'"{product.title} — {variant.name}" adicionado ao carrinho')
         return redirect('cart_detail')
 
-    return render(request, 'orders/add_to_cart.html', {'product': product})
+    return render(request, 'orders/add_to_cart.html', {
+        'product': product,
+    })
 
 @login_required
 def cart_detail(request):
     cart, _ = Cart.objects.get_or_create(user=request.user)
-    items = cart.items.select_related('product').all()
+    items = cart.items.select_related('product', 'variant').all()
     total = sum(item.subtotal for item in items)
     return render(request, 'orders/cart.html', {'cart': cart, 'items': items, 'total': total})
 
@@ -63,21 +67,22 @@ def remove_from_cart(request, item_id):
 @login_required
 def checkout(request):
     cart = get_object_or_404(Cart, user=request.user)
-    items = cart.items.select_related('product__stock').all()
+    items = cart.items.select_related('product', 'variant').all()
 
     if not items:
         return redirect('cart_detail')
 
-    out_of_stock = [item for item in items if item.quantity > item.product.stock.quantity]
+    out_of_stock = [item for item in items if item.quantity > item.variant.quantity]
     if out_of_stock:
         for item in out_of_stock:
-            messages.error(request, f'"{item.product.title}" não tem estoque suficiente para a quantidade selecionada')
+            messages.error(request, f'"{item.product.title} — {item.variant.name}" não tem estoque suficiente')
         return redirect('cart_detail')
 
     for item in items:
         Order.objects.create(
             buyer=request.user,
             product=item.product,
+            variant=item.variant,
             quantity=item.quantity,
             total_price=item.subtotal,
         )
@@ -110,10 +115,6 @@ def simulate_payment(request, order_id):
     order = get_object_or_404(Order, pk=order_id, buyer=request.user)
 
     if order.status == 'PENDING':
-        stock = order.product.stock
-        stock.quantity -= order.quantity
-        stock.save()
-
         order.status = 'PAID'
         order.save()
 
@@ -123,13 +124,7 @@ def simulate_payment(request, order_id):
 def cancel_order_buyer(request, order_id):
     order = get_object_or_404(Order, pk=order_id, buyer=request.user)
 
-    if order.status == 'PENDING':
-        order.status = 'CANCELLED'
-        order.save()
-    elif order.status == 'PAID':
-        stock = order.product.stock
-        stock.quantity += order.quantity
-        stock.save()
+    if order.status in ('PENDING', 'PAID'):
         order.status = 'CANCELLED'
         order.save()
 
@@ -177,10 +172,6 @@ def cancel_order_seller(request, order_id):
     order = get_object_or_404(Order, pk=order_id, product__seller=request.user)
 
     if order.status in ('PAID', 'CONFIRMED', 'PREPARING'):
-        if order.status != 'PENDING':
-            stock = order.product.stock
-            stock.quantity += order.quantity
-            stock.save()
         order.status = 'CANCELLED'
         order.save()
 
@@ -191,6 +182,10 @@ def confirm_delivery(request, order_id):
     order = get_object_or_404(Order, pk=order_id, buyer=request.user)
 
     if order.status == 'SHIPPED':
+        variant = order.variant
+        variant.quantity -= order.quantity
+        variant.save()
+
         rate = PlatformConfig.get_commission_rate()
         gross = order.total_price
         commission_amount = (gross * rate / Decimal('100')).quantize(Decimal('0.01'))
@@ -212,10 +207,9 @@ def confirm_delivery(request, order_id):
 @login_required
 def seller_dashboard(request):
     orders = Order.objects.filter(product__seller=request.user)
-
     delivered_orders = orders.filter(status='DELIVERED')
 
-    total_vendas = delivered_orders.count()
+    total_vendas = delivered_orders.aggregate(total=Sum('quantity'))['total'] or 0
 
     total_bruto = delivered_orders.aggregate(
         total=Sum('total_price')
@@ -232,7 +226,7 @@ def seller_dashboard(request):
     produto_mais_vendido = (
         delivered_orders
         .values('product__title')
-        .annotate(total=Count('id'))
+        .annotate(total=Sum('quantity'))
         .order_by('-total')
         .first()
     )
@@ -251,9 +245,9 @@ def admin_dashboard(request):
     if not request.user.is_staff:
         return redirect('home')
 
-    from accounts.models import Profile
-
-    total_vendas = Order.objects.filter(status='DELIVERED').count()
+    total_vendas = Order.objects.filter(status='DELIVERED').aggregate(
+        total=Sum('quantity')
+    )['total'] or 0
 
     total_transacionado = Order.objects.filter(
         status='DELIVERED'
@@ -269,7 +263,7 @@ def admin_dashboard(request):
         Order.objects.filter(status='DELIVERED')
         .values('product__seller__username')
         .annotate(
-            total_vendas=Count('id'),
+            total_vendas=Sum('quantity'),
             total_bruto=Sum('total_price'),
         )
         .order_by('-total_bruto')[:10]
