@@ -34,10 +34,6 @@
                     </a>
                 {% endif %}
                 {% if order.status == 'SHIPPED' %}
-                    <button onclick="document.getElementById('tracking-{{ order.pk }}').toggleAttribute('open')"
-                            class="btn" style="padding:8px 20px;font-size:14px;border:2px solid var(--black);">
-                        Ver rastreio
-                    </button>
                     <a href="{% url 'confirm_delivery' order.pk %}" class="btn btn-primary" style="padding:8px 20px;font-size:14px;">
                         Confirmar entrega
                     </a>
