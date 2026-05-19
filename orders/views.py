@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, Count
 from django.shortcuts import render, redirect, get_object_or_404
 
-from .models import Order, Cart, CartItem
+from .models import Order, Cart, CartItem, generate_tracking_code
 from catalog.models import Product
 
 @login_required
@@ -26,7 +26,6 @@ def add_to_cart(request, product_id):
             })
 
         cart, _ = Cart.objects.get_or_create(user=request.user)
-
         item, created = CartItem.objects.get_or_create(
             cart=cart,
             product=product,
@@ -120,34 +119,96 @@ def simulate_payment(request, order_id):
     return redirect('my_orders')
 
 @login_required
+def cancel_order_buyer(request, order_id):
+    order = get_object_or_404(Order, pk=order_id, buyer=request.user)
+
+    if order.status == 'PENDING':
+        order.status = 'CANCELLED'
+        order.save()
+    elif order.status == 'PAID':
+        stock = order.product.stock
+        stock.quantity += order.quantity
+        stock.save()
+        order.status = 'CANCELLED'
+        order.save()
+
+    return redirect('my_orders')
+
+@login_required
 def seller_orders(request):
     orders = Order.objects.filter(product__seller=request.user).order_by('-created_at')
     return render(request, 'orders/seller_orders.html', {'orders': orders})
 
 @login_required
-def confirm_delivery(request, order_id):
+def confirm_order(request, order_id):
     order = get_object_or_404(Order, pk=order_id, product__seller=request.user)
 
     if order.status == 'PAID':
-        order.status = 'DELIVERED'
+        order.status = 'CONFIRMED'
         order.save()
 
     return redirect('seller_orders')
 
 @login_required
+def mark_preparing(request, order_id):
+    order = get_object_or_404(Order, pk=order_id, product__seller=request.user)
+
+    if order.status == 'CONFIRMED':
+        order.status = 'PREPARING'
+        order.save()
+
+    return redirect('seller_orders')
+
+@login_required
+def mark_shipped(request, order_id):
+    order = get_object_or_404(Order, pk=order_id, product__seller=request.user)
+
+    if order.status == 'PREPARING':
+        tracking_code = request.POST.get('tracking_code', '').strip()
+        order.tracking_code = tracking_code if tracking_code else generate_tracking_code()
+        order.status = 'SHIPPED'
+        order.save()
+
+    return redirect('seller_orders')
+
+@login_required
+def cancel_order_seller(request, order_id):
+    order = get_object_or_404(Order, pk=order_id, product__seller=request.user)
+
+    if order.status in ('PAID', 'CONFIRMED', 'PREPARING'):
+        if order.status != 'PENDING':
+            stock = order.product.stock
+            stock.quantity += order.quantity
+            stock.save()
+        order.status = 'CANCELLED'
+        order.save()
+
+    return redirect('seller_orders')
+
+@login_required
+def confirm_delivery(request, order_id):
+    order = get_object_or_404(Order, pk=order_id, buyer=request.user)
+
+    if order.status == 'SHIPPED':
+        order.status = 'DELIVERED'
+        order.save()
+
+    return redirect('my_orders')
+
+@login_required
 def seller_dashboard(request):
     orders = Order.objects.filter(product__seller=request.user)
 
-    total_vendas = orders.filter(status__in=['PAID', 'DELIVERED']).count()
+    total_vendas = orders.filter(status__in=['SHIPPED', 'DELIVERED']).count()
 
     total_arrecadado = orders.filter(
-        status__in=['PAID', 'DELIVERED']
+        status__in=['SHIPPED', 'DELIVERED']
     ).aggregate(total=Sum('total_price'))['total'] or 0
 
-    pendentes = orders.filter(status='PAID').count()
+    pendentes = orders.filter(status__in=['PAID', 'CONFIRMED', 'PREPARING']).count()
 
     produto_mais_vendido = (
-        orders.filter(status__in=['PAID', 'DELIVERED'])
+        orders.filter(status__in=['SHIPPED', 'DELIVERED'])
         .values('product__title')
         .annotate(total=Count('id'))
         .order_by('-total')

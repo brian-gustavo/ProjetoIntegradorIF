@@ -18,14 +18,39 @@
                 {{ order.quantity }} unidade{{ order.quantity|pluralize }} ·
                 <strong style="color:var(--black);">R$ {{ order.total_price }}</strong>
             </p>
+            {% if order.tracking_code %}
+                <p style="font-size:13px;color:var(--gray-500);margin-top:6px;">
+                    Rastreio: <strong style="color:var(--black);">{{ order.tracking_code }}</strong>
+                </p>
+            {% endif %}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:12px;">
-            <span class="badge {% if order.status == 'PENDING' %}badge-pending{% elif order.status == 'PAID' %}badge-paid{% elif order.status == 'DELIVERED' %}badge-delivered{% else %}badge-default{% endif %}">
+            <span class="badge {% if order.status == 'PENDING' %}badge-pending{% elif order.status == 'PAID' %}badge-paid{% elif order.status == 'DELIVERED' %}badge-delivered{% elif order.status == 'CANCELLED' %}badge-cancelled{% else %}badge-progress{% endif %}">
                 {{ order.get_status_display }}
             </span>
             {% if order.status == 'PAID' %}
-                <a href="{% url 'confirm_delivery' order.pk %}" class="btn btn-primary" style="padding:8px 20px;font-size:14px;">
-                    Confirmar entrega
+                <a href="{% url 'confirm_order' order.pk %}" class="btn btn-primary" style="padding:8px 20px;font-size:14px;">
+                    Confirmar inventário
+                </a>
+            {% endif %}
+            {% if order.status == 'CONFIRMED' %}
+                <a href="{% url 'mark_preparing' order.pk %}" class="btn btn-primary" style="padding:8px 20px;font-size:14px;">
+                    Sinalizar preparação
+                </a>
+            {% endif %}
+            {% if order.status == 'PREPARING' %}
+                <form method="post" action="{% url 'mark_shipped' order.pk %}" style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+                    {% csrf_token %}
+                    <input type="text" name="tracking_code" placeholder="Código de rastreio (opcional)"
+                           style="padding:8px 12px;border:2px solid var(--black);border-radius:6px;font-size:14px;width:260px;">
+                    <button type="submit" class="btn btn-primary" style="padding:8px 20px;font-size:14px;">
+                        Confirmar envio
+                    </button>
+                </form>
+            {% endif %}
+            {% if order.status == 'PAID' or order.status == 'CONFIRMED' or order.status == 'PREPARING' %}
+                <a href="{% url 'cancel_order_seller' order.pk %}" class="btn" style="padding:8px 20px;font-size:14px;border:2px solid var(--black);">
+                    Cancelar pedido
                 </a>
             {% endif %}
         </div>
