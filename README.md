@@ -11,7 +11,6 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
     - Considerar um limite de edições (mudar a avaliação apenas uma vez, por exemplo)
     - Deve haver uma opção de mudar a quantidade de um item que esteja no carrinho
 - Inserir um limite de MB em imagens inseridas pelos usuários
-- Mudar o autocomplete para detectar a partir de três ou quatro letras
 - Permitir que o vendedor coloque mais variações de um produto (atualmente, 2 é o máximo)
 
 *Ideias pro segundo semestre:*
