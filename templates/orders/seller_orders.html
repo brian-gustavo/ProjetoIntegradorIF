@@ -41,7 +41,7 @@
             {% if order.status == 'PREPARING' %}
                 <form method="post" action="{% url 'mark_shipped' order.pk %}" style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
                     {% csrf_token %}
-                    <input type="text" name="tracking_code" placeholder="Código de rastreio (opcional)"
+                    <input type="text" name="tracking_code" placeholder="Código de rastreio"
                            style="padding:8px 12px;border:2px solid var(--black);border-radius:6px;font-size:14px;width:260px;">
                     <button type="submit" class="btn btn-primary" style="padding:8px 20px;font-size:14px;">
                         Confirmar envio
