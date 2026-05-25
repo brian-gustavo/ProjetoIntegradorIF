@@ -93,17 +93,22 @@ def create_product(request):
             if len(images) > 5:
                 product_form.add_error(None, 'Você pode enviar no máximo 5 imagens')
             else:
-                product = product_form.save(commit=False)
-                product.seller = request.user
-                product.save()
+                tamanho_maximo = 10 * 1024 * 1024
+                imagens_grandes = [img.name for img in images if img.size > tamanho_maximo]
+                if imagens_grandes:
+                    product_form.add_error(None, f'As seguintes imagens excedem o limite de 10MB: {", ".join(imagens_grandes)}')
+                else:
+                    product = product_form.save(commit=False)
+                    product.seller = request.user
+                    product.save()
 
-                variant_formset.instance = product
-                variant_formset.save()
+                    variant_formset.instance = product
+                    variant_formset.save()
 
-                for image in images:
-                    ProductImage.objects.create(product=product, image=image)
+                    for image in images:
+                        ProductImage.objects.create(product=product, image=image)
 
-                return redirect('home')
+                    return redirect('home')
     else:
         product_form = ProductForm()
         variant_formset = ProductVariantFormSet()

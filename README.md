@@ -10,7 +10,6 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
 - Implementar a edição de anúncios/avaliações/etc.
     - Considerar um limite de edições (mudar a avaliação apenas uma vez, por exemplo)
     - Deve haver uma opção de mudar a quantidade de um item que esteja no carrinho
-- Determinar um limite de MB em imagens inseridas pelos usuários
 - Fazer com que o vendedor possa colocar as variações apenas após a criação do produto
     - Permitir que o vendedor coloque n variações de um produto (atualmente, 2 é o máximo)
 - Colocar a alteração da taxa de comissão diretamente no *dashboard*, ao invés do painel de admin do Django
@@ -20,6 +19,7 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
 - Dar a opção do usuário retirar um produto em mãos e não só através da transportadora
 - Inserir avisos quando o usuário faz algo que não deveria (colocou senha errada no login, tentou comprar um produto além da quantidade, não selecionou variação na compra...)
 - Mudar o formulário pra categoria vir antes da descrição
+- Melhorar a inserção de imagens (atualmente, as imagens "resetam" quando o usuário entra no menu de inserção novamente, e não é possível retirá-las de maneira individual)
 
 *Ideias pro segundo semestre:*
 - Implementar aspectos secundários (gamificação, cupons de desconto, etc.)
