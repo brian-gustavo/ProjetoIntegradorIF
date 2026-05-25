@@ -18,7 +18,6 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
     - Manter a confirmação do usuário, mas também fazer via API da transportadora e por parte do vendedor
 - Dar a opção do usuário retirar um produto em mãos e não só através da transportadora
 - Inserir avisos quando o usuário faz algo que não deveria (colocou senha errada no login, tentou comprar um produto além da quantidade, não selecionou variação na compra...)
-- Mudar o formulário pra categoria vir antes da descrição
 - Melhorar a inserção de imagens (atualmente, as imagens "resetam" quando o usuário entra no menu de inserção novamente, e não é possível retirá-las de maneira individual)
 
 *Ideias pro segundo semestre:*
