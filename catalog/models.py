@@ -28,6 +28,7 @@ class Product(models.Model):
     condition = models.CharField(max_length=4, choices=CONDITION_CHOICES, default='NEW', verbose_name="Condição")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Criado em")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Atualizado em")
+    accepts_pickup = models.BooleanField(default=False, verbose_name="Aceita retirada em mãos")
 
     class Meta:
         verbose_name = "Produto"

@@ -15,10 +15,6 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
     - Fazer com que o vendedor possa colocar as variações apenas após a criação do produto
     - Permitir que o vendedor coloque n variações de um produto (atualmente, 2 é o máximo)
     - Retirar "ID" e "produto" do formulário
-- Alterações no fluxo de envio:
-    - Colocar uma etapa de devolução/cancelamento após a entrega do produto
-    - Manter a confirmação do usuário, mas também fazer via API da transportadora e por parte do vendedor
-    - Dar a opção do usuário retirar um produto em mãos e não só através da transportadora
 - Inserir avisos perceptíveis quando o usuário faz algo que não deveria (exemplo: colocar senha errada no login, tentar comprar um produto além da quantidade, não selecionar variação na compra...)
 - Melhorar a inserção de imagens (atualmente, não é possível manipulá-las individualmente após serem enviadas, e quaisquer imagens previamente inseridas são removidas após uma nova inserção)
 

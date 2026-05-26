@@ -17,7 +17,12 @@ class Order(models.Model):
         ('CONFIRMED', 'Confirmado pelo vendedor'),
         ('PREPARING', 'Em preparação'),
         ('SHIPPED', 'Enviado'),
+        ('READY_PICKUP', 'Pronto para retirada'),
         ('DELIVERED', 'Entregue'),
+        ('RETURN_WINDOW', 'Período de devolução'),
+        ('RETURN_REQUESTED', 'Devolução solicitada'),
+        ('RETURNED', 'Devolvido'),
+        ('COMPLETED', 'Concluído'),
         ('CANCELLED', 'Cancelado'),
     ]
 
@@ -26,7 +31,8 @@ class Order(models.Model):
     variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, related_name='orders', verbose_name="Variação")
     quantity = models.PositiveIntegerField(default=1, verbose_name="Quantidade")
     total_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Preço total")
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='PENDING', verbose_name="Status")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING', verbose_name="Status")
+    pickup = models.BooleanField(default=False, verbose_name="Retirada em mãos")
     tracking_code = models.CharField(max_length=13, blank=True, verbose_name="Código de rastreio")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Criado em")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Atualizado em")

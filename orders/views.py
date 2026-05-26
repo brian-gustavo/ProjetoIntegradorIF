@@ -1,7 +1,7 @@
 from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum, Count
+from django.db.models import Sum
 from django.shortcuts import render, redirect, get_object_or_404
 
 from .models import Order, Cart, CartItem, generate_tracking_code, PlatformConfig, Commission
@@ -121,11 +121,91 @@ def simulate_payment(request, order_id):
     return redirect('my_orders')
 
 @login_required
+def choose_pickup(request, order_id):
+    order = get_object_or_404(Order, pk=order_id, buyer=request.user)
+
+    if order.status == 'PAID' and order.product.accepts_pickup:
+        order.pickup = True
+        order.save()
+        messages.success(request, 'Modo de entrega alterado para retirada em mãos')
+
+    return redirect('my_orders')
+
+@login_required
 def cancel_order_buyer(request, order_id):
     order = get_object_or_404(Order, pk=order_id, buyer=request.user)
 
     if order.status in ('PENDING', 'PAID'):
         order.status = 'CANCELLED'
+        order.save()
+
+    return redirect('my_orders')
+
+@login_required
+def confirm_delivery(request, order_id):
+    order = get_object_or_404(Order, pk=order_id, buyer=request.user)
+
+    if order.status in ('SHIPPED', 'READY_PICKUP'):
+        _finalize_delivery(order)
+
+    return redirect('my_orders')
+
+@login_required
+def confirm_delivery_seller(request, order_id):
+    order = get_object_or_404(Order, pk=order_id, product__seller=request.user)
+
+    if order.status in ('SHIPPED', 'READY_PICKUP'):
+        _finalize_delivery(order)
+
+    return redirect('seller_orders')
+
+def _finalize_delivery(order):
+    variant = order.variant
+    variant.quantity -= order.quantity
+    variant.save()
+
+    rate = PlatformConfig.get_commission_rate()
+    gross = order.total_price
+    commission_amount = (gross * rate / Decimal('100')).quantize(Decimal('0.01'))
+    net = gross - commission_amount
+
+    Commission.objects.get_or_create(
+        order=order,
+        defaults={
+            'rate': rate,
+            'gross_amount': gross,
+            'commission_amount': commission_amount,
+            'net_amount': net,
+        }
+    )
+
+    order.status = 'DELIVERED'
+    order.save()
+
+@login_required
+def request_return(request, order_id):
+    order = get_object_or_404(Order, pk=order_id, buyer=request.user)
+
+    if order.status in ('DELIVERED', 'RETURN_WINDOW'):
+        variant = order.variant
+        variant.quantity += order.quantity
+        variant.save()
+
+        if hasattr(order, 'commission'):
+            order.commission.delete()
+
+        order.status = 'RETURNED'
+        order.save()
+        messages.success(request, 'Devolução registrada com sucesso')
+
+    return redirect('my_orders')
+
+@login_required
+def complete_order(request, order_id):
+    order = get_object_or_404(Order, pk=order_id, buyer=request.user)
+
+    if order.status in ('DELIVERED', 'RETURN_WINDOW'):
+        order.status = 'COMPLETED'
         order.save()
 
     return redirect('my_orders')
@@ -159,10 +239,20 @@ def mark_preparing(request, order_id):
 def mark_shipped(request, order_id):
     order = get_object_or_404(Order, pk=order_id, product__seller=request.user)
 
-    if order.status == 'PREPARING':
+    if order.status == 'PREPARING' and not order.pickup:
         tracking_code = request.POST.get('tracking_code', '').strip()
         order.tracking_code = tracking_code if tracking_code else generate_tracking_code()
         order.status = 'SHIPPED'
+        order.save()
+
+    return redirect('seller_orders')
+
+@login_required
+def mark_ready_pickup(request, order_id):
+    order = get_object_or_404(Order, pk=order_id, product__seller=request.user)
+
+    if order.status == 'PREPARING' and order.pickup:
+        order.status = 'READY_PICKUP'
         order.save()
 
     return redirect('seller_orders')
@@ -178,36 +268,9 @@ def cancel_order_seller(request, order_id):
     return redirect('seller_orders')
 
 @login_required
-def confirm_delivery(request, order_id):
-    order = get_object_or_404(Order, pk=order_id, buyer=request.user)
-
-    if order.status == 'SHIPPED':
-        variant = order.variant
-        variant.quantity -= order.quantity
-        variant.save()
-
-        rate = PlatformConfig.get_commission_rate()
-        gross = order.total_price
-        commission_amount = (gross * rate / Decimal('100')).quantize(Decimal('0.01'))
-        net = gross - commission_amount
-
-        Commission.objects.create(
-            order=order,
-            rate=rate,
-            gross_amount=gross,
-            commission_amount=commission_amount,
-            net_amount=net,
-        )
-
-        order.status = 'DELIVERED'
-        order.save()
-
-    return redirect('my_orders')
-
-@login_required
 def seller_dashboard(request):
     orders = Order.objects.filter(product__seller=request.user)
-    delivered_orders = orders.filter(status='DELIVERED')
+    delivered_orders = orders.filter(status__in=['DELIVERED', 'RETURN_WINDOW', 'COMPLETED'])
 
     total_vendas = delivered_orders.aggregate(total=Sum('quantity'))['total'] or 0
 
@@ -248,7 +311,6 @@ def admin_dashboard(request):
     if request.method == 'POST':
         nova_taxa = request.POST.get('commission_rate', '').strip()
         try:
-            from decimal import Decimal
             taxa = Decimal(nova_taxa)
             if taxa < 0 or taxa > 100:
                 raise ValueError
@@ -260,12 +322,12 @@ def admin_dashboard(request):
             messages.error(request, 'Taxa inválida')
         return redirect('admin_dashboard')
 
-    total_vendas = Order.objects.filter(status='DELIVERED').aggregate(
-        total=Sum('quantity')
-    )['total'] or 0
+    total_vendas = Order.objects.filter(
+        status__in=['DELIVERED', 'RETURN_WINDOW', 'COMPLETED']
+    ).aggregate(total=Sum('quantity'))['total'] or 0
 
     total_transacionado = Order.objects.filter(
-        status='DELIVERED'
+        status__in=['DELIVERED', 'RETURN_WINDOW', 'COMPLETED']
     ).aggregate(total=Sum('total_price'))['total'] or Decimal('0')
 
     total_comissao = Commission.objects.aggregate(
@@ -275,7 +337,7 @@ def admin_dashboard(request):
     taxa_atual = PlatformConfig.get_commission_rate()
 
     vendedores = (
-        Order.objects.filter(status='DELIVERED')
+        Order.objects.filter(status__in=['DELIVERED', 'RETURN_WINDOW', 'COMPLETED'])
         .values('product__seller__username')
         .annotate(
             total_vendas=Sum('quantity'),

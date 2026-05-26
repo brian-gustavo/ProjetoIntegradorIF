@@ -18,10 +18,11 @@
                 <p style="font-size:14px;color:var(--gray-500);">
                     {{ order.quantity }} unidade{{ order.quantity|pluralize }} ·
                     <strong style="color:var(--black);">R$ {{ order.total_price|brl }}</strong>
+                    {% if order.pickup %} · <span style="color:var(--green-dark);font-weight:600;">Retirada em mãos</span>{% endif %}
                 </p>
             </div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:12px;">
-                <span class="badge {% if order.status == 'PENDING' %}badge-pending{% elif order.status == 'PAID' %}badge-paid{% elif order.status == 'DELIVERED' %}badge-delivered{% elif order.status == 'CANCELLED' %}badge-cancelled{% else %}badge-progress{% endif %}">
+                <span class="badge {% if order.status == 'PENDING' %}badge-pending{% elif order.status == 'PAID' %}badge-paid{% elif order.status == 'DELIVERED' or order.status == 'RETURN_WINDOW' %}badge-delivered{% elif order.status == 'COMPLETED' %}badge-paid{% elif order.status == 'CANCELLED' or order.status == 'RETURNED' %}badge-cancelled{% else %}badge-progress{% endif %}">
                     {{ order.get_status_display }}
                 </span>
                 {% if order.status == 'PENDING' %}
@@ -29,22 +30,35 @@
                         Simular pagamento
                     </a>
                 {% endif %}
-                {% if order.status == 'PAID' or order.status == 'PENDING' %}
+                {% if order.status == 'PAID' and order.product.accepts_pickup and not order.pickup %}
+                    <a href="{% url 'choose_pickup' order.pk %}" class="btn" style="padding:8px 20px;font-size:14px;border:2px solid var(--black);">
+                        Optar por retirada em mãos
+                    </a>
+                {% endif %}
+                {% if order.status == 'PENDING' or order.status == 'PAID' %}
                     <a href="{% url 'cancel_order_buyer' order.pk %}" class="btn" style="padding:8px 20px;font-size:14px;border:2px solid var(--black);">
                         Cancelar pedido
                     </a>
                 {% endif %}
-                {% if order.status == 'SHIPPED' %}
+                {% if order.status == 'SHIPPED' or order.status == 'READY_PICKUP' %}
                     <a href="{% url 'confirm_delivery' order.pk %}" class="btn btn-primary" style="padding:8px 20px;font-size:14px;">
                         Confirmar entrega
                     </a>
                 {% endif %}
-                {% if order.status == 'DELIVERED' and not order.seller_reviewed %}
+                {% if order.status == 'DELIVERED' or order.status == 'RETURN_WINDOW' %}
+                    <a href="{% url 'complete_order' order.pk %}" class="btn btn-primary" style="padding:8px 20px;font-size:14px;">
+                        Concluir pedido
+                    </a>
+                    <a href="{% url 'request_return' order.pk %}" class="btn" style="padding:8px 20px;font-size:14px;border:2px solid var(--black);">
+                        Solicitar devolução
+                    </a>
+                {% endif %}
+                {% if order.status == 'COMPLETED' and not order.seller_reviewed %}
                     <a href="{% url 'review_seller' order.product.seller.pk %}" class="btn btn-primary" style="padding:8px 20px;font-size:14px;">
                         Avaliar vendedor
                     </a>
                 {% endif %}
-                {% if order.status == 'DELIVERED' and not order.product_reviewed %}
+                {% if order.status == 'COMPLETED' and not order.product_reviewed %}
                     <a href="{% url 'review_product' order.product.pk %}" class="btn btn-primary" style="padding:8px 20px;font-size:14px;">
                         Avaliar produto
                     </a>
@@ -52,7 +66,8 @@
             </div>
         </div>
 
-        {% if order.status == 'SHIPPED' or order.status == 'DELIVERED' %}
+        {% if order.status == 'SHIPPED' or order.status == 'DELIVERED' or order.status == 'RETURN_WINDOW' or order.status == 'COMPLETED' %}
+            {% if not order.pickup and order.tracking_code %}
             <details id="tracking-{{ order.pk }}" style="margin-top:20px;border-top:1px solid var(--gray-300);padding-top:16px;">
                 <summary style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;cursor:pointer;list-style:none;">
                     ▶ Rastreio — {{ order.tracking_code }}
@@ -65,6 +80,7 @@
                     </button>
                 </div>
             </details>
+            {% endif %}
         {% endif %}
     </div>
 {% empty %}
