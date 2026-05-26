@@ -245,6 +245,21 @@ def admin_dashboard(request):
     if not request.user.is_staff:
         return redirect('home')
 
+    if request.method == 'POST':
+        nova_taxa = request.POST.get('commission_rate', '').strip()
+        try:
+            from decimal import Decimal
+            taxa = Decimal(nova_taxa)
+            if taxa < 0 or taxa > 100:
+                raise ValueError
+            config, _ = PlatformConfig.objects.get_or_create(pk=1)
+            config.commission_rate = taxa
+            config.save()
+            messages.success(request, 'Taxa de comissão atualizada com sucesso')
+        except:
+            messages.error(request, 'Taxa inválida')
+        return redirect('admin_dashboard')
+
     total_vendas = Order.objects.filter(status='DELIVERED').aggregate(
         total=Sum('quantity')
     )['total'] or 0

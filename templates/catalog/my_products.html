@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load catalog_extras %}
 
 {% block title %}Meus anúncios — MegaGame{% endblock %}
 
@@ -22,7 +23,7 @@
             {% endif %}
             <div class="product-card-body">
                 <div class="product-card-title">{{ prod.title }}</div>
-                <div class="product-card-price">a partir de R$ {{ prod.base_price }}</div>
+                <div class="product-card-price">a partir de R$ {{ prod.base_price|brl }}</div>
                 <div class="product-card-meta">Estoque total: {{ prod.total_stock }} unidade{{ prod.total_stock|pluralize }}</div>
             </div>
         </a>

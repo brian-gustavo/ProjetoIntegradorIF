@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load catalog_extras %}
 
 {% block title %}Meus pedidos — MegaGame{% endblock %}
 
@@ -16,7 +17,7 @@
                 </p>
                 <p style="font-size:14px;color:var(--gray-500);">
                     {{ order.quantity }} unidade{{ order.quantity|pluralize }} ·
-                    <strong style="color:var(--black);">R$ {{ order.total_price }}</strong>
+                    <strong style="color:var(--black);">R$ {{ order.total_price|brl }}</strong>
                 </p>
             </div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:12px;">

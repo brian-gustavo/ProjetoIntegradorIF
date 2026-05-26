@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load catalog_extras %}
 
 {% block title %}{{ product.title }} — MegaGame{% endblock %}
 
@@ -66,7 +67,7 @@
             {% for variant in variants %}
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-100);">
                     <span style="font-weight:600;">{{ variant.name }}</span>
-                    <span style="font-size:15px;">R$ {{ variant.price }}</span>
+                    <span style="font-size:15px;">R$ {{ variant.price|brl }}</span>
                     <span style="font-size:13px;color:var(--gray-500);">{{ variant.quantity }} un.</span>
                 </div>
             {% endfor %}

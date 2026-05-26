@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load catalog_extras %}
 
 {% block title %}Adicionar ao carrinho — MegaGame{% endblock %}
 
@@ -36,7 +37,7 @@
                     <option value="{{ variant.pk }}"
                             data-price="{{ variant.price }}"
                             data-stock="{{ variant.quantity }}">
-                        {{ variant.name }} — R$ {{ variant.price }}
+                        {{ variant.name }} — R$ {{ variant.price|brl }}
                     </option>
                 {% endfor %}
             </select>

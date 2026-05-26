@@ -12,8 +12,6 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
     - Deve haver uma opção de mudar a quantidade de um item que esteja no carrinho
 - Fazer com que o vendedor possa colocar as variações apenas após a criação do produto
     - Permitir que o vendedor coloque n variações de um produto (atualmente, 2 é o máximo)
-- Colocar a alteração da taxa de comissão diretamente no *dashboard*, ao invés do painel de admin do Django
-    - Inserir os centavos nos valores mesmo que sejam ,00
 - Colocar uma etapa de devolução/cancelamento após a entrega do produto
     - Manter a confirmação do usuário, mas também fazer via API da transportadora e por parte do vendedor
 - Dar a opção do usuário retirar um produto em mãos e não só através da transportadora

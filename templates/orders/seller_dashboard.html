@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load catalog_extras %}
 
 {% block title %}Dashboard do vendedor — MegaGame{% endblock %}
 
@@ -18,17 +19,17 @@
 
     <div style="border:2px solid var(--black);border-radius:8px;padding:28px;">
         <p style="font-size:13px;text-transform:uppercase;letter-spacing:0.1em;color:var(--gray-500);margin-bottom:12px;">Total bruto</p>
-        <p style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:48px;line-height:1;">R$ {{ total_bruto }}</p>
+        <p style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:48px;line-height:1;">R$ {{ total_bruto|brl }}</p>
     </div>
 
     <div style="border:2px solid var(--black);border-radius:8px;padding:28px;">
         <p style="font-size:13px;text-transform:uppercase;letter-spacing:0.1em;color:var(--gray-500);margin-bottom:12px;">Comissão da plataforma</p>
-        <p style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:48px;line-height:1;color:var(--red);">− R$ {{ total_comissao }}</p>
+        <p style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:48px;line-height:1;color:var(--red);">− R$ {{ total_comissao|brl }}</p>
     </div>
 
     <div style="border:2px solid var(--black);border-radius:8px;padding:28px;">
         <p style="font-size:13px;text-transform:uppercase;letter-spacing:0.1em;color:var(--gray-500);margin-bottom:12px;">Lucro líquido</p>
-        <p style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:48px;line-height:1;color:var(--green);">R$ {{ total_liquido }}</p>
+        <p style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:48px;line-height:1;color:var(--green);">R$ {{ total_liquido|brl }}</p>
     </div>
 
     <div style="border:2px solid var(--black);border-radius:8px;padding:28px;">

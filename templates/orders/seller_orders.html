@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load catalog_extras %}
 
 {% block title %}Minhas vendas — MegaGame{% endblock %}
 
@@ -16,7 +17,7 @@
             <p style="font-size:14px;color:var(--gray-500);">
                 Comprador: <strong style="color:var(--black);">{{ order.buyer.username }}</strong> ·
                 {{ order.quantity }} unidade{{ order.quantity|pluralize }} ·
-                <strong style="color:var(--black);">R$ {{ order.total_price }}</strong>
+                <strong style="color:var(--black);">R$ {{ order.total_price|brl }}</strong>
             </p>
             {% if order.tracking_code %}
                 <p style="font-size:13px;color:var(--gray-500);margin-top:6px;">
