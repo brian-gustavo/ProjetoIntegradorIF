@@ -29,6 +29,7 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Criado em")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Atualizado em")
     accepts_pickup = models.BooleanField(default=False, verbose_name="Aceita retirada em mãos")
+    published = models.BooleanField(default=False, verbose_name="Publicado")
 
     class Meta:
         verbose_name = "Produto"

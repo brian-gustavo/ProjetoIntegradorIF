@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+
+{% block title %}Variações — MegaGame{% endblock %}
+
+{% block content %}
+<div style="max-width:640px;margin:0 auto;">
+    <h2 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:32px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">
+        Variações
+    </h2>
+    <p style="font-size:15px;color:var(--gray-500);margin-bottom:32px;">
+        Produto: <strong style="color:var(--black);">{{ product.title }}</strong>
+    </p>
+
+    <form method="post" id="variant-form">
+        {% csrf_token %}
+        {{ variant_formset.management_form }}
+
+        <div id="variant-list">
+            {% for form in variant_formset %}
+                <div class="variant-item" style="border:1px solid var(--gray-300);border-radius:8px;padding:20px;margin-bottom:12px;position:relative;">
+                    {% for field in form %}
+                        {% if field.is_hidden %}
+                            {{ field }}
+                        {% elif field.html_name|slice:"-7:" == '-DELETE' or field.html_name == 'product' %}
+                            <div style="display:none;">{{ field }}</div>
+                        {% else %}
+                            <div class="form-group">
+                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                                {{ field.errors }}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                    <button type="button" onclick="removeVariant(this)"
+                            style="position:absolute;top:12px;right:12px;background:none;border:none;cursor:pointer;color:var(--gray-500);font-size:18px;">✕</button>
+                </div>
+            {% endfor %}
+        </div>
+
+        <button type="button" onclick="addVariant()"
+                class="btn" style="width:100%;border:2px solid var(--black);margin-bottom:24px;">
+            + Adicionar variação
+        </button>
+
+        <button type="button" class="btn btn-primary" style="width:100%;"
+                onclick="document.getElementById('confirm-dialog').showModal()">
+            Publicar anúncio
+        </button>
+    </form>
+</div>
+
+<template id="variant-template">
+    <div class="variant-item" style="border:1px solid var(--gray-300);border-radius:8px;padding:20px;margin-bottom:12px;position:relative;">
+        <div class="form-group">
+            <label>Variação</label>
+            <input type="text" name="variants-__index__-name" maxlength="100">
+        </div>
+        <div class="form-group">
+            <label>Preço (em reais)</label>
+            <input type="number" name="variants-__index__-price" step="0.01">
+        </div>
+        <div class="form-group">
+            <label>Quantidade em estoque</label>
+            <input type="number" name="variants-__index__-quantity" value="1" min="0">
+        </div>
+        <input type="hidden" name="variants-__index__-id" value="">
+        <button type="button" onclick="removeVariant(this)"
+                style="position:absolute;top:12px;right:12px;background:none;border:none;cursor:pointer;color:var(--gray-500);font-size:18px;">✕</button>
+    </div>
+</template>
+
+<dialog id="confirm-dialog" style="border:2px solid var(--black);border-radius:12px;padding:32px;max-width:400px;width:100%;">
+    <h3 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:24px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">
+        Publicar anúncio?
+    </h3>
+    <p style="font-size:15px;color:var(--gray-500);margin-bottom:24px;">
+        Após publicado, o anúncio ficará visível para todos os usuários. Revise todas as informações antes de prosseguir.
+    </p>
+    <div style="display:flex;gap:12px;">
+        <button type="button" class="btn" style="flex:1;border:2px solid var(--black);"
+                onclick="document.getElementById('confirm-dialog').close()">
+            Cancelar
+        </button>
+        <button type="submit" form="variant-form" class="btn btn-primary" style="flex:1;">
+            Confirmar
+        </button>
+    </div>
+</dialog>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+    const totalForms = document.getElementById('id_variants-TOTAL_FORMS');
+
+    function getNextIndex() {
+        return parseInt(totalForms.value);
+    }
+
+    function addVariant() {
+        const list = document.getElementById('variant-list');
+        const template = document.getElementById('variant-template');
+        const index = getNextIndex();
+        const clone = template.content.cloneNode(true);
+
+        clone.querySelectorAll('input, select, textarea').forEach(el => {
+            el.name = el.name.replace('__index__', index);
+            if (el.id) el.id = el.id.replace('__index__', index);
+        });
+
+        clone.querySelectorAll('label').forEach(el => {
+            if (el.htmlFor) el.htmlFor = el.htmlFor.replace('__index__', index);
+        });
+
+        list.appendChild(clone);
+        totalForms.value = index + 1;
+    }
+
+    function removeVariant(btn) {
+        const list = document.getElementById('variant-list');
+        const visibleItems = list.querySelectorAll('.variant-item:not([style*="display: none"])');
+
+        if (visibleItems.length <= 1) return;
+
+        const item = btn.closest('.variant-item');
+        const deleteInput = item.querySelector('input[id$="-DELETE"]');
+
+        if (deleteInput) {
+            deleteInput.checked = true;
+            item.style.display = 'none';
+        } else {
+            item.remove();
+        }
+    }
+
+    if (parseInt(totalForms.value) === 0) {
+        addVariant();
+    }
+</script>
+{% endblock %}

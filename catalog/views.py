@@ -11,7 +11,7 @@ from accounts.models import SellerReview
 def home(request):
     categorias = Category.objects.all()
     query = request.GET.get('q', '').strip()
-    produtos = Product.objects.all()
+    produtos = Product.objects.filter(published=True)
     if query:
         produtos = produtos.filter(title__icontains=query)
     return render(request, 'home.html', {
@@ -69,7 +69,7 @@ def product_detail(request, product_id):
 
 def category_detail(request, slug):
     category = get_object_or_404(Category, slug=slug)
-    produtos = Product.objects.filter(category=category)
+    produtos = Product.objects.filter(category=category, published=True)
     return render(request, 'catalog/category_detail.html', {
         'category': category,
         'produtos': produtos,
@@ -86,9 +86,8 @@ def create_product(request):
 
     if request.method == 'POST':
         product_form = ProductForm(request.POST)
-        variant_formset = ProductVariantFormSet(request.POST)
 
-        if product_form.is_valid() and variant_formset.is_valid():
+        if product_form.is_valid():
             images = request.FILES.getlist('images')
             if len(images) > 5:
                 product_form.add_error(None, 'Você pode enviar no máximo 5 imagens')
@@ -102,20 +101,15 @@ def create_product(request):
                     product.seller = request.user
                     product.save()
 
-                    variant_formset.instance = product
-                    variant_formset.save()
-
                     for image in images:
                         ProductImage.objects.create(product=product, image=image)
 
-                    return redirect('home')
+                    return redirect('manage_variants', product_id=product.pk)
     else:
         product_form = ProductForm()
-        variant_formset = ProductVariantFormSet()
 
     return render(request, 'catalog/create_product.html', {
         'product_form': product_form,
-        'variant_formset': variant_formset,
     })
 
 @login_required
@@ -128,7 +122,7 @@ def autocomplete(request):
     resultados = []
     if query:
         resultados = list(
-            Product.objects.filter(title__icontains=query)
+            Product.objects.filter(title__icontains=query, published=True)
             .values_list('title', flat=True)
             .distinct()[:8]
         )
@@ -168,4 +162,24 @@ def review_product(request, product_id):
     return render(request, 'catalog/review_product.html', {
         'form': form,
         'product': product,
+    })
+
+@login_required
+def manage_variants(request, product_id):
+    product = get_object_or_404(Product, pk=product_id, seller=request.user)
+
+    if request.method == 'POST':
+        variant_formset = ProductVariantFormSet(request.POST, instance=product)
+
+        if variant_formset.is_valid():
+            variant_formset.save()
+            product.published = True
+            product.save()
+            return redirect('home')
+    else:
+        variant_formset = ProductVariantFormSet(instance=product)
+
+    return render(request, 'catalog/manage_variants.html', {
+        'product': product,
+        'variant_formset': variant_formset,
     })
