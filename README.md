@@ -17,7 +17,6 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
 - Resolver questões do fluxo de envio:
     - Fazer com que o usuário escolha entre transportadora ou entrega em mãos desde o princípio, ao invés da primeira opção ser padrão
     - Detalhar melhor a devolução pós-entrega (vendedor confirma devolução? cancelamento sem devolução?)
-- Rever os conteúdos da pasta media (pictures e products?)
 
 *Ideias pro segundo semestre:*
 - Implementar aspectos secundários (gamificação, cupons de desconto, etc.)
