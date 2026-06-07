@@ -21,7 +21,9 @@ class Order(models.Model):
         ('DELIVERED', 'Entregue'),
         ('RETURN_WINDOW', 'Período de devolução'),
         ('RETURN_REQUESTED', 'Devolução solicitada'),
+        ('RETURN_ACCEPTED', 'Devolução aceita'),
         ('RETURNED', 'Devolvido'),
+        ('CANCELLED_NO_RETURN', 'Cancelado sem devolução'),
         ('COMPLETED', 'Concluído'),
         ('CANCELLED', 'Cancelado'),
     ]

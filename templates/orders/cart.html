@@ -35,8 +35,7 @@
         <p style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:24px;">
             Total: R$ {{ total|brl }}
         </p>
-        <form method="post" action="{% url 'checkout' %}">
-            {% csrf_token %}
+        <form method="get" action="{% url 'checkout' %}">
             <button type="submit" class="btn btn-primary">Finalizar pedido</button>
         </form>
     </div>

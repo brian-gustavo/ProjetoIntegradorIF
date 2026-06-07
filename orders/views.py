@@ -47,9 +47,7 @@ def add_to_cart(request, product_id):
         messages.success(request, f'"{product.title} — {variant.name}" adicionado ao carrinho')
         return redirect('cart_detail')
 
-    return render(request, 'orders/add_to_cart.html', {
-        'product': product,
-    })
+    return render(request, 'orders/add_to_cart.html', {'product': product})
 
 @login_required
 def cart_detail(request):
@@ -78,17 +76,28 @@ def checkout(request):
             messages.error(request, f'"{item.product.title} — {item.variant.name}" não tem estoque suficiente')
         return redirect('cart_detail')
 
-    for item in items:
-        Order.objects.create(
-            buyer=request.user,
-            product=item.product,
-            variant=item.variant,
-            quantity=item.quantity,
-            total_price=item.subtotal,
-        )
+    if request.method == 'POST':
+        for item in items:
+            pickup = request.POST.get(f'pickup_{item.pk}') == '1'
+            if pickup and not item.product.accepts_pickup:
+                pickup = False
+            Order.objects.create(
+                buyer=request.user,
+                product=item.product,
+                variant=item.variant,
+                quantity=item.quantity,
+                total_price=item.subtotal,
+                pickup=pickup,
+            )
+        cart.items.all().delete()
+        return redirect('my_orders')
 
-    cart.items.all().delete()
-    return redirect('my_orders')
+    pickup_items = [item for item in items if item.product.accepts_pickup]
+    return render(request, 'orders/checkout.html', {
+        'items': items,
+        'total': sum(item.subtotal for item in items),
+        'pickup_items': pickup_items,
+    })
 
 @login_required
 def my_orders(request):
@@ -117,17 +126,6 @@ def simulate_payment(request, order_id):
     if order.status == 'PENDING':
         order.status = 'PAID'
         order.save()
-
-    return redirect('my_orders')
-
-@login_required
-def choose_pickup(request, order_id):
-    order = get_object_or_404(Order, pk=order_id, buyer=request.user)
-
-    if order.status == 'PAID' and order.product.accepts_pickup:
-        order.pickup = True
-        order.save()
-        messages.success(request, 'Modo de entrega alterado para retirada em mãos')
 
     return redirect('my_orders')
 
@@ -187,6 +185,42 @@ def request_return(request, order_id):
     order = get_object_or_404(Order, pk=order_id, buyer=request.user)
 
     if order.status in ('DELIVERED', 'RETURN_WINDOW'):
+        order.status = 'RETURN_REQUESTED'
+        order.save()
+        messages.success(request, 'Solicitação de devolução enviada ao vendedor')
+
+    return redirect('my_orders')
+
+@login_required
+def accept_return(request, order_id):
+    order = get_object_or_404(Order, pk=order_id, product__seller=request.user)
+
+    if order.status == 'RETURN_REQUESTED':
+        order.status = 'RETURN_ACCEPTED'
+        order.save()
+        messages.success(request, 'Devolução aceita. Aguardando recebimento do produto.')
+
+    return redirect('seller_orders')
+
+@login_required
+def accept_no_return(request, order_id):
+    order = get_object_or_404(Order, pk=order_id, product__seller=request.user)
+
+    if order.status == 'RETURN_REQUESTED':
+        if hasattr(order, 'commission'):
+            order.commission.delete()
+
+        order.status = 'CANCELLED_NO_RETURN'
+        order.save()
+        messages.success(request, 'Cancelamento sem devolução registrado')
+
+    return redirect('seller_orders')
+
+@login_required
+def confirm_return_received(request, order_id):
+    order = get_object_or_404(Order, pk=order_id, product__seller=request.user)
+
+    if order.status == 'RETURN_ACCEPTED':
         variant = order.variant
         variant.quantity += order.quantity
         variant.save()
@@ -196,9 +230,9 @@ def request_return(request, order_id):
 
         order.status = 'RETURNED'
         order.save()
-        messages.success(request, 'Devolução registrada com sucesso')
+        messages.success(request, 'Devolução concluída. Estoque restaurado.')
 
-    return redirect('my_orders')
+    return redirect('seller_orders')
 
 @login_required
 def complete_order(request, order_id):

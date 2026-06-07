@@ -14,9 +14,6 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
     - Adicionar a opção de tirar um anúncio do ar após sua publicação
 - Inserir avisos perceptíveis quando o usuário faz algo que não deveria (exemplo: colocar senha errada no login, tentar comprar um produto além da quantidade, não selecionar variação na compra...)
 - Melhorar a inserção de imagens (atualmente, não é possível manipulá-las individualmente após serem enviadas, e quaisquer imagens previamente inseridas são removidas após uma nova inserção)
-- Resolver questões do fluxo de envio:
-    - Fazer com que o usuário escolha entre transportadora ou entrega em mãos desde o princípio, ao invés da primeira opção ser padrão
-    - Detalhar melhor a devolução pós-entrega (vendedor confirma devolução? cancelamento sem devolução?)
 
 *Ideias pro segundo semestre:*
 - Implementar aspectos secundários (gamificação, cupons de desconto, etc.)

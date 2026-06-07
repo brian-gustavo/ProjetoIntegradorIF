@@ -22,7 +22,13 @@
                 </p>
             </div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:12px;">
-                <span class="badge {% if order.status == 'PENDING' %}badge-pending{% elif order.status == 'PAID' %}badge-paid{% elif order.status == 'DELIVERED' or order.status == 'RETURN_WINDOW' %}badge-delivered{% elif order.status == 'COMPLETED' %}badge-paid{% elif order.status == 'CANCELLED' or order.status == 'RETURNED' %}badge-cancelled{% else %}badge-progress{% endif %}">
+                <span class="badge 
+                    {% if order.status == 'PENDING' %}badge-pending
+                    {% elif order.status == 'PAID' %}badge-paid
+                    {% elif order.status == 'DELIVERED' or order.status == 'RETURN_WINDOW' %}badge-delivered
+                    {% elif order.status == 'COMPLETED' or order.status == 'CANCELLED_NO_RETURN' %}badge-paid
+                    {% elif order.status == 'CANCELLED' or order.status == 'RETURNED' %}badge-cancelled
+                    {% else %}badge-progress{% endif %}">
                     {{ order.get_status_display }}
                 </span>
                 {% if order.status == 'PENDING' %}
