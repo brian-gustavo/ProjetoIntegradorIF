@@ -5,48 +5,87 @@
 {% block content %}
 <div style="max-width:640px;margin:0 auto;">
     <h2 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:32px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">
-        Variações
+        Finalizar anúncio
     </h2>
     <p style="font-size:15px;color:var(--gray-500);margin-bottom:32px;">
         Produto: <strong style="color:var(--black);">{{ product.title }}</strong>
     </p>
 
-    <form method="post" id="variant-form">
-        {% csrf_token %}
-        {{ variant_formset.management_form }}
+    <h3 style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:18px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--black);">
+        Imagens
+    </h3>
 
-        <div id="variant-list">
-            {% for form in variant_formset %}
-                <div class="variant-item" style="border:1px solid var(--gray-300);border-radius:8px;padding:20px;margin-bottom:12px;position:relative;">
-                    {% for field in form %}
-                        {% if field.is_hidden %}
-                            {{ field }}
-                        {% elif field.html_name|slice:"-7:" == '-DELETE' or field.html_name == 'product' %}
-                            <div style="display:none;">{{ field }}</div>
-                        {% else %}
-                            <div class="form-group">
-                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                                {{ field }}
-                                {{ field.errors }}
-                            </div>
-                        {% endif %}
-                    {% endfor %}
-                    <button type="button" onclick="removeVariant(this)"
-                            style="position:absolute;top:12px;right:12px;background:none;border:none;cursor:pointer;color:var(--gray-500);font-size:18px;">✕</button>
+    {% if product.images.all %}
+        <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+            {% for img in product.images.all %}
+                <div style="position:relative;">
+                    <img src="{{ img.image.url }}" style="width:100px;height:100px;object-fit:cover;border-radius:6px;border:2px solid var(--gray-300);">
+                    <form method="post" style="margin:0;">
+                        {% csrf_token %}
+                        <input type="hidden" name="delete_image" value="{{ img.pk }}">
+                        <button type="submit"
+                                style="position:absolute;top:-8px;right:-8px;width:22px;height:22px;border-radius:50%;background:var(--black);color:var(--white);border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;line-height:1;">✕</button>
+                    </form>
                 </div>
             {% endfor %}
         </div>
+    {% endif %}
 
-        <button type="button" onclick="addVariant()"
-                class="btn" style="width:100%;border:2px solid var(--black);margin-bottom:24px;">
-            + Adicionar variação
-        </button>
+    {% if image_error %}
+        <p style="color:var(--red);font-size:14px;margin-bottom:12px;">{{ image_error }}</p>
+    {% endif %}
 
-        <button type="button" class="btn btn-primary" style="width:100%;"
-                onclick="document.getElementById('confirm-dialog').showModal()">
-            Publicar anúncio
-        </button>
-    </form>
+    {% if product.images.count < 5 %}
+        <form method="post" enctype="multipart/form-data" id="variant-form">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="images">Adicionar imagens ({{ product.images.count }}/5, limite individual de 10MB)</label>
+                <input type="file" name="images" id="images" accept="image/*" multiple>
+            </div>
+    {% else %}
+        <p style="font-size:14px;color:var(--gray-500);margin-bottom:24px;">Limite de 5 imagens atingido.</p>
+        <form method="post" id="variant-form">
+            {% csrf_token %}
+    {% endif %}
+
+            {{ variant_formset.management_form }}
+
+            <h3 style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:18px;text-transform:uppercase;letter-spacing:0.06em;margin:32px 0 16px;padding-bottom:8px;border-bottom:2px solid var(--black);">
+                Variações
+            </h3>
+
+            <div id="variant-list">
+                {% for form in variant_formset %}
+                    <div class="variant-item" style="border:1px solid var(--gray-300);border-radius:8px;padding:20px;margin-bottom:12px;position:relative;">
+                        {% for field in form %}
+                            {% if field.is_hidden %}
+                                {{ field }}
+                            {% elif field.html_name|slice:"-7:" == '-DELETE' or field.html_name == 'product' %}
+                                <div style="display:none;">{{ field }}</div>
+                            {% else %}
+                                <div class="form-group">
+                                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                    {{ field }}
+                                    {{ field.errors }}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                        <button type="button" onclick="removeVariant(this)"
+                                style="position:absolute;top:12px;right:12px;background:none;border:none;cursor:pointer;color:var(--gray-500);font-size:18px;">✕</button>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <button type="button" onclick="addVariant()"
+                    class="btn" style="width:100%;border:2px solid var(--black);margin-bottom:24px;">
+                + Adicionar variação
+            </button>
+
+            <button type="button" class="btn btn-primary" style="width:100%;"
+                    onclick="document.getElementById('confirm-dialog').showModal()">
+                Publicar anúncio
+            </button>
+        </form>
 </div>
 
 <template id="variant-template">

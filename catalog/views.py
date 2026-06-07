@@ -88,28 +88,63 @@ def create_product(request):
         product_form = ProductForm(request.POST)
 
         if product_form.is_valid():
-            images = request.FILES.getlist('images')
-            if len(images) > 5:
-                product_form.add_error(None, 'Você pode enviar no máximo 5 imagens')
-            else:
-                tamanho_maximo = 10 * 1024 * 1024
-                imagens_grandes = [img.name for img in images if img.size > tamanho_maximo]
-                if imagens_grandes:
-                    product_form.add_error(None, f'As seguintes imagens excedem o limite de 10MB: {", ".join(imagens_grandes)}')
-                else:
-                    product = product_form.save(commit=False)
-                    product.seller = request.user
-                    product.save()
-
-                    for image in images:
-                        ProductImage.objects.create(product=product, image=image)
-
-                    return redirect('manage_variants', product_id=product.pk)
+            product = product_form.save(commit=False)
+            product.seller = request.user
+            product.save()
+            return redirect('manage_variants', product_id=product.pk)
     else:
         product_form = ProductForm()
 
     return render(request, 'catalog/create_product.html', {
         'product_form': product_form,
+    })
+
+@login_required
+def manage_variants(request, product_id):
+    product = get_object_or_404(Product, pk=product_id, seller=request.user)
+
+    if request.method == 'POST':
+        if 'delete_image' in request.POST:
+            image_id = request.POST.get('delete_image')
+            product.images.filter(pk=image_id).delete()
+            return redirect('manage_variants', product_id=product.pk)
+
+        variant_formset = ProductVariantFormSet(request.POST, instance=product)
+
+        if variant_formset.is_valid():
+            images = request.FILES.getlist('images')
+            total_images = product.images.count() + len(images)
+
+            if total_images > 5:
+                return render(request, 'catalog/manage_variants.html', {
+                    'product': product,
+                    'variant_formset': variant_formset,
+                    'image_error': f'O produto já tem {product.images.count()} imagem(ns). Você pode adicionar no máximo {5 - product.images.count()} mais.',
+                })
+
+            tamanho_maximo = 10 * 1024 * 1024
+            imagens_grandes = [img.name for img in images if img.size > tamanho_maximo]
+            if imagens_grandes:
+                return render(request, 'catalog/manage_variants.html', {
+                    'product': product,
+                    'variant_formset': variant_formset,
+                    'image_error': f'As seguintes imagens excedem o limite de 10MB: {", ".join(imagens_grandes)}',
+                })
+
+            variant_formset.save()
+
+            for image in images:
+                ProductImage.objects.create(product=product, image=image)
+
+            product.published = True
+            product.save()
+            return redirect('home')
+    else:
+        variant_formset = ProductVariantFormSet(instance=product)
+
+    return render(request, 'catalog/manage_variants.html', {
+        'product': product,
+        'variant_formset': variant_formset,
     })
 
 @login_required
