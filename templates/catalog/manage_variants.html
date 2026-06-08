@@ -15,22 +15,6 @@
         Imagens
     </h3>
 
-    {% if product.images.all %}
-        <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
-            {% for img in product.images.all %}
-                <div style="position:relative;">
-                    <img src="{{ img.image.url }}" style="width:100px;height:100px;object-fit:cover;border-radius:6px;border:2px solid var(--gray-300);">
-                    <form method="post" style="margin:0;">
-                        {% csrf_token %}
-                        <input type="hidden" name="delete_image" value="{{ img.pk }}">
-                        <button type="submit"
-                                style="position:absolute;top:-8px;right:-8px;width:22px;height:22px;border-radius:50%;background:var(--black);color:var(--white);border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;line-height:1;">✕</button>
-                    </form>
-                </div>
-            {% endfor %}
-        </div>
-    {% endif %}
-
     {% if image_error %}
         <p style="color:var(--red);font-size:14px;margin-bottom:12px;">{{ image_error }}</p>
     {% endif %}
@@ -39,12 +23,20 @@
         <form method="post" enctype="multipart/form-data" id="variant-form">
             {% csrf_token %}
             <div class="form-group">
-                <label for="images">Adicionar imagens ({{ product.images.count }}/5, limite individual de 10MB)</label>
-                <input type="file" name="images" id="images" accept="image/*" multiple>
+                <label for="images" data-existing="{{ product.images.count }}">Adicionar imagens ({{ product.images.count }}/5, limite individual de 10MB)</label>
+                <div>
+                    <button type="button" onclick="document.getElementById('images').click()"
+                            class="btn" style="border:2px solid var(--black);">
+                        Escolher imagens
+                    </button>
+                    <input type="file" name="images" id="images" accept="image/*" multiple
+                           style="display:none;">
+                </div>
+                <div id="new-image-previews" style="display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;"></div>
             </div>
     {% else %}
         <p style="font-size:14px;color:var(--gray-500);margin-bottom:24px;">Limite de 5 imagens atingido.</p>
-        <form method="post" id="variant-form">
+        <form method="post" enctype="multipart/form-data" id="variant-form">
             {% csrf_token %}
     {% endif %}
 
@@ -174,6 +166,33 @@
 
     if (parseInt(totalForms.value) === 0) {
         addVariant();
+    }
+
+    const imageInput = document.getElementById('images');
+    const imageLabel = document.querySelector('label[for="images"]');
+
+    if (imageInput && imageLabel) {
+        const existingCount = parseInt(imageLabel.dataset.existing);
+
+        imageInput.addEventListener('change', () => {
+            const selected = imageInput.files.length;
+            const total = existingCount + selected;
+            imageLabel.textContent = `Adicionar imagens (${total}/5, limite individual de 10MB)`;
+
+            const previewContainer = document.getElementById('new-image-previews');
+            previewContainer.innerHTML = '';
+
+            Array.from(imageInput.files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.cssText = 'width:100px;height:100px;object-fit:cover;border-radius:6px;border:2px solid var(--gray-300);';
+                    previewContainer.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            });
+        });
     }
 </script>
 {% endblock %}

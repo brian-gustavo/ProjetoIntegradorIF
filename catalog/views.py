@@ -104,11 +104,6 @@ def manage_variants(request, product_id):
     product = get_object_or_404(Product, pk=product_id, seller=request.user)
 
     if request.method == 'POST':
-        if 'delete_image' in request.POST:
-            image_id = request.POST.get('delete_image')
-            product.images.filter(pk=image_id).delete()
-            return redirect('manage_variants', product_id=product.pk)
-
         variant_formset = ProductVariantFormSet(request.POST, instance=product)
 
         if variant_formset.is_valid():
@@ -149,7 +144,7 @@ def manage_variants(request, product_id):
 
 @login_required
 def my_products(request):
-    produtos = Product.objects.filter(seller=request.user).order_by('-created_at')
+    produtos = Product.objects.filter(seller=request.user, published=True).order_by('-created_at')
     return render(request, 'catalog/my_products.html', {'produtos': produtos})
 
 def autocomplete(request):
@@ -197,24 +192,4 @@ def review_product(request, product_id):
     return render(request, 'catalog/review_product.html', {
         'form': form,
         'product': product,
-    })
-
-@login_required
-def manage_variants(request, product_id):
-    product = get_object_or_404(Product, pk=product_id, seller=request.user)
-
-    if request.method == 'POST':
-        variant_formset = ProductVariantFormSet(request.POST, instance=product)
-
-        if variant_formset.is_valid():
-            variant_formset.save()
-            product.published = True
-            product.save()
-            return redirect('home')
-    else:
-        variant_formset = ProductVariantFormSet(instance=product)
-
-    return render(request, 'catalog/manage_variants.html', {
-        'product': product,
-        'variant_formset': variant_formset,
     })
