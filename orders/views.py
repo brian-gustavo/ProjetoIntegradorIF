@@ -109,13 +109,21 @@ def my_orders(request):
     reviewed_sellers = set(
         SellerReview.objects.filter(reviewer=request.user).values_list('seller_id', flat=True)
     )
+    edited_seller_reviews = set(
+        SellerReview.objects.filter(reviewer=request.user, edited=True).values_list('seller_id', flat=True)
+    )
     reviewed_products = set(
         ProductReview.objects.filter(reviewer=request.user).values_list('product_id', flat=True)
+    )
+    edited_product_reviews = set(
+        ProductReview.objects.filter(reviewer=request.user, edited=True).values_list('product_id', flat=True)
     )
 
     for order in orders:
         order.seller_reviewed = order.product.seller.pk in reviewed_sellers
+        order.seller_review_edited = order.product.seller.pk in edited_seller_reviews
         order.product_reviewed = order.product.pk in reviewed_products
+        order.product_review_edited = order.product.pk in edited_product_reviews
 
     return render(request, 'orders/my_orders.html', {'orders': orders})
 

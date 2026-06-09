@@ -12,7 +12,7 @@
     </p>
 
     <div style="border:2px solid var(--black);border-radius:12px;padding:32px;">
-        <form method="post" novalidate>
+        <form method="post" id="review-form" novalidate>
             {% csrf_token %}
             {% for field in form %}
                 <div class="form-group">
@@ -21,10 +21,36 @@
                     {{ field.errors }}
                 </div>
             {% endfor %}
-            <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px;">
-                {% if editing %}Salvar alterações{% else %}Enviar avaliação{% endif %}
+            {% if editing %}
+            <button type="button" class="btn btn-primary" style="width:100%;margin-top:8px;"
+                    onclick="document.getElementById('confirm-dialog').showModal()">
+                Salvar alterações
             </button>
+            {% else %}
+            <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px;">
+                Enviar avaliação
+            </button>
+            {% endif %}
         </form>
+        {% if editing %}
+        <dialog id="confirm-dialog" style="border:2px solid var(--black);border-radius:12px;padding:32px;max-width:400px;width:100%;">
+            <h3 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:24px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">
+                Salvar alterações?
+            </h3>
+            <p style="font-size:15px;color:var(--gray-500);margin-bottom:24px;">
+                Você não poderá editar essa avaliação novamente, então confirme se deseja prosseguir.
+            </p>
+            <div style="display:flex;gap:12px;">
+                <button type="button" class="btn" style="flex:1;border:2px solid var(--black);"
+                        onclick="document.getElementById('confirm-dialog').close()">
+                    Cancelar
+                </button>
+                <button type="submit" form="review-form" class="btn btn-primary" style="flex:1;">
+                    Confirmar
+                </button>
+            </div>
+        </dialog>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
