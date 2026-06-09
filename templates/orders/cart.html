@@ -15,7 +15,7 @@
         <div style="border:2px solid var(--black);border-radius:8px;padding:24px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;gap:24px;">
             <div style="flex:1;">
                 <p style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;margin-bottom:8px;">
-                    <a href="{% url 'product_detail' item.product.pk %}">{{ item.product.title }}</a>
+                    <a href="{% url 'product_detail' item.product.pk %}">{{ item.product.title }}</a> — {{ item.variant.name }}
                 </p>
                 <p style="font-size:14px;color:var(--gray-500);margin-bottom:12px;">
                     <strong style="color:var(--black);">R$ {{ item.subtotal|brl }}</strong>
