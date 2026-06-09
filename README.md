@@ -6,12 +6,6 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
 
 *Produtos a serem vendidos:* Jogos físicos, consoles, acessórios para consoles, jogos de tabuleiro, keys para jogos digitais, itens *in-game*, pôsteres, *action figures* e *buttons*
 
-*Requisitos faltantes:*
-- Implementar a edição de produtos/avaliações/etc.
-    - Considerar um limite de edições em certas áreas (mudar a avaliação apenas uma vez, por exemplo)
-    - Adicionar a opção de mudar a quantidade de um item que esteja no carrinho
-    - Adicionar a opção de tirar um anúncio do ar após sua publicação
-
 *Ideias pro segundo semestre:*
 - Implementar aspectos secundários (gamificação, cupons de desconto, etc.)
 - Implementar uma API de pagamento real (provavelmente Stripe)

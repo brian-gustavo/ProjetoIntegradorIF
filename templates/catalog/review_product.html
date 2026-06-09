@@ -12,7 +12,7 @@
     </p>
 
     <div style="border:2px solid var(--black);border-radius:12px;padding:32px;">
-        <form method="post">
+        <form method="post" novalidate>
             {% csrf_token %}
             {% for field in form %}
                 <div class="form-group">

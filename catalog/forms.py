@@ -14,8 +14,9 @@ class ProductVariantForm(forms.ModelForm):
         max_digits=10,
         decimal_places=2,
         min_value=Decimal('0.01'),
+        label='Preço (em reais)',
     )
-    quantity = forms.IntegerField(min_value=1)
+    quantity = forms.IntegerField(min_value=1, label='Quantidade')
 
     class Meta:
         model = ProductVariant

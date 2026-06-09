@@ -15,18 +15,45 @@
 
 <div class="product-grid">
     {% for prod in produtos %}
-        <a href="{% url 'product_detail' prod.pk %}" class="product-card">
-            {% if prod.images.all %}
-                <img class="product-card-img" src="{{ prod.images.first.image.url }}" alt="{{ prod.title }}">
-            {% else %}
-                <div class="product-card-img-placeholder">Sem foto</div>
-            {% endif %}
-            <div class="product-card-body">
-                <div class="product-card-title">{{ prod.title }}</div>
-                <div class="product-card-price">a partir de R$ {{ prod.base_price|brl }}</div>
-                <div class="product-card-meta">Estoque total: {{ prod.total_stock }} unidade{{ prod.total_stock|pluralize }}</div>
-            </div>
-        </a>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+            <a href="{% url 'product_detail' prod.pk %}" class="product-card">
+                {% if prod.images.all %}
+                    <img class="product-card-img" src="{{ prod.images.first.image.url }}" alt="{{ prod.title }}">
+                {% else %}
+                    <div class="product-card-img-placeholder">Sem foto</div>
+                {% endif %}
+                <div class="product-card-body">
+                    <div class="product-card-title">{{ prod.title }}</div>
+                    <div class="product-card-price">a partir de R$ {{ prod.base_price|brl }}</div>
+                    <div class="product-card-meta">Estoque total: {{ prod.total_stock }} unidade{{ prod.total_stock|pluralize }}</div>
+                </div>
+            </a>
+            <form method="post" action="{% url 'unpublish_product' prod.pk %}" id="unpublish-form-{{ prod.pk }}">
+                {% csrf_token %}
+                <button type="button" class="btn" style="width:100%;border:2px solid var(--black);font-size:13px;padding:8px;"
+                        onclick="document.getElementById('unpublish-dialog-{{ prod.pk }}').showModal()">
+                    Retirar do ar
+                </button>
+            </form>
+
+            <dialog id="unpublish-dialog-{{ prod.pk }}" style="border:2px solid var(--black);border-radius:12px;padding:32px;max-width:400px;width:100%;">
+                <h3 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:24px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">
+                    Retirar do ar?
+                </h3>
+                <p style="font-size:15px;color:var(--gray-500);margin-bottom:24px;">
+                    O anúncio <strong style="color:var(--black);">{{ prod.title }}</strong> ficará invisível para outros usuários.
+                </p>
+                <div style="display:flex;gap:12px;">
+                    <button type="button" class="btn" style="flex:1;border:2px solid var(--black);"
+                            onclick="document.getElementById('unpublish-dialog-{{ prod.pk }}').close()">
+                        Cancelar
+                    </button>
+                    <button type="submit" form="unpublish-form-{{ prod.pk }}" class="btn btn-primary" style="flex:1;">
+                        Confirmar
+                    </button>
+                </div>
+            </dialog>
+        </div>
     {% empty %}
         <p style="color:var(--gray-500);">Você ainda não publicou nenhum anúncio</p>
     {% endfor %}

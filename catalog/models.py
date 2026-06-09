@@ -51,7 +51,7 @@ class ProductVariant(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='variants', verbose_name="Produto")
     name = models.CharField(max_length=100, verbose_name="Variação")
     price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Preço (em reais)")
-    quantity = models.PositiveIntegerField(default=1, verbose_name="Quantidade em estoque")
+    quantity = models.PositiveIntegerField(default=1, verbose_name="Quantidade")
 
     class Meta:
         verbose_name = "Variação"

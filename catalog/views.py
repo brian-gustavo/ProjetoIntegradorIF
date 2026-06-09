@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Avg
+from django.db.models import Avg, Sum
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 
@@ -11,7 +11,9 @@ from accounts.models import SellerReview
 def home(request):
     categorias = Category.objects.all()
     query = request.GET.get('q', '').strip()
-    produtos = Product.objects.filter(published=True)
+    produtos = Product.objects.filter(published=True).annotate(
+        stock_total=Sum('variants__quantity')
+    ).filter(stock_total__gt=0)
     if query:
         produtos = produtos.filter(title__icontains=query)
     return render(request, 'home.html', {
@@ -69,7 +71,9 @@ def product_detail(request, product_id):
 
 def category_detail(request, slug):
     category = get_object_or_404(Category, slug=slug)
-    produtos = Product.objects.filter(category=category, published=True)
+    produtos = Product.objects.filter(category=category, published=True).annotate(
+        stock_total=Sum('variants__quantity')
+    ).filter(stock_total__gt=0)
     return render(request, 'catalog/category_detail.html', {
         'category': category,
         'produtos': produtos,
@@ -196,3 +200,15 @@ def review_product(request, product_id):
         'form': form,
         'product': product,
     })
+
+@login_required
+def unpublish_product(request, product_id):
+    product = get_object_or_404(Product, pk=product_id, seller=request.user)
+
+    if request.method == 'POST':
+        product.published = False
+        product.save()
+        messages.success(request, f'"{product.title}" foi retirado do ar')
+        return redirect('my_products')
+
+    return redirect('my_products')

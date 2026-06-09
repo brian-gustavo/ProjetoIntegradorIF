@@ -17,10 +17,17 @@
                 <p style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;margin-bottom:8px;">
                     <a href="{% url 'product_detail' item.product.pk %}">{{ item.product.title }}</a>
                 </p>
-                <p style="font-size:14px;color:var(--gray-500);">
-                    {{ item.quantity }} unidade{{ item.quantity|pluralize }} ·
+                <p style="font-size:14px;color:var(--gray-500);margin-bottom:12px;">
                     <strong style="color:var(--black);">R$ {{ item.subtotal|brl }}</strong>
                 </p>
+                <form method="post" action="{% url 'update_cart_item' item.pk %}" style="display:flex;align-items:center;gap:8px;">
+                    {% csrf_token %}
+                    <input type="number" name="quantity" value="{{ item.quantity }}" min="1" max="{{ item.variant.quantity }}"
+                        style="width:72px;padding:6px 10px;border:2px solid var(--black);border-radius:6px;font-size:14px;">
+                    <button type="submit" class="btn" style="border:2px solid var(--black);font-size:14px;padding:6px 16px;">
+                        Atualizar
+                    </button>
+                </form>
             </div>
             <form method="post" action="{% url 'remove_from_cart' item.pk %}">
                 {% csrf_token %}

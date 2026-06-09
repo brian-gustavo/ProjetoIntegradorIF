@@ -387,3 +387,24 @@ def admin_dashboard(request):
         'taxa_atual': taxa_atual,
         'vendedores': vendedores,
     })
+
+@login_required
+def update_cart_item(request, item_id):
+    item = get_object_or_404(CartItem, pk=item_id, cart__user=request.user)
+
+    if request.method == 'POST':
+        try:
+            quantity = int(request.POST.get('quantity', 1))
+        except ValueError:
+            messages.error(request, 'Quantidade inválida')
+            return redirect('cart_detail')
+
+        if quantity < 1:
+            messages.error(request, 'A quantidade mínima é 1')
+        elif quantity > item.variant.quantity:
+            messages.error(request, f'Quantidade indisponível em estoque (máximo: {item.variant.quantity})')
+        else:
+            item.quantity = quantity
+            item.save()
+
+    return redirect('cart_detail')

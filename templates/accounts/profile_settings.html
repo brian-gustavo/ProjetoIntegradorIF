@@ -12,7 +12,7 @@
         <h3 style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:24px;padding-bottom:12px;border-bottom:2px solid var(--black);">
             Dados da conta
         </h3>
-        <form method="post">
+        <form method="post" novalidate>
             {% csrf_token %}
             {% for field in profile_form %}
                 <div class="form-group">
@@ -38,7 +38,7 @@
         <h3 style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:24px;padding-bottom:12px;border-bottom:2px solid var(--black);">
             Alterar senha
         </h3>
-        <form method="post">
+        <form method="post" novalidate>
             {% csrf_token %}
             {% for field in password_form %}
                 <div class="form-group">
