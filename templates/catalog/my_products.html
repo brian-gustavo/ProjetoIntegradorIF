@@ -68,20 +68,27 @@
                     </button>
                 </form>
             {% endif %}
+            <form method="post" action="{% url 'delete_product' prod.pk %}" id="delete-form-{{ prod.pk }}">
+                {% csrf_token %}
+                <button type="button" class="btn" style="width:100%;border:2px solid var(--black);font-size:13px;padding:8px;"
+                        onclick="document.getElementById('delete-dialog-{{ prod.pk }}').showModal()">
+                    Excluir
+                </button>
+            </form>
 
-            <dialog id="unpublish-dialog-{{ prod.pk }}" style="border:2px solid var(--black);border-radius:12px;padding:32px;max-width:400px;width:100%;">
+            <dialog id="delete-dialog-{{ prod.pk }}" style="border:2px solid var(--black);border-radius:12px;padding:32px;max-width:400px;width:100%;">
                 <h3 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:24px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">
-                    Retirar do ar?
+                    Excluir anúncio?
                 </h3>
                 <p style="font-size:15px;color:var(--gray-500);margin-bottom:24px;">
-                    O anúncio <strong style="color:var(--black);">{{ prod.title }}</strong> ficará invisível para outros usuários.
+                    <strong style="color:var(--black);">{{ prod.title }}</strong> será removido permanentemente da plataforma.
                 </p>
                 <div style="display:flex;gap:12px;">
                     <button type="button" class="btn" style="flex:1;border:2px solid var(--black);"
-                            onclick="document.getElementById('unpublish-dialog-{{ prod.pk }}').close()">
+                            onclick="document.getElementById('delete-dialog-{{ prod.pk }}').close()">
                         Cancelar
                     </button>
-                    <button type="submit" form="unpublish-form-{{ prod.pk }}" class="btn btn-primary" style="flex:1;">
+                    <button type="submit" form="delete-form-{{ prod.pk }}" class="btn btn-primary" style="flex:1;">
                         Confirmar
                     </button>
                 </div>
@@ -91,4 +98,47 @@
         <p style="color:var(--gray-500);">Você ainda não publicou nenhum anúncio</p>
     {% endfor %}
 </div>
+{% if rascunhos %}
+    <h2 class="section-header" style="margin-top:48px;">Rascunhos</h2>
+    <div class="product-grid">
+        {% for prod in rascunhos %}
+            <div style="display:flex;flex-direction:column;gap:8px;">
+                <div class="product-card">
+                    <div class="product-card-img-placeholder">Sem foto</div>
+                    <div class="product-card-body">
+                        <div class="product-card-title">{{ prod.title }}</div>
+                        <div class="product-card-meta" style="color:var(--gray-500);">Rascunho incompleto</div>
+                    </div>
+                </div>
+                <a href="{% url 'manage_variants' prod.pk %}" class="btn btn-primary" style="width:100%;text-align:center;font-size:13px;padding:8px;">
+                    Continuar criação
+                </a>
+                <form method="post" action="{% url 'delete_product' prod.pk %}" id="delete-draft-form-{{ prod.pk }}">
+                    {% csrf_token %}
+                    <button type="button" class="btn" style="width:100%;border:2px solid var(--black);font-size:13px;padding:8px;"
+                            onclick="document.getElementById('delete-draft-dialog-{{ prod.pk }}').showModal()">
+                        Excluir rascunho
+                    </button>
+                </form>
+                <dialog id="delete-draft-dialog-{{ prod.pk }}" style="border:2px solid var(--black);border-radius:12px;padding:32px;max-width:400px;width:100%;">
+                    <h3 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:24px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">
+                        Excluir rascunho?
+                    </h3>
+                    <p style="font-size:15px;color:var(--gray-500);margin-bottom:24px;">
+                        O rascunho <strong style="color:var(--black);">{{ prod.title }}</strong> será excluído permanentemente.
+                    </p>
+                    <div style="display:flex;gap:12px;">
+                        <button type="button" class="btn" style="flex:1;border:2px solid var(--black);"
+                                onclick="document.getElementById('delete-draft-dialog-{{ prod.pk }}').close()">
+                            Cancelar
+                        </button>
+                        <button type="submit" form="delete-draft-form-{{ prod.pk }}" class="btn btn-primary" style="flex:1;">
+                            Confirmar
+                        </button>
+                    </div>
+                </dialog>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
 {% endblock %}

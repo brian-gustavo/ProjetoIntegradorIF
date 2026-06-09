@@ -11,7 +11,7 @@ from accounts.models import SellerReview
 def home(request):
     categorias = Category.objects.all()
     query = request.GET.get('q', '').strip()
-    produtos = Product.objects.filter(published=True).annotate(
+    produtos = Product.objects.filter(published=True, deleted=False).annotate(
         stock_total=Sum('variants__quantity')
     ).filter(stock_total__gt=0)
     if query:
@@ -23,7 +23,7 @@ def home(request):
     })
 
 def product_detail(request, product_id):
-    product = get_object_or_404(Product, pk=product_id)
+    product = get_object_or_404(Product, pk=product_id, deleted=False)
     variants = product.variants.all()
 
     seller_rating = SellerReview.objects.filter(
@@ -71,7 +71,7 @@ def product_detail(request, product_id):
 
 def category_detail(request, slug):
     category = get_object_or_404(Category, slug=slug)
-    produtos = Product.objects.filter(category=category, published=True).annotate(
+    produtos = Product.objects.filter(category=category, published=True, deleted=False).annotate(
         stock_total=Sum('variants__quantity')
     ).filter(stock_total__gt=0)
     return render(request, 'catalog/category_detail.html', {
@@ -146,17 +146,21 @@ def manage_variants(request, product_id):
         'variant_formset': variant_formset,
     })
 
-@login_required
 def my_products(request):
-    produtos = Product.objects.filter(seller=request.user).order_by('-created_at')
-    return render(request, 'catalog/my_products.html', {'produtos': produtos})
+    qs = Product.objects.filter(seller=request.user, deleted=False).order_by('-created_at')
+    produtos = [p for p in qs if p.variants.exists()]
+    rascunhos = [p for p in qs if not p.variants.exists()]
+    return render(request, 'catalog/my_products.html', {
+        'produtos': produtos,
+        'rascunhos': rascunhos,
+    })
 
 def autocomplete(request):
     query = request.GET.get('q', '').strip()
     resultados = []
     if query:
         resultados = list(
-            Product.objects.filter(title__icontains=query, published=True)
+            Product.objects.filter(title__icontains=query, published=True, deleted=False)
             .values_list('title', flat=True)
             .distinct()[:8]
         )
@@ -299,3 +303,20 @@ def edit_product_review(request, product_id):
         'product': product,
         'editing': True,
     })
+
+@login_required
+def delete_product(request, product_id):
+    product = get_object_or_404(Product, pk=product_id, seller=request.user)
+
+    if request.method == 'POST':
+        if not product.variants.exists():
+            product.delete()
+            messages.success(request, 'Rascunho excluído')
+        else:
+            product.deleted = True
+            product.published = False
+            product.save()
+            messages.success(request, f'"{product.title}" foi excluído')
+        return redirect('my_products')
+
+    return redirect('my_products')
