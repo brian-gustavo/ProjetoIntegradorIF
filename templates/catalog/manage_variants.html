@@ -67,6 +67,9 @@
                                 <div class="form-group">
                                     <label for="{{ field.id_for_label }}">{{ field.label }}</label>
                                     {{ field }}
+                                    {% if field.help_text %}
+                                        <p style="font-size:12px;color:var(--gray-500);margin-top:4px;">{{ field.help_text }}</p>
+                                    {% endif %}
                                     {{ field.errors }}
                                 </div>
                             {% endif %}
@@ -105,9 +108,10 @@
         <div class="form-group">
             <label>Preço (em reais)</label>
             <input type="number" name="variants-__index__-price" step="0.01">
+            <p style="font-size:12px;color:var(--gray-500);margin-top:4px;">Use ponto como separador decimal (ex: 4.5)</p>
         </div>
         <div class="form-group">
-            <label>Quantidade em estoque</label>
+            <label>Quantidade</label>
             <input type="number" name="variants-__index__-quantity" value="1" min="0">
         </div>
         <input type="hidden" name="variants-__index__-id" value="">
@@ -116,10 +120,13 @@
     </div>
 </template>
 
-<button type="button" class="btn" style="width:100%;border:2px solid var(--black);margin-bottom:12px;margin-top:32px;"
-        onclick="document.getElementById('cancel-dialog').showModal()">
-    Cancelar criação
-</button>
+<form method="post" action="{% url 'delete_product' product.pk %}" id="cancel-form">
+    {% csrf_token %}
+    <button type="button" class="btn" style="width:100%;border:2px solid var(--black);margin-bottom:12px;margin-top:32px;"
+            onclick="document.getElementById('cancel-dialog').showModal()">
+        Cancelar criação
+    </button>
+</form>
 
 <dialog id="cancel-dialog" style="border:2px solid var(--black);border-radius:12px;padding:32px;max-width:400px;width:100%;">
     <h3 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:24px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">

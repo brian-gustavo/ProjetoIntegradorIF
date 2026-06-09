@@ -18,6 +18,9 @@
                 <div class="form-group">
                     <label for="{{ field.id_for_label }}">{{ field.label }}</label>
                     {{ field }}
+                    {% if field.help_text %}
+                        <p style="font-size:12px;color:var(--gray-500);margin-top:4px;">{{ field.help_text }}</p>
+                    {% endif %}
                     {{ field.errors }}
                 </div>
             {% endfor %}

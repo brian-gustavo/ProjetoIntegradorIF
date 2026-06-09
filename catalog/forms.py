@@ -14,6 +14,7 @@ class ProductVariantForm(forms.ModelForm):
         max_digits=10,
         decimal_places=2,
         min_value=Decimal('0.01'),
+        help_text='Use ponto como separador decimal (ex: 4.5)',
         label='Preço (em reais)',
     )
     quantity = forms.IntegerField(min_value=1, label='Quantidade')
@@ -37,6 +38,7 @@ class ProductReviewForm(forms.ModelForm):
         min_value=0.5,
         max_value=5.0,
         decimal_places=1,
+        help_text='Use ponto como separador decimal (ex: 4.5)',
         widget=forms.NumberInput(attrs={'step': '0.5', 'min': '0.5', 'max': '5.0'})
     )
 
