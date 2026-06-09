@@ -193,6 +193,15 @@
         }
     }
 
+    document.querySelectorAll('input[name="delete_images"]').forEach(checkbox => {
+        checkbox.addEventListener('change', () => {
+            if (checkbox.checked) {
+                checkbox.closest('div[style*="position:relative"]').style.opacity = '0.3';
+                checkbox.closest('div[style*="position:relative"]').style.pointerEvents = 'none';
+            }
+        });
+    });
+
     const imageInput = document.getElementById('images');
     const imageLabel = document.getElementById('images-label');
 
