@@ -20,7 +20,7 @@
     {% endif %}
 
     {% if product.images.count < 5 %}
-        <form method="post" enctype="multipart/form-data" id="variant-form">
+        <form method="post" enctype="multipart/form-data" id="variant-form" novalidate>
             {% csrf_token %}
             <div class="form-group">
                 <label for="images" data-existing="{{ product.images.count }}">Adicionar imagens ({{ product.images.count }}/5, limite individual de 10MB)</label>
@@ -36,11 +36,19 @@
             </div>
     {% else %}
         <p style="font-size:14px;color:var(--gray-500);margin-bottom:24px;">Limite de 5 imagens atingido.</p>
-        <form method="post" enctype="multipart/form-data" id="variant-form">
+        <form method="post" enctype="multipart/form-data" id="variant-form" novalidate>
             {% csrf_token %}
     {% endif %}
 
             {{ variant_formset.management_form }}
+
+            {% if variant_formset.non_form_errors %}
+                <ul class="errorlist" style="margin-bottom:16px;">
+                    {% for error in variant_formset.non_form_errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
 
             <h3 style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:18px;text-transform:uppercase;letter-spacing:0.06em;margin:32px 0 16px;padding-bottom:8px;border-bottom:2px solid var(--black);">
                 Variações
@@ -62,6 +70,13 @@
                                 </div>
                             {% endif %}
                         {% endfor %}
+                        {% if form.non_field_errors %}
+                            <ul class="errorlist">
+                                {% for error in form.non_field_errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
                         <button type="button" onclick="removeVariant(this)"
                                 style="position:absolute;top:12px;right:12px;background:none;border:none;cursor:pointer;color:var(--gray-500);font-size:18px;">✕</button>
                     </div>

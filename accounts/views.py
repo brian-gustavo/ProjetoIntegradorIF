@@ -33,7 +33,7 @@ def profile_settings(request):
             profile_form = ProfileForm(request.POST, instance=request.user)
             profile_detail_form = ProfileDetailForm(request.POST, instance=request.user.profile)
 
-            if profile_form.is_valid():
+            if profile_form.is_valid() and profile_detail_form.is_valid():
                 profile_form.save()
                 profile_detail_form.save()
                 messages.success(request, 'Dados atualizados com sucesso')
@@ -58,18 +58,21 @@ def review_seller(request, seller_id):
     seller = get_object_or_404(User, pk=seller_id)
 
     if seller == request.user:
+        messages.error(request, 'Você não pode avaliar a si mesmo.')
         return redirect('my_orders')
 
     already_reviewed = SellerReview.objects.filter(
         seller=seller, reviewer=request.user
     ).exists()
     if already_reviewed:
+        messages.error(request, 'Você já avaliou este vendedor.')
         return redirect('my_orders')
 
     has_delivered_order = request.user.orders.filter(
         product__seller=seller, status='DELIVERED'
     ).exists()
     if not has_delivered_order:
+        messages.error(request, 'Você só pode avaliar vendedores de pedidos entregues.')
         return redirect('my_orders')
 
     if request.method == 'POST':

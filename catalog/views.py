@@ -163,18 +163,21 @@ def review_product(request, product_id):
     product = get_object_or_404(Product, pk=product_id)
 
     if request.user == product.seller or request.user.is_staff:
+        messages.error(request, 'Você não pode avaliar o seu próprio produto.')
         return redirect('product_detail', product_id=product_id)
 
     already_reviewed = ProductReview.objects.filter(
         product=product, reviewer=request.user
     ).exists()
     if already_reviewed:
+        messages.error(request, 'Você já avaliou este produto.')
         return redirect('product_detail', product_id=product_id)
 
     has_delivered_order = request.user.orders.filter(
         product=product, status='DELIVERED'
     ).exists()
     if not has_delivered_order:
+        messages.error(request, 'Você só pode avaliar produtos de pedidos entregues.')
         return redirect('product_detail', product_id=product_id)
 
     if request.method == 'POST':

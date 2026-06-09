@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django import forms
 from django.forms import inlineformset_factory
 
@@ -9,6 +10,13 @@ class ProductForm(forms.ModelForm):
         fields = ('title', 'category', 'description', 'condition', 'accepts_pickup')
 
 class ProductVariantForm(forms.ModelForm):
+    price = forms.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        min_value=Decimal('0.01'),
+    )
+    quantity = forms.IntegerField(min_value=1)
+
     class Meta:
         model = ProductVariant
         fields = ('name', 'price', 'quantity')
