@@ -30,8 +30,9 @@
                         Escolher imagens
                     </button>
                     <input type="file" name="images" id="images" accept="image/*" multiple
-                           style="display:none;">
+                        style="display:none;">
                 </div>
+                <p id="image-error-js" style="color:var(--red);font-size:13px;margin-top:8px;"></p>
                 <div id="new-image-previews" style="display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;"></div>
             </div>
     {% else %}
@@ -189,15 +190,34 @@
     if (imageInput && imageLabel) {
         const existingCount = parseInt(imageLabel.dataset.existing);
 
-        imageInput.addEventListener('change', () => {
-            const selected = imageInput.files.length;
-            const total = existingCount + selected;
-            imageLabel.textContent = `Adicionar imagens (${total}/5, limite individual de 10MB)`;
+        const imageErrorEl = document.getElementById('image-error-js');
 
+        imageInput.addEventListener('change', () => {
+            const files = Array.from(imageInput.files);
+            const maxSize = 10 * 1024 * 1024;
             const previewContainer = document.getElementById('new-image-previews');
             previewContainer.innerHTML = '';
+            imageErrorEl.textContent = '';
 
-            Array.from(imageInput.files).forEach(file => {
+            const grandes = files.filter(f => f.size > maxSize).map(f => f.name);
+            if (grandes.length > 0) {
+                imageErrorEl.textContent = `As seguintes imagens excedem o limite de 10MB: ${grandes.join(', ')}`;
+                imageInput.value = '';
+                imageLabel.textContent = `Adicionar imagens (${existingCount}/5, limite individual de 10MB)`;
+                return;
+            }
+
+            const total = existingCount + files.length;
+            if (total > 5) {
+                imageErrorEl.textContent = `Limite de imagens ultrapassado. Insira no máximo 5 e tente novamente.`;
+                imageInput.value = '';
+                imageLabel.textContent = `Adicionar imagens (${existingCount}/5, limite individual de 10MB)`;
+                return;
+            }
+
+            imageLabel.textContent = `Adicionar imagens (${total}/5, limite individual de 10MB)`;
+
+            files.forEach(file => {
                 const reader = new FileReader();
                 reader.onload = e => {
                     const img = document.createElement('img');

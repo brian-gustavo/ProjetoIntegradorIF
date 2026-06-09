@@ -118,7 +118,7 @@ def manage_variants(request, product_id):
                 return render(request, 'catalog/manage_variants.html', {
                     'product': product,
                     'variant_formset': variant_formset,
-                    'image_error': f'O produto já tem {product.images.count()} imagem(ns). Você pode adicionar no máximo {5 - product.images.count()} mais.',
+                    'image_error': f'Limite de imagens ultrapassado. Insira no máximo 5 e tente novamente.',
                 })
 
             tamanho_maximo = 10 * 1024 * 1024
