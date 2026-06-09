@@ -229,14 +229,15 @@ def edit_product(request, product_id):
 
         if product_form.is_valid() and variant_formset.is_valid():
             images = request.FILES.getlist('images')
-            total_images = product.images.count() + len(images)
+            delete_ids = request.POST.getlist('delete_images')
+            total_images = product.images.count() - len(delete_ids) + len(images)
 
             if total_images > 5:
                 return render(request, 'catalog/edit_product.html', {
                     'product': product,
                     'product_form': product_form,
                     'variant_formset': variant_formset,
-                    'image_error': f'Limite de imagens ultrapassado. Insira no máximo 5 e tente novamente.',
+                    'image_error': 'Limite de imagens ultrapassado. Insira no máximo 5 e tente novamente.',
                 })
 
             tamanho_maximo = 10 * 1024 * 1024
@@ -249,7 +250,6 @@ def edit_product(request, product_id):
                     'image_error': f'As seguintes imagens excedem o limite de 10MB: {", ".join(imagens_grandes)}',
                 })
 
-            delete_ids = request.POST.getlist('delete_images')
             if delete_ids:
                 product.images.filter(pk__in=delete_ids).delete()
 

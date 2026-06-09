@@ -165,7 +165,7 @@
                 <input type="number" name="variants-${index}-price" step="0.01" min="0.01">
             </div>
             <div class="form-group">
-                <label>Quantidade em estoque</label>
+                <label>Quantidade</label>
                 <input type="number" name="variants-${index}-quantity" value="1" min="1">
             </div>
             <input type="hidden" name="variants-${index}-id" value="">
@@ -193,20 +193,31 @@
         }
     }
 
+    const imageInput = document.getElementById('images');
+    const imageLabel = document.getElementById('images-label');
+    const existingCount = imageInput ? parseInt("{{ product.images.count }}") : 0;
+    let markedForDeletion = 0;
+
+    function updateImageLabel() {
+        const currentFiles = imageInput && imageInput.files ? imageInput.files.length : 0;
+        const effectiveCount = existingCount - markedForDeletion + currentFiles;
+        if (imageLabel) {
+            imageLabel.textContent = `Adicionar imagens (${effectiveCount}/5, limite individual de 10MB)`;
+        }
+    }
+
     document.querySelectorAll('input[name="delete_images"]').forEach(checkbox => {
         checkbox.addEventListener('change', () => {
             if (checkbox.checked) {
-                checkbox.closest('div[style*="position:relative"]').style.opacity = '0.3';
-                checkbox.closest('div[style*="position:relative"]').style.pointerEvents = 'none';
+                markedForDeletion++;
+                checkbox.closest('div').style.opacity = '0.3';
+                checkbox.closest('div').style.pointerEvents = 'none';
             }
+            updateImageLabel();
         });
     });
 
-    const imageInput = document.getElementById('images');
-    const imageLabel = document.getElementById('images-label');
-
     if (imageInput && imageLabel) {
-        const existingCount = parseInt("{{ product.images.count }}");
         const imageErrorEl = document.getElementById('image-error-js');
 
         imageInput.addEventListener('change', () => {
@@ -220,19 +231,19 @@
             if (grandes.length > 0) {
                 imageErrorEl.textContent = `As seguintes imagens excedem o limite de 10MB: ${grandes.join(', ')}`;
                 imageInput.value = '';
-                imageLabel.textContent = `Adicionar imagens (${existingCount}/5, limite individual de 10MB)`;
+                updateImageLabel();
                 return;
             }
 
-            const total = existingCount + files.length;
+            const total = existingCount - markedForDeletion + files.length;
             if (total > 5) {
-                imageErrorEl.textContent = `Você pode adicionar no máximo ${5 - existingCount} imagem(ns) a mais`;
+                imageErrorEl.textContent = `Você pode adicionar no máximo ${5 - existingCount + markedForDeletion} imagem(ns) a mais`;
                 imageInput.value = '';
-                imageLabel.textContent = `Adicionar imagens (${existingCount}/5, limite individual de 10MB)`;
+                updateImageLabel();
                 return;
             }
 
-            imageLabel.textContent = `Adicionar imagens (${total}/5, limite individual de 10MB)`;
+            updateImageLabel();
 
             files.forEach(file => {
                 const reader = new FileReader();
