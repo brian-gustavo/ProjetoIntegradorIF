@@ -148,7 +148,7 @@ def manage_variants(request, product_id):
 
 @login_required
 def my_products(request):
-    produtos = Product.objects.filter(seller=request.user, published=True).order_by('-created_at')
+    produtos = Product.objects.filter(seller=request.user).order_by('-created_at')
     return render(request, 'catalog/my_products.html', {'produtos': produtos})
 
 def autocomplete(request):
@@ -212,3 +212,90 @@ def unpublish_product(request, product_id):
         return redirect('my_products')
 
     return redirect('my_products')
+
+@login_required
+def edit_product(request, product_id):
+    product = get_object_or_404(Product, pk=product_id, seller=request.user)
+
+    if request.method == 'POST':
+        product_form = ProductForm(request.POST, instance=product)
+        variant_formset = ProductVariantFormSet(request.POST, instance=product)
+
+        if product_form.is_valid() and variant_formset.is_valid():
+            images = request.FILES.getlist('images')
+            total_images = product.images.count() + len(images)
+
+            if total_images > 5:
+                return render(request, 'catalog/edit_product.html', {
+                    'product': product,
+                    'product_form': product_form,
+                    'variant_formset': variant_formset,
+                    'image_error': f'Limite de imagens ultrapassado. Insira no máximo 5 e tente novamente.',
+                })
+
+            tamanho_maximo = 10 * 1024 * 1024
+            imagens_grandes = [img.name for img in images if img.size > tamanho_maximo]
+            if imagens_grandes:
+                return render(request, 'catalog/edit_product.html', {
+                    'product': product,
+                    'product_form': product_form,
+                    'variant_formset': variant_formset,
+                    'image_error': f'As seguintes imagens excedem o limite de 10MB: {", ".join(imagens_grandes)}',
+                })
+
+            delete_ids = request.POST.getlist('delete_images')
+            if delete_ids:
+                product.images.filter(pk__in=delete_ids).delete()
+
+            product_form.save()
+            variant_formset.save()
+
+            for image in images:
+                ProductImage.objects.create(product=product, image=image)
+
+            messages.success(request, 'Anúncio atualizado com sucesso')
+            return redirect('product_detail', product_id=product.pk)
+    else:
+        product_form = ProductForm(instance=product)
+        variant_formset = ProductVariantFormSet(instance=product)
+
+    return render(request, 'catalog/edit_product.html', {
+        'product': product,
+        'product_form': product_form,
+        'variant_formset': variant_formset,
+    })
+
+@login_required
+def republish_product(request, product_id):
+    product = get_object_or_404(Product, pk=product_id, seller=request.user)
+
+    if request.method == 'POST':
+        if product.variants.exists() and product.total_stock > 0:
+            product.published = True
+            product.save()
+            messages.success(request, f'"{product.title}" foi republicado')
+        else:
+            messages.error(request, 'O anúncio precisa ter ao menos uma variação com estoque para ser republicado')
+        return redirect('my_products')
+
+    return redirect('my_products')
+
+@login_required
+def edit_product_review(request, product_id):
+    product = get_object_or_404(Product, pk=product_id)
+    review = get_object_or_404(ProductReview, product=product, reviewer=request.user)
+
+    if request.method == 'POST':
+        form = ProductReviewForm(request.POST, instance=review)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Avaliação atualizada com sucesso')
+            return redirect('product_detail', product_id=product_id)
+    else:
+        form = ProductReviewForm(instance=review)
+
+    return render(request, 'catalog/review_product.html', {
+        'form': form,
+        'product': product,
+        'editing': True,
+    })

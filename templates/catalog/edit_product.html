@@ -1,0 +1,241 @@
+{% extends 'base.html' %}
+
+{% block title %}Editar anúncio — MegaGame{% endblock %}
+
+{% block content %}
+<div style="max-width:640px;margin:0 auto;">
+    <h2 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:32px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">
+        Editar anúncio
+    </h2>
+    <p style="font-size:15px;color:var(--gray-500);margin-bottom:32px;">
+        Produto: <strong style="color:var(--black);">{{ product.title }}</strong>
+    </p>
+
+    <form method="post" enctype="multipart/form-data" id="edit-form" novalidate>
+        {% csrf_token %}
+
+        <h3 style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:18px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--black);">
+            Informações do produto
+        </h3>
+
+        {% for field in product_form %}
+            <div class="form-group">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {{ field.errors }}
+            </div>
+        {% endfor %}
+
+        <h3 style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:18px;text-transform:uppercase;letter-spacing:0.06em;margin:32px 0 16px;padding-bottom:8px;border-bottom:2px solid var(--black);">
+            Imagens
+        </h3>
+
+        {% if image_error %}
+            <p style="color:var(--red);font-size:14px;margin-bottom:12px;">{{ image_error }}</p>
+        {% endif %}
+
+        {% if product.images.all %}
+            <p style="font-size:13px;text-transform:uppercase;letter-spacing:0.08em;color:var(--gray-500);margin-bottom:12px;">Imagens atuais</p>
+            <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:24px;">
+                {% for img in product.images.all %}
+                    <div style="position:relative;">
+                        <img src="{{ img.image.url }}" style="width:100px;height:100px;object-fit:cover;border-radius:6px;border:2px solid var(--gray-300);">
+                        <label style="position:absolute;top:4px;right:4px;background:var(--red);border-radius:4px;padding:2px 6px;cursor:pointer;display:flex;align-items:center;">
+                            <input type="checkbox" name="delete_images" value="{{ img.pk }}" style="display:none;">
+                            <span style="color:var(--white);font-size:11px;font-weight:700;">✕</span>
+                        </label>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% if product.images.count < 5 %}
+            <div class="form-group">
+                <label for="images" id="images-label">Adicionar imagens ({{ product.images.count }}/5, limite individual de 10MB)</label>
+                <div>
+                    <button type="button" onclick="document.getElementById('images').click()"
+                            class="btn" style="border:2px solid var(--black);">
+                        Escolher imagens
+                    </button>
+                    <input type="file" name="images" id="images" accept="image/*" multiple style="display:none;">
+                </div>
+                <p id="image-error-js" style="color:var(--red);font-size:13px;margin-top:8px;"></p>
+                <div id="new-image-previews" style="display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;"></div>
+            </div>
+        {% else %}
+            <p style="font-size:14px;color:var(--gray-500);margin-bottom:24px;">Limite de 5 imagens atingido.</p>
+        {% endif %}
+
+        <h3 style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:18px;text-transform:uppercase;letter-spacing:0.06em;margin:32px 0 16px;padding-bottom:8px;border-bottom:2px solid var(--black);">
+            Variações
+        </h3>
+
+        {{ variant_formset.management_form }}
+
+        {% if variant_formset.non_form_errors %}
+            <ul class="errorlist" style="margin-bottom:16px;">
+                {% for error in variant_formset.non_form_errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+        <div id="variant-list">
+            {% for form in variant_formset %}
+                <div class="variant-item" style="border:1px solid var(--gray-300);border-radius:8px;padding:20px;margin-bottom:12px;position:relative;">
+                    {% for field in form %}
+                        {% if field.is_hidden %}
+                            {{ field }}
+                        {% elif field.html_name|slice:"-7:" == '-DELETE' or field.html_name == 'product' %}
+                            <div style="display:none;">{{ field }}</div>
+                        {% else %}
+                            <div class="form-group">
+                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                                {{ field.errors }}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                    {% if form.non_field_errors %}
+                        <ul class="errorlist">
+                            {% for error in form.non_field_errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                    <button type="button" onclick="removeVariant(this)"
+                            style="position:absolute;top:12px;right:12px;background:none;border:none;cursor:pointer;color:var(--gray-500);font-size:18px;">✕</button>
+                </div>
+            {% endfor %}
+        </div>
+
+        <button type="button" onclick="addVariant()"
+                class="btn" style="width:100%;border:2px solid var(--black);margin-bottom:24px;">
+            + Adicionar variação
+        </button>
+
+        <button type="button" class="btn btn-primary" style="width:100%;"
+                onclick="document.getElementById('confirm-dialog').showModal()">
+            Salvar alterações
+        </button>
+    </form>
+</div>
+
+<dialog id="confirm-dialog" style="border:2px solid var(--black);border-radius:12px;padding:32px;max-width:400px;width:100%;">
+    <h3 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:24px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">
+        Salvar alterações?
+    </h3>
+    <p style="font-size:15px;color:var(--gray-500);margin-bottom:24px;">
+        As mudanças ficarão visíveis imediatamente para todos os usuários.
+    </p>
+    <div style="display:flex;gap:12px;">
+        <button type="button" class="btn" style="flex:1;border:2px solid var(--black);"
+                onclick="document.getElementById('confirm-dialog').close()">
+            Cancelar
+        </button>
+        <button type="submit" form="edit-form" class="btn btn-primary" style="flex:1;">
+            Confirmar
+        </button>
+    </div>
+</dialog>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+    const totalForms = document.getElementById('id_variants-TOTAL_FORMS');
+
+    function getNextIndex() {
+        return parseInt(totalForms.value);
+    }
+
+    function addVariant() {
+        const list = document.getElementById('variant-list');
+        const index = getNextIndex();
+        const div = document.createElement('div');
+        div.className = 'variant-item';
+        div.style.cssText = 'border:1px solid var(--gray-300);border-radius:8px;padding:20px;margin-bottom:12px;position:relative;';
+        div.innerHTML = `
+            <div class="form-group">
+                <label>Variação</label>
+                <input type="text" name="variants-${index}-name" maxlength="100">
+            </div>
+            <div class="form-group">
+                <label>Preço (em reais)</label>
+                <input type="number" name="variants-${index}-price" step="0.01" min="0.01">
+            </div>
+            <div class="form-group">
+                <label>Quantidade em estoque</label>
+                <input type="number" name="variants-${index}-quantity" value="1" min="1">
+            </div>
+            <input type="hidden" name="variants-${index}-id" value="">
+            <button type="button" onclick="removeVariant(this)"
+                    style="position:absolute;top:12px;right:12px;background:none;border:none;cursor:pointer;color:var(--gray-500);font-size:18px;">✕</button>
+        `;
+        list.appendChild(div);
+        totalForms.value = index + 1;
+    }
+
+    function removeVariant(btn) {
+        const list = document.getElementById('variant-list');
+        const visibleItems = list.querySelectorAll('.variant-item:not([style*="display: none"])');
+
+        if (visibleItems.length <= 1) return;
+
+        const item = btn.closest('.variant-item');
+        const deleteInput = item.querySelector('input[id$="-DELETE"]');
+
+        if (deleteInput) {
+            deleteInput.checked = true;
+            item.style.display = 'none';
+        } else {
+            item.remove();
+        }
+    }
+
+    const imageInput = document.getElementById('images');
+    const imageLabel = document.getElementById('images-label');
+
+    if (imageInput && imageLabel) {
+        const existingCount = parseInt("{{ product.images.count }}");
+        const imageErrorEl = document.getElementById('image-error-js');
+
+        imageInput.addEventListener('change', () => {
+            const files = Array.from(imageInput.files);
+            const maxSize = 10 * 1024 * 1024;
+            const previewContainer = document.getElementById('new-image-previews');
+            previewContainer.innerHTML = '';
+            imageErrorEl.textContent = '';
+
+            const grandes = files.filter(f => f.size > maxSize).map(f => f.name);
+            if (grandes.length > 0) {
+                imageErrorEl.textContent = `As seguintes imagens excedem o limite de 10MB: ${grandes.join(', ')}`;
+                imageInput.value = '';
+                imageLabel.textContent = `Adicionar imagens (${existingCount}/5, limite individual de 10MB)`;
+                return;
+            }
+
+            const total = existingCount + files.length;
+            if (total > 5) {
+                imageErrorEl.textContent = `Você pode adicionar no máximo ${5 - existingCount} imagem(ns) a mais`;
+                imageInput.value = '';
+                imageLabel.textContent = `Adicionar imagens (${existingCount}/5, limite individual de 10MB)`;
+                return;
+            }
+
+            imageLabel.textContent = `Adicionar imagens (${total}/5, limite individual de 10MB)`;
+
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.cssText = 'width:100px;height:100px;object-fit:cover;border-radius:6px;border:2px solid var(--gray-300);';
+                    previewContainer.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            });
+        });
+    }
+</script>
+{% endblock %}

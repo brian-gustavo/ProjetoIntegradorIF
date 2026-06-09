@@ -91,3 +91,23 @@ def review_seller(request, seller_id):
         'form': form,
         'seller': seller,
     })
+
+@login_required
+def edit_seller_review(request, seller_id):
+    seller = get_object_or_404(User, pk=seller_id)
+    review = get_object_or_404(SellerReview, seller=seller, reviewer=request.user)
+
+    if request.method == 'POST':
+        form = ReviewForm(request.POST, instance=review)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Avaliação de {seller.username} atualizada com sucesso')
+            return redirect('my_orders')
+    else:
+        form = ReviewForm(instance=review)
+
+    return render(request, 'accounts/review_seller.html', {
+        'form': form,
+        'seller': seller,
+        'editing': True,
+    })

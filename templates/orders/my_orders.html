@@ -64,9 +64,19 @@
                         Avaliar vendedor
                     </a>
                 {% endif %}
+                {% if order.status == 'COMPLETED' and order.seller_reviewed %}
+                    <a href="{% url 'edit_seller_review' order.product.seller.pk %}" class="btn" style="padding:8px 20px;font-size:14px;border:2px solid var(--black);">
+                        Editar avaliação do vendedor
+                    </a>
+                {% endif %}
                 {% if order.status == 'COMPLETED' and not order.product_reviewed %}
                     <a href="{% url 'review_product' order.product.pk %}" class="btn btn-primary" style="padding:8px 20px;font-size:14px;">
                         Avaliar produto
+                    </a>
+                {% endif %}
+                {% if order.status == 'COMPLETED' and order.product_reviewed %}
+                    <a href="{% url 'edit_product_review' order.product.pk %}" class="btn" style="padding:8px 20px;font-size:14px;border:2px solid var(--black);">
+                        Editar avaliação do produto
                     </a>
                 {% endif %}
             </div>
