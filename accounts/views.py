@@ -68,8 +68,9 @@ def review_seller(request, seller_id):
         messages.error(request, 'Você já avaliou este vendedor.')
         return redirect('my_orders')
 
+    POST_DELIVERY_STATUSES = ('DELIVERED', 'RETURN_WINDOW', 'RETURN_REQUESTED', 'RETURN_ACCEPTED', 'RETURNED', 'CANCELLED_NO_RETURN', 'COMPLETED')
     has_delivered_order = request.user.orders.filter(
-        product__seller=seller, status='DELIVERED'
+        product__seller=seller, status__in=POST_DELIVERY_STATUSES
     ).exists()
     if not has_delivered_order:
         messages.error(request, 'Você só pode avaliar vendedores de pedidos entregues.')

@@ -45,16 +45,17 @@ def product_detail(request, product_id):
         already_reviewed_product = ProductReview.objects.filter(
             product=product, reviewer=request.user
         ).exists()
+        POST_DELIVERY_STATUSES = ('DELIVERED', 'RETURN_WINDOW', 'RETURN_REQUESTED', 'RETURN_ACCEPTED', 'RETURNED', 'CANCELLED_NO_RETURN', 'COMPLETED')
         can_review_product = (
             not already_reviewed_product
-            and request.user.orders.filter(product=product, status='DELIVERED').exists()
+            and request.user.orders.filter(product=product, status__in=POST_DELIVERY_STATUSES).exists()
         )
         already_reviewed_seller = SellerReview.objects.filter(
             seller=product.seller, reviewer=request.user
         ).exists()
         can_review_seller = (
             not already_reviewed_seller
-            and request.user.orders.filter(product__seller=product.seller, status='DELIVERED').exists()
+            and request.user.orders.filter(product__seller=product.seller, status__in=POST_DELIVERY_STATUSES).exists()
         )
 
     return render(request, 'catalog/product_detail.html', {
@@ -181,8 +182,9 @@ def review_product(request, product_id):
         messages.error(request, 'Você já avaliou este produto.')
         return redirect('product_detail', product_id=product_id)
 
+    POST_DELIVERY_STATUSES = ('DELIVERED', 'RETURN_WINDOW', 'RETURN_REQUESTED', 'RETURN_ACCEPTED', 'RETURNED', 'CANCELLED_NO_RETURN', 'COMPLETED')
     has_delivered_order = request.user.orders.filter(
-        product=product, status='DELIVERED'
+        product=product, status__in=POST_DELIVERY_STATUSES
     ).exists()
     if not has_delivered_order:
         messages.error(request, 'Você só pode avaliar produtos de pedidos entregues.')
