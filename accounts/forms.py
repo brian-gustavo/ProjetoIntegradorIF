@@ -54,6 +54,14 @@ class ReviewForm(forms.ModelForm):
         widget=forms.NumberInput(attrs={'step': '0.5', 'min': '0.5', 'max': '5.0'})
     )
 
+    def clean_rating(self):
+        rating = self.cleaned_data.get('rating')
+        if rating is not None:
+            from decimal import Decimal
+            if rating % Decimal('0.5') != 0:
+                raise forms.ValidationError('A nota deve ser um múltiplo de 0,5 (ex: 1,0 / 1,5 / 2,0...)')
+        return rating
+
     class Meta:
         model = SellerReview
-        fields = ('rating', 'comment')
+        fields = ('rating',)

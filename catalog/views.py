@@ -291,10 +291,16 @@ def edit_product_review(request, product_id):
     product = get_object_or_404(Product, pk=product_id)
     review = get_object_or_404(ProductReview, product=product, reviewer=request.user)
 
+    if review.edited:
+        messages.error(request, 'Você só pode editar sua avaliação uma vez.')
+        return redirect('product_detail', product_id=product_id)
+
     if request.method == 'POST':
         form = ProductReviewForm(request.POST, instance=review)
         if form.is_valid():
-            form.save()
+            r = form.save(commit=False)
+            r.edited = True
+            r.save()
             messages.success(request, 'Avaliação atualizada com sucesso')
             return redirect('product_detail', product_id=product_id)
     else:

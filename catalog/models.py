@@ -80,6 +80,7 @@ class ProductReview(models.Model):
     )
     comment = models.TextField(blank=True, verbose_name="Comentário")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Criado em")
+    edited = models.BooleanField(default=False, verbose_name="Já editado?")
 
     class Meta:
         verbose_name = "Avaliação de produto"

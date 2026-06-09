@@ -98,10 +98,16 @@ def edit_seller_review(request, seller_id):
     seller = get_object_or_404(User, pk=seller_id)
     review = get_object_or_404(SellerReview, seller=seller, reviewer=request.user)
 
+    if review.edited:
+        messages.error(request, 'Você só pode editar sua avaliação uma vez.')
+        return redirect('my_orders')
+
     if request.method == 'POST':
         form = ReviewForm(request.POST, instance=review)
         if form.is_valid():
-            form.save()
+            r = form.save(commit=False)
+            r.edited = True
+            r.save()
             messages.success(request, f'Avaliação de {seller.username} atualizada com sucesso')
             return redirect('my_orders')
     else:

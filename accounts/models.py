@@ -42,7 +42,8 @@ class SellerReview(models.Model):
         verbose_name="Nota"
     )
     comment = models.TextField(blank=True, verbose_name="Comentário")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Criado em")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Criada em")
+    edited = models.BooleanField(default=False, verbose_name="Já editada?")
 
     class Meta:
         verbose_name = "Avaliação"
