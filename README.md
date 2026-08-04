@@ -7,13 +7,12 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
 *Produtos a serem vendidos:* Jogos físicos, consoles, acessórios para consoles, jogos de tabuleiro, keys para jogos digitais, itens *in-game*, pôsteres, *action figures* e *bottons*
 
 *Requisitos faltantes:*
-- Povoar o banco de dados para testes em larga escala (é necessário estudar a melhor forma de realizar isso; talvez importando de um arquivo CSV?)
-- Criar manuais de uso para as páginas
-- Implementar novas funcionalidades (gamificação, cupons de desconto, filtros de busca, etc.)
+- PRIORIDADE: Povoar o banco de dados para testes em larga escala (é necessário estudar a melhor forma de realizar isso; talvez importando de um arquivo CSV?)
+- PRIORIDADE: Criar manuais de uso para as páginas (serão embarcados no sistema)
+- PRIORIDADE: Implementar filtros de busca
+- PRIORIDADE: Implementar um sistema de disputa
+- Implementar funcionalidades secundárias (gamificação, cupons de desconto, etc.)
 - Implementar uma API de pagamento real (provavelmente Stripe?)
-- Implementar um sistema de disputa
-- Fornecer suporte para transportadoras além dos Correios
-
-*Ideias pro futuro:*
-- Estudar a possibilidade de permitir trocas na plataforma
-- Considerar suporte internacional (ou seja, possibilitar uso fora do Brasil)
+- Fornecer suporte para APIs de transportadoras além dos Correios
+- Permitir trocas na plataforma
+- Permitir um "modo leilão" na plataforma (similar ao eBay)
