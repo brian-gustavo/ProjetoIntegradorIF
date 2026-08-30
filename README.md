@@ -7,7 +7,7 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
 *Produtos a serem vendidos:* Jogos físicos, consoles, acessórios para consoles, jogos de tabuleiro, keys para jogos digitais, itens *in-game*, pôsteres, *action figures* e *bottons*
 
 *Requisitos faltantes:*
-- PRIORIDADE: Povoar o banco de dados para testes em larga escala (é necessário estudar a melhor forma de realizar isso; talvez importando de um arquivo CSV?)
+- PRIORIDADE: Fazer paginação
 - PRIORIDADE: Criar manuais de uso para as páginas (serão embarcados no sistema)
 - PRIORIDADE: Implementar filtros de busca
 - PRIORIDADE: Implementar um sistema de disputa
