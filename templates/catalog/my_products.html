@@ -140,5 +140,16 @@
             </div>
         {% endfor %}
     </div>
+    {% if produtos.paginator.num_pages > 1 %}
+    <div style="display:flex;justify-content:center;align-items:center;gap:16px;margin-top:40px;">
+        {% if produtos.has_previous %}
+            <a href="?page={{ produtos.previous_page_number }}" class="btn" style="border:2px solid var(--black);padding:8px 20px;">Anterior</a>
+        {% endif %}
+        <span style="font-size:14px;color:var(--gray-500);">Página {{ produtos.number }} de {{ produtos.paginator.num_pages }}</span>
+        {% if produtos.has_next %}
+            <a href="?page={{ produtos.next_page_number }}" class="btn btn-primary" style="padding:8px 20px;">Próxima</a>
+        {% endif %}
+    </div>
+    {% endif %}
 {% endif %}
 {% endblock %}

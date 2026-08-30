@@ -41,8 +41,8 @@ class Product(models.Model):
 
     @property
     def base_price(self):
-        variant = self.variants.order_by('price').first()
-        return variant.price if variant else None
+        variants = list(self.variants.all())
+        return min((v.price for v in variants), default=None)
 
     @property
     def total_stock(self):

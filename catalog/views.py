@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Avg, Sum
+from django.core.paginator import Paginator
+from django.db.models import Avg, Count, Sum
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 
@@ -11,11 +12,16 @@ from accounts.models import SellerReview
 def home(request):
     categorias = Category.objects.all()
     query = request.GET.get('q', '').strip()
-    produtos = Product.objects.filter(published=True, deleted=False).annotate(
+    produtos_qs = Product.objects.filter(published=True, deleted=False).annotate(
         stock_total=Sum('variants__quantity')
-    ).filter(stock_total__gt=0)
+    ).filter(stock_total__gt=0).select_related('seller__profile').prefetch_related('images', 'variants').order_by('-created_at')
+
     if query:
-        produtos = produtos.filter(title__icontains=query)
+        produtos_qs = produtos_qs.filter(title__icontains=query)
+
+    paginator = Paginator(produtos_qs, 24)
+    produtos = paginator.get_page(request.GET.get('page'))
+
     return render(request, 'home.html', {
         'categorias': categorias,
         'produtos': produtos,
@@ -72,9 +78,13 @@ def product_detail(request, product_id):
 
 def category_detail(request, slug):
     category = get_object_or_404(Category, slug=slug)
-    produtos = Product.objects.filter(category=category, published=True, deleted=False).annotate(
+    produtos_qs = Product.objects.filter(category=category, published=True, deleted=False).annotate(
         stock_total=Sum('variants__quantity')
-    ).filter(stock_total__gt=0)
+    ).filter(stock_total__gt=0).select_related('seller__profile').prefetch_related('images', 'variants').order_by('-created_at')
+
+    paginator = Paginator(produtos_qs, 24)
+    produtos = paginator.get_page(request.GET.get('page'))
+
     return render(request, 'catalog/category_detail.html', {
         'category': category,
         'produtos': produtos,
@@ -148,9 +158,16 @@ def manage_variants(request, product_id):
     })
 
 def my_products(request):
-    qs = Product.objects.filter(seller=request.user, deleted=False).order_by('-created_at')
-    produtos = [p for p in qs if p.variants.exists()]
-    rascunhos = [p for p in qs if not p.variants.exists()]
+    qs = Product.objects.filter(seller=request.user, deleted=False).annotate(
+        variant_count=Count('variants')
+    ).prefetch_related('images', 'variants').order_by('-created_at')
+
+    produtos_qs = qs.filter(variant_count__gt=0)
+    rascunhos = qs.filter(variant_count=0)
+
+    paginator = Paginator(produtos_qs, 24)
+    produtos = paginator.get_page(request.GET.get('page'))
+
     return render(request, 'catalog/my_products.html', {
         'produtos': produtos,
         'rascunhos': rascunhos,
