@@ -73,6 +73,14 @@
                 <a href="{% url 'accept_no_return' order.pk %}" class="btn" style="padding:8px 20px;font-size:14px;border:2px solid var(--black);">
                     Reembolsar sem devolução física
                 </a>
+                <a href="{% url 'open_dispute' order.pk %}" class="btn" style="padding:8px 20px;font-size:14px;border:2px solid var(--black);">
+                    Abrir disputa
+                </a>
+            {% endif %}
+            {% if order.status == 'DISPUTE_OPEN' %}
+                <a href="{% url 'dispute_detail' order.dispute.pk %}" class="btn btn-primary" style="padding:8px 20px;font-size:14px;">
+                    Ver disputa
+                </a>
             {% endif %}
             {% if order.status == 'RETURN_ACCEPTED' %}
                 <a href="{% url 'confirm_return_received' order.pk %}" class="btn btn-primary" style="padding:8px 20px;font-size:14px;">

@@ -21,6 +21,7 @@ class Order(models.Model):
         ('DELIVERED', 'Entregue'),
         ('RETURN_WINDOW', 'Período de devolução'),
         ('RETURN_REQUESTED', 'Devolução solicitada'),
+        ('DISPUTE_OPEN', 'Em disputa'),
         ('RETURN_ACCEPTED', 'Devolução aceita'),
         ('RETURNED', 'Devolvido'),
         ('CANCELLED_NO_RETURN', 'Cancelado sem devolução'),
@@ -109,3 +110,40 @@ class Commission(models.Model):
 
     def __str__(self):
         return f"Comissão do pedido #{self.order.pk}"
+
+class Dispute(models.Model):
+    STATUS_CHOICES = [
+        ('OPEN', 'Aberta'),
+        ('RESOLVED_BUYER_RETURN', 'A favor do comprador (com devolução)'),
+        ('RESOLVED_BUYER_REFUND', 'A favor do comprador (sem devolução)'),
+        ('RESOLVED_SELLER', 'A favor do vendedor'),
+    ]
+
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='dispute', verbose_name="Pedido")
+    opened_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='disputes_opened', verbose_name="Aberta por")
+    reason = models.TextField(verbose_name="Motivo")
+    status = models.CharField(max_length=25, choices=STATUS_CHOICES, default='OPEN', verbose_name="Status")
+    resolution_notes = models.TextField(blank=True, verbose_name="Notas da resolução")
+    resolved_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='disputes_resolved', verbose_name="Resolvida por")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Criada em")
+    resolved_at = models.DateTimeField(null=True, blank=True, verbose_name="Resolvida em")
+
+    class Meta:
+        verbose_name = "Disputa"
+        verbose_name_plural = "Disputas"
+
+    def __str__(self):
+        return f"Disputa #{self.pk} — Pedido #{self.order.pk}"
+
+class DisputeMessage(models.Model):
+    dispute = models.ForeignKey(Dispute, on_delete=models.CASCADE, related_name='messages', verbose_name="Disputa")
+    author = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="Autor")
+    message = models.TextField(verbose_name="Mensagem")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Enviada em")
+
+    class Meta:
+        verbose_name = "Mensagem de disputa"
+        verbose_name_plural = "Mensagens de disputa"
+
+    def __str__(self):
+        return f"{self.author.username} em Disputa #{self.dispute_id}"

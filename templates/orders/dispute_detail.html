@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}Disputa #{{ dispute.pk }} — MegaGame{% endblock %}
+
+{% block content %}
+<div style="max-width:720px;margin:0 auto;">
+    <h2 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:32px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">
+        Disputa #{{ dispute.pk }}
+    </h2>
+    <p style="font-size:15px;color:var(--gray-500);margin-bottom:8px;">
+        Pedido: <strong style="color:var(--black);">{{ order.product.title }} — {{ order.variant.name }}</strong>
+    </p>
+    <p style="font-size:14px;color:var(--gray-500);margin-bottom:32px;">
+        Comprador: <strong style="color:var(--black);">{{ order.buyer.username }}</strong> ·
+        Vendedor: <strong style="color:var(--black);">{{ order.product.seller.username }}</strong> ·
+        <span class="badge {% if dispute.status == 'OPEN' %}badge-progress{% else %}badge-paid{% endif %}">{{ dispute.get_status_display }}</span>
+    </p>
+
+    <div style="border:2px solid var(--black);border-radius:12px;padding:24px;margin-bottom:24px;">
+        <p style="font-size:13px;text-transform:uppercase;letter-spacing:0.08em;color:var(--gray-500);margin-bottom:8px;">Motivo original</p>
+        <p style="font-size:14px;color:#333;line-height:1.6;">{{ dispute.reason }}</p>
+    </div>
+
+    {% if dispute.status != 'OPEN' %}
+        <div style="border:2px solid var(--green);border-radius:12px;padding:24px;margin-bottom:24px;">
+            <p style="font-size:13px;text-transform:uppercase;letter-spacing:0.08em;color:var(--green-dark);margin-bottom:8px;">Resolução</p>
+            <p style="font-size:14px;color:#333;line-height:1.6;margin-bottom:8px;">{{ dispute.resolution_notes }}</p>
+            <p style="font-size:12px;color:var(--gray-500);">Decidido por {{ dispute.resolved_by.username }} em {{ dispute.resolved_at|date:"d/m/Y" }}</p>
+        </div>
+    {% elif resolution_form %}
+        <div style="border:2px solid var(--black);border-radius:12px;padding:24px;margin-bottom:24px;">
+            <p style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:16px;">
+                Resolver disputa
+            </p>
+            <form method="post" action="{% url 'resolve_dispute' dispute.pk %}" novalidate>
+                {% csrf_token %}
+                {% for field in resolution_form %}
+                    <div class="form-group">
+                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {{ field.errors }}
+                    </div>
+                {% endfor %}
+                <button type="submit" class="btn btn-primary" style="width:100%;">Confirmar decisão</button>
+            </form>
+        </div>
+    {% endif %}
+
+    <p style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:16px;">
+        Mensagens
+    </p>
+    {% for msg in dispute.messages.all %}
+        <div style="border:1px solid var(--gray-300);border-radius:8px;padding:16px;margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                <strong style="font-size:14px;">{{ msg.author.username }}{% if msg.author.is_staff %} (equipe){% endif %}</strong>
+                <span style="font-size:12px;color:var(--gray-500);">{{ msg.created_at|date:"d/m/Y H:i" }}</span>
+            </div>
+            <p style="font-size:14px;color:#333;line-height:1.5;">{{ msg.message }}</p>
+        </div>
+    {% empty %}
+        <p style="color:var(--gray-500);font-size:14px;margin-bottom:16px;">Nenhuma mensagem ainda</p>
+    {% endfor %}
+
+    <form method="post" style="margin-top:20px;">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="{{ message_form.message.id_for_label }}">{{ message_form.message.label }}</label>
+            {{ message_form.message }}
+            {{ message_form.message.errors }}
+        </div>
+        <button type="submit" name="send_message" class="btn btn-primary">Enviar mensagem</button>
+    </form>
+</div>
+{% endblock %}

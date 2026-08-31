@@ -8,9 +8,7 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
 
 *Requisitos faltantes:*
 - PRIORIDADE: Criar manuais de uso para as páginas (serão embarcados no sistema)
-- PRIORIDADE: Implementar o sistema de disputa
 - Implementar funcionalidades secundárias (gamificação, cupons de desconto, etc.)
-- Implementar a API do Mercado Pago
 - Fornecer suporte para APIs de transportadoras de modo geral (ou seja, além dos Correios)
 - Permitir trocas na plataforma
 - Permitir um "modo leilão" na plataforma (similar ao eBay)

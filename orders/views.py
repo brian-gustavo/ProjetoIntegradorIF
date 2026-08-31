@@ -1,10 +1,13 @@
+from datetime import timedelta
 from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.shortcuts import render, redirect, get_object_or_404
+from django.utils import timezone
 
-from .models import Order, Cart, CartItem, generate_tracking_code, PlatformConfig, Commission
+from .forms import DisputeForm, DisputeMessageForm, DisputeResolutionForm
+from .models import Order, Cart, CartItem, generate_tracking_code, PlatformConfig, Commission, Dispute, DisputeMessage
 from catalog.models import Product, ProductVariant
 
 @login_required
@@ -124,6 +127,11 @@ def my_orders(request):
         order.seller_review_edited = order.product.seller.pk in edited_seller_reviews
         order.product_reviewed = order.product.pk in reviewed_products
         order.product_review_edited = order.product.pk in edited_product_reviews
+        order.can_contest = (
+            order.status == 'CANCELLED_NO_RETURN'
+            and not hasattr(order, 'dispute')
+            and timezone.now() - order.updated_at <= timedelta(days=DISPUTE_WINDOW_DAYS)
+        )
 
     return render(request, 'orders/my_orders.html', {'orders': orders})
 
@@ -416,3 +424,143 @@ def update_cart_item(request, item_id):
             item.save()
 
     return redirect('cart_detail')
+
+DISPUTE_WINDOW_DAYS = 7
+
+@login_required
+def open_dispute(request, order_id):
+    order = get_object_or_404(Order, pk=order_id)
+
+    if request.user != order.buyer and request.user != order.product.seller:
+        return redirect('home')
+
+    if order.status != 'RETURN_REQUESTED' or hasattr(order, 'dispute'):
+        return redirect('my_orders')
+
+    if request.method == 'POST':
+        form = DisputeForm(request.POST)
+        if form.is_valid():
+            dispute = form.save(commit=False)
+            dispute.order = order
+            dispute.opened_by = request.user
+            dispute.save()
+            order.status = 'DISPUTE_OPEN'
+            order.save()
+            messages.success(request, 'Disputa aberta. A equipe do MegaGame vai analisar o caso.')
+            return redirect('dispute_detail', dispute_id=dispute.pk)
+    else:
+        form = DisputeForm()
+
+    return render(request, 'orders/open_dispute.html', {'order': order, 'form': form})
+
+@login_required
+def contest_decision(request, order_id):
+    order = get_object_or_404(Order, pk=order_id, buyer=request.user)
+
+    if order.status != 'CANCELLED_NO_RETURN' or hasattr(order, 'dispute'):
+        return redirect('my_orders')
+
+    if timezone.now() - order.updated_at > timedelta(days=DISPUTE_WINDOW_DAYS):
+        messages.error(request, 'O prazo para contestar essa decisão já passou.')
+        return redirect('my_orders')
+
+    if request.method == 'POST':
+        form = DisputeForm(request.POST)
+        if form.is_valid():
+            dispute = form.save(commit=False)
+            dispute.order = order
+            dispute.opened_by = request.user
+            dispute.save()
+            order.status = 'DISPUTE_OPEN'
+            order.save()
+            messages.success(request, 'Contestação registrada. A equipe do MegaGame vai analisar o caso.')
+            return redirect('dispute_detail', dispute_id=dispute.pk)
+    else:
+        form = DisputeForm()
+
+    return render(request, 'orders/open_dispute.html', {'order': order, 'form': form, 'contesting': True})
+
+@login_required
+def dispute_detail(request, dispute_id):
+    dispute = get_object_or_404(Dispute, pk=dispute_id)
+    order = dispute.order
+
+    is_participant = request.user in (order.buyer, order.product.seller)
+    if not is_participant and not request.user.is_staff:
+        return redirect('home')
+
+    if request.method == 'POST' and 'send_message' in request.POST:
+        message_form = DisputeMessageForm(request.POST)
+        if message_form.is_valid():
+            msg = message_form.save(commit=False)
+            msg.dispute = dispute
+            msg.author = request.user
+            msg.save()
+            return redirect('dispute_detail', dispute_id=dispute.pk)
+    else:
+        message_form = DisputeMessageForm()
+
+    resolution_form = DisputeResolutionForm() if request.user.is_staff and dispute.status == 'OPEN' else None
+
+    return render(request, 'orders/dispute_detail.html', {
+        'dispute': dispute,
+        'order': order,
+        'message_form': message_form,
+        'resolution_form': resolution_form,
+    })
+
+@login_required
+def resolve_dispute(request, dispute_id):
+    if not request.user.is_staff:
+        return redirect('home')
+
+    dispute = get_object_or_404(Dispute, pk=dispute_id)
+    order = dispute.order
+
+    if dispute.status != 'OPEN':
+        return redirect('dispute_detail', dispute_id=dispute.pk)
+
+    if request.method == 'POST':
+        form = DisputeResolutionForm(request.POST)
+        if form.is_valid():
+            resolution = form.cleaned_data['resolution']
+            dispute.resolution_notes = form.cleaned_data['resolution_notes']
+            dispute.resolved_by = request.user
+            dispute.resolved_at = timezone.now()
+
+            if resolution == 'buyer_return':
+                dispute.status = 'RESOLVED_BUYER_RETURN'
+                order.status = 'RETURN_ACCEPTED'
+            elif resolution == 'buyer_refund':
+                dispute.status = 'RESOLVED_BUYER_REFUND'
+                order.status = 'CANCELLED_NO_RETURN'
+                if hasattr(order, 'commission'):
+                    order.commission.delete()
+            else:
+                dispute.status = 'RESOLVED_SELLER'
+                order.status = 'COMPLETED'
+                if not hasattr(order, 'commission'):
+                    rate = PlatformConfig.get_commission_rate()
+                    gross = order.total_price
+                    commission_amount = (gross * rate / Decimal('100')).quantize(Decimal('0.01'))
+                    Commission.objects.create(
+                        order=order, rate=rate, gross_amount=gross,
+                        commission_amount=commission_amount, net_amount=gross - commission_amount,
+                    )
+
+            dispute.save()
+            order.save()
+            messages.success(request, 'Disputa resolvida')
+            return redirect('dispute_detail', dispute_id=dispute.pk)
+
+    return redirect('dispute_detail', dispute_id=dispute.pk)
+
+@login_required
+def dispute_list(request):
+    if not request.user.is_staff:
+        return redirect('home')
+
+    disputes = Dispute.objects.filter(status='OPEN').select_related(
+        'order', 'order__product', 'order__buyer'
+    ).order_by('created_at')
+    return render(request, 'orders/dispute_list.html', {'disputes': disputes})
