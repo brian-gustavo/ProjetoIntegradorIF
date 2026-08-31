@@ -1,8 +1,11 @@
+import requests
 from datetime import timedelta
 from decimal import Decimal
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
+from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 
@@ -564,3 +567,34 @@ def dispute_list(request):
         'order', 'order__product', 'order__buyer'
     ).order_by('created_at')
     return render(request, 'orders/dispute_list.html', {'disputes': disputes})
+
+@login_required
+def track_order(request, order_id):
+    order = get_object_or_404(Order, pk=order_id)
+
+    if request.user not in (order.buyer, order.product.seller):
+        return JsonResponse({'error': 'Não autorizado'}, status=403)
+
+    if not order.tracking_code:
+        return JsonResponse({'error': 'Este pedido não possui código de rastreio'}, status=400)
+
+    try:
+        response = requests.post(
+            'https://api-labs.wonca.com.br/wonca.labs.v1.LabsService/Track',
+            json={'code': order.tracking_code},
+            headers={
+                'Content-Type': 'application/json',
+                'Authorization': f'Apikey {settings.SITERASTREIO_API_KEY}',
+                'User-Agent': 'Mozilla/5.0 (compatible; MegaGame/1.0)',
+                'Accept': 'application/json',
+            },
+            timeout=10,
+        )
+        response.raise_for_status()
+        data = response.json()
+    except requests.exceptions.HTTPError:
+        return JsonResponse({'error': f'Erro ao consultar rastreio (HTTP {response.status_code})'}, status=502)
+    except requests.exceptions.RequestException:
+        return JsonResponse({'error': 'Não foi possível consultar o rastreio no momento'}, status=502)
+
+    return JsonResponse(data, safe=False)

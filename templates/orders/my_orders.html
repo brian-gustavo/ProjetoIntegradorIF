@@ -104,8 +104,8 @@
                     ▶ Rastreio — {{ order.tracking_code }}
                 </summary>
                 <div id="tracking-result-{{ order.pk }}" style="margin-top:16px;font-size:14px;color:var(--gray-500);">
-                    <button data-order="{{ order.pk }}" data-code="{{ order.tracking_code }}"
-                            onclick="fetchTracking(this.dataset.code, this.dataset.order)"
+                        <button data-order="{{ order.pk }}"
+                            onclick="fetchTracking(this.dataset.order)"
                             class="btn btn-primary" style="padding:8px 20px;font-size:14px;">
                         Consultar rastreio
                     </button>
@@ -122,25 +122,34 @@
 {% block extra_js %}
 {{ block.super }}
 <script>
-function fetchTracking(code, orderId) {
+function fetchTracking(orderId) {
     const container = document.getElementById('tracking-result-' + orderId);
     container.innerHTML = '<p>Consultando...</p>';
 
-    fetch(`https://api.linketrack.com/track/json?user=teste&token=1abcd00b2731640422a3c3b16e5a2c95d72c1a87c4567891234abcdef0123456&codigo=${code}`)
+    fetch(`/pedidos/${orderId}/rastreio/`)
         .then(res => res.json())
         .then(data => {
-            if (!data.eventos || data.eventos.length === 0) {
-                container.innerHTML = '<p>Nenhum evento encontrado para este código</p>';
+            if (data.error) {
+                container.innerHTML = `<p style="color:var(--red);">${data.error}</p>`;
                 return;
             }
-            const eventos = data.eventos.map(e => `
+
+            const eventos = data.events || data.eventos || data.tracking || null;
+
+            if (!eventos || !Array.isArray(eventos) || eventos.length === 0) {
+                container.innerHTML = `
+                    <p>Não conseguimos exibir os eventos no formato esperado ainda.</p>
+                    <pre style="background:var(--gray-100);padding:12px;border-radius:6px;font-size:11px;overflow-x:auto;white-space:pre-wrap;">${JSON.stringify(data, null, 2)}</pre>
+                `;
+                return;
+            }
+
+            container.innerHTML = eventos.map(e => `
                 <div style="border-left:3px solid var(--green);padding-left:12px;margin-bottom:12px;">
-                    <p style="font-weight:600;color:var(--black);">${e.status}</p>
-                    <p style="color:var(--gray-500);">${e.subStatus ? e.subStatus.join(' ') : ''}</p>
-                    <p style="font-size:12px;color:var(--gray-500);margin-top:4px;">${e.data} ${e.hora} — ${e.local}</p>
+                    <p style="font-weight:600;color:var(--black);">${e.status || e.description || ''}</p>
+                    <p style="font-size:12px;color:var(--gray-500);margin-top:4px;">${e.date || e.data || ''} ${e.location || e.local || ''}</p>
                 </div>
             `).join('');
-            container.innerHTML = eventos;
         })
         .catch(() => {
             container.innerHTML = '<p style="color:var(--red);">Não foi possível consultar o rastreio no momento</p>';

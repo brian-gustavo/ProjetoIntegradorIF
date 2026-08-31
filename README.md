@@ -7,9 +7,9 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
 *Produtos a serem vendidos:* Jogos físicos, consoles, acessórios para consoles, jogos de tabuleiro, keys para jogos digitais, itens *in-game*, pôsteres, *action figures* e *bottons*
 
 *Requisitos faltantes:*
+- EM PROGRESSO: Implementar o Mercado Pago no sistema
 - PRIORIDADE: Criar manuais de uso para as páginas (serão embarcados no sistema)
 - Implementar funcionalidades secundárias (gamificação, cupons de desconto, etc.)
-- Fornecer suporte para APIs de transportadoras de modo geral (ou seja, além dos Correios)
 - Permitir trocas na plataforma
 - Permitir um "modo leilão" na plataforma (similar ao eBay)
 - ADICIONAL: Consertar e aprimorar os testes

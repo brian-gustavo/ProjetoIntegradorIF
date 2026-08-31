@@ -10,6 +10,8 @@ ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 SECRET_KEY = config('SECRET_KEY')
 
+SITERASTREIO_API_KEY = config('SITERASTREIO_API_KEY')
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',

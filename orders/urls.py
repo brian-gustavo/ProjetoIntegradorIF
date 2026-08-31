@@ -31,4 +31,5 @@ urlpatterns = [
     path('disputas/', views.dispute_list, name='dispute_list'),
     path('disputas/<int:dispute_id>/', views.dispute_detail, name='dispute_detail'),
     path('disputas/<int:dispute_id>/resolver/', views.resolve_dispute, name='resolve_dispute'),
+    path('pedidos/<int:order_id>/rastreio/', views.track_order, name='track_order'),
 ]
