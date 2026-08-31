@@ -5,33 +5,46 @@
 
 {% block content %}
 <h2 class="section-header">Na categoria "{{ category.name }}"</h2>
-<div class="product-grid">
-    {% for prod in produtos %}
-        <a href="{% url 'product_detail' prod.pk %}" class="product-card">
-            {% if prod.images.all %}
-                <img class="product-card-img" src="{{ prod.images.first.image.url }}" alt="{{ prod.title }}">
-            {% else %}
-                <div class="product-card-img-placeholder">Sem foto</div>
+<div style="display:grid;grid-template-columns:260px 1fr;gap:32px;align-items:start;">
+    {% include 'catalog/_filters_sidebar.html' %}
+    <div>
+        <div class="product-grid">
+            {% for prod in produtos %}
+                <a href="{% url 'product_detail' prod.pk %}" class="product-card">
+                    {% if prod.images.all %}
+                        <img class="product-card-img" src="{{ prod.images.first.image.url }}" alt="{{ prod.title }}">
+                    {% else %}
+                        <div class="product-card-img-placeholder">Sem foto</div>
+                    {% endif %}
+                    <div class="product-card-body">
+                        <div class="product-card-title">{{ prod.title }}</div>
+                        <div class="product-card-price">a partir de R$ {{ prod.min_price|brl }}</div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+                            <div class="product-card-meta" style="margin-top:0;">{{ prod.seller.profile.city }}, {{ prod.seller.profile.uf }} · {{ prod.seller.username }}</div>
+                            <span style="font-size:12px;color:var(--star);white-space:nowrap;">
+                                {% if prod.avg_rating %}★ {{ prod.avg_rating|floatformat:1 }}{% else %}★ —{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </a>
+            {% empty %}
+                <p style="color:var(--gray-500);">Nenhum produto nesta categoria ainda</p>
+            {% endfor %}
+        </div>
+
+        {% if produtos.paginator.num_pages > 1 %}
+        <div style="display:flex;justify-content:center;align-items:center;gap:16px;margin-top:40px;">
+            {% if produtos.has_previous %}
+                <a href="?{{ filtros.page_qs }}{% if filtros.page_qs %}&{% endif %}page={{ produtos.previous_page_number }}"
+                   class="btn" style="border:2px solid var(--black);padding:8px 20px;">Anterior</a>
             {% endif %}
-            <div class="product-card-body">
-                <div class="product-card-title">{{ prod.title }}</div>
-                <div class="product-card-price">a partir de R$ {{ prod.base_price|brl }}</div>
-                <div class="product-card-meta">{{ prod.seller.profile.city }}, {{ prod.seller.profile.uf }} · {{ prod.seller.username }}</div>
-            </div>
-        </a>
-    {% empty %}
-        <p style="color:var(--gray-500);"">Nenhum produto nesta categoria ainda</p>
-    {% endfor %}
+            <span style="font-size:14px;color:var(--gray-500);">Página {{ produtos.number }} de {{ produtos.paginator.num_pages }}</span>
+            {% if produtos.has_next %}
+                <a href="?{{ filtros.page_qs }}{% if filtros.page_qs %}&{% endif %}page={{ produtos.next_page_number }}"
+                   class="btn btn-primary" style="padding:8px 20px;">Próxima</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
 </div>
-{% if produtos.paginator.num_pages > 1 %}
-<div style="display:flex;justify-content:center;align-items:center;gap:16px;margin-top:40px;">
-    {% if produtos.has_previous %}
-        <a href="?page={{ produtos.previous_page_number }}" class="btn" style="border:2px solid var(--black);padding:8px 20px;">Anterior</a>
-    {% endif %}
-    <span style="font-size:14px;color:var(--gray-500);">Página {{ produtos.number }} de {{ produtos.paginator.num_pages }}</span>
-    {% if produtos.has_next %}
-        <a href="?page={{ produtos.next_page_number }}" class="btn btn-primary" style="padding:8px 20px;">Próxima</a>
-    {% endif %}
-</div>
-{% endif %}
 {% endblock %}

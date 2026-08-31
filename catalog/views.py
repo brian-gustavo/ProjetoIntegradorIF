@@ -1,7 +1,8 @@
+from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db.models import Avg, Count, Sum
+from django.db.models import Avg, Count, Min, OuterRef, Subquery, Sum
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 
@@ -9,15 +10,122 @@ from .forms import ProductForm, ProductVariantFormSet, ProductReviewForm
 from .models import Category, Product, ProductImage, ProductVariant, ProductReview
 from accounts.models import SellerReview
 
+PRICE_RANGES = [
+    ('ate50', 'Até R$50,00', Decimal('0'), Decimal('50')),
+    ('50a150', 'R$50,00 — R$150,00', Decimal('50'), Decimal('150')),
+    ('acima150', 'Acima de R$150,00', Decimal('150'), None),
+]
+
+RATING_OPTIONS = [
+    ('4.0', 'Apenas acima de 4,0'),
+    ('4.5', 'Apenas acima de 4,5'),
+]
+
+def _annotate_products(qs):
+    rating_subquery = ProductReview.objects.filter(
+        product=OuterRef('pk')
+    ).values('product').annotate(avg=Avg('rating')).values('avg')
+
+    return qs.annotate(
+        stock_total=Sum('variants__quantity'),
+        min_price=Min('variants__price'),
+        avg_rating=Subquery(rating_subquery),
+    ).filter(stock_total__gt=0)
+
+def _apply_filters(qs, preco, local, avaliacao, profile):
+    if preco:
+        for key, _, pmin, pmax in PRICE_RANGES:
+            if key == preco:
+                qs = qs.filter(min_price__gte=pmin)
+                if pmax is not None:
+                    qs = qs.filter(min_price__lt=pmax)
+                break
+
+    if local == 'cidade' and profile and profile.city:
+        qs = qs.filter(seller__profile__city=profile.city)
+    elif local == 'estado' and profile and profile.uf:
+        qs = qs.filter(seller__profile__uf=profile.uf)
+
+    if avaliacao:
+        qs = qs.filter(avg_rating__gte=Decimal(avaliacao))
+
+    return qs
+
+def _facet_url(request, **overrides):
+    params = request.GET.copy()
+    params.pop('page', None)
+    for key, value in overrides.items():
+        if value:
+            params[key] = value
+        else:
+            params.pop(key, None)
+    query = params.urlencode()
+    return f'?{query}' if query else '?'
+
+def _build_filter_context(request, base_qs):
+    preco = request.GET.get('preco', '')
+    local = request.GET.get('local', '')
+    avaliacao = request.GET.get('avaliacao', '')
+
+    profile = None
+    if request.user.is_authenticated and not request.user.is_staff:
+        profile = request.user.profile
+
+    produtos_qs = _apply_filters(base_qs, preco, local, avaliacao, profile)
+
+    price_facets = []
+    for key, label, pmin, pmax in PRICE_RANGES:
+        count = _apply_filters(base_qs, key, local, avaliacao, profile).count()
+        price_facets.append({
+            'label': label, 'count': count,
+            'active': preco == key, 'url': _facet_url(request, preco=key),
+        })
+
+    local_options = [('', 'Qualquer'), ('cidade', 'Na sua cidade'), ('estado', 'No seu estado')]
+    local_facets = []
+    for key, label in local_options:
+        disponivel = key == '' or (profile and (profile.city if key == 'cidade' else profile.uf))
+        if not disponivel:
+            continue
+        count = _apply_filters(base_qs, preco, key, avaliacao, profile).count()
+        local_facets.append({
+            'label': label, 'count': count,
+            'active': local == key, 'url': _facet_url(request, local=key),
+        })
+
+    rating_facets = []
+    for key, label in [('', 'Qualquer')] + RATING_OPTIONS:
+        count = _apply_filters(base_qs, preco, local, key, profile).count()
+        rating_facets.append({
+            'label': label, 'count': count,
+            'active': avaliacao == key, 'url': _facet_url(request, avaliacao=key),
+        })
+
+    params = request.GET.copy()
+    params.pop('page', None)
+
+    return produtos_qs, {
+        'price_facets': price_facets,
+        'local_facets': local_facets,
+        'rating_facets': rating_facets,
+        'filtros_ativos': bool(preco or local or avaliacao),
+        'page_qs': params.urlencode(),
+    }
+
 def home(request):
     categorias = Category.objects.all()
     query = request.GET.get('q', '').strip()
-    produtos_qs = Product.objects.filter(published=True, deleted=False).annotate(
-        stock_total=Sum('variants__quantity')
-    ).filter(stock_total__gt=0).select_related('seller__profile').prefetch_related('images', 'variants').order_by('-created_at')
+
+    base_qs = _annotate_products(
+        Product.objects.filter(published=True, deleted=False)
+    ).select_related('seller__profile').prefetch_related('images', 'variants').order_by('-created_at')
 
     if query:
-        produtos_qs = produtos_qs.filter(title__icontains=query)
+        base_qs = base_qs.filter(title__icontains=query)
+        produtos_qs, filtros = _build_filter_context(request, base_qs)
+    else:
+        produtos_qs = base_qs
+        filtros = None
 
     paginator = Paginator(produtos_qs, 24)
     produtos = paginator.get_page(request.GET.get('page'))
@@ -26,6 +134,7 @@ def home(request):
         'categorias': categorias,
         'produtos': produtos,
         'query': query,
+        'filtros': filtros,
     })
 
 def product_detail(request, product_id):
@@ -78,9 +187,12 @@ def product_detail(request, product_id):
 
 def category_detail(request, slug):
     category = get_object_or_404(Category, slug=slug)
-    produtos_qs = Product.objects.filter(category=category, published=True, deleted=False).annotate(
-        stock_total=Sum('variants__quantity')
-    ).filter(stock_total__gt=0).select_related('seller__profile').prefetch_related('images', 'variants').order_by('-created_at')
+
+    base_qs = _annotate_products(
+        Product.objects.filter(category=category, published=True, deleted=False)
+    ).select_related('seller__profile').prefetch_related('images', 'variants').order_by('-created_at')
+
+    produtos_qs, filtros = _build_filter_context(request, base_qs)
 
     paginator = Paginator(produtos_qs, 24)
     produtos = paginator.get_page(request.GET.get('page'))
@@ -88,6 +200,7 @@ def category_detail(request, slug):
     return render(request, 'catalog/category_detail.html', {
         'category': category,
         'produtos': produtos,
+        'filtros': filtros,
     })
 
 def category_list(request):

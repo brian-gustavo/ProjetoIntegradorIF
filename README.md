@@ -8,7 +8,6 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
 
 *Requisitos faltantes:*
 - PRIORIDADE: Criar manuais de uso para as páginas (serão embarcados no sistema)
-- PRIORIDADE: Implementar filtros de busca
 - PRIORIDADE: Implementar o sistema de disputa
 - Implementar funcionalidades secundárias (gamificação, cupons de desconto, etc.)
 - Implementar a API do Mercado Pago

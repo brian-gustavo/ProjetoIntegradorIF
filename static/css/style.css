@@ -417,3 +417,12 @@ dialog {
     left: 50%;
     transform: translate(-50%, -50%);
 }
+
+.facet-link {
+    font-size: 14px;
+}
+
+.facet-link-active {
+    font-weight: 700;
+    color: var(--green-dark);
+}
