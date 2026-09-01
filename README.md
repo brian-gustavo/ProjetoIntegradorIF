@@ -8,7 +8,7 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
 
 *Requisitos faltantes:*
 - EM PROGRESSO: Implementar o Mercado Pago no sistema
-- PRIORIDADE: Remodelar a questão financeira e administrativa do site (gerar relatórios sobre mais aspectos do sistema, detalhar melhor os relatórios, permitir que a staff altere mais coisas através do front...)
+- PRIORIDADE: Remodelar a questão financeira e administrativa do site (gerar um volume de relatórios maior e mais detalhado, inserir gráficos, permitir que a staff altere certos aspectos do sistema através do front...)
 - PRIORIDADE: Remodelar a UI/UX do site (adicionar mais imagens, cores mais chamativas, reestruturar os menus para maior intuitividade...)
 - Implementar funcionalidades secundárias (gamificação, cupons de desconto, etc.)
 - Permitir trocas e leilões (similar ao eBay) na plataforma
