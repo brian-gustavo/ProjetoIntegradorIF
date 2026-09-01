@@ -8,8 +8,13 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
 
 *Requisitos faltantes:*
 - EM PROGRESSO: Implementar o Mercado Pago no sistema
-- PRIORIDADE: Criar manuais de uso para as páginas (serão embarcados no sistema)
+- PRIORIDADE: Remodelar a questão financeira e administrativa do site (gerar relatórios sobre mais aspectos do sistema, detalhar melhor os relatórios, permitir que a staff altere mais coisas através do front...)
+- PRIORIDADE: Remodelar a UI/UX do site (adicionar mais imagens, cores mais chamativas, reestruturar os menus para maior intuitividade...)
 - Implementar funcionalidades secundárias (gamificação, cupons de desconto, etc.)
-- Permitir trocas na plataforma
-- Permitir um "modo leilão" na plataforma (similar ao eBay)
+- Permitir trocas e leilões (similar ao eBay) na plataforma
+- Inserir placeholders em locais como cards de produtos e rastreio de compra, pra fins de prova de conceito
+- Aprimorar a disputa (não permitir que ela seja aberta automaticamente, inserir opções padronizadas ao criar disputa, permitir inserção de imagens...)
+- Aprimorar os filtros (inserir o preço desejado ao invés de ter limites padronizados, por exemplo)
+- APÓS A CONCLUSÃO DOS ANTERIORES: Criar manuais de uso para as páginas (serão embarcados no sistema)
+- APÓS A CONCLUSÃO DOS ANTERIORES: Consertar os problemas restantes da documentação e adicionar o que foi alterado após a última versão
 - ADICIONAL: Consertar e aprimorar os testes
