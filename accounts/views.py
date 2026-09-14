@@ -1,12 +1,15 @@
+import base64, hashlib, secrets, requests
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.models import User
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 
 from .forms import RegisterForm, ProfileForm, ProfileDetailForm, ReviewForm
-from .models import SellerReview
+from .models import Profile, SellerReview, MercadoPagoAccount
 
 def register(request):
     if request.method == 'POST':
@@ -118,3 +121,69 @@ def edit_seller_review(request, seller_id):
         'seller': seller,
         'editing': True,
     })
+
+@login_required
+def mp_connect(request):
+    if request.user.is_staff:
+        return redirect('home')
+
+    code_verifier = secrets.token_urlsafe(64)[:128]
+    request.session['mp_code_verifier'] = code_verifier
+
+    digest = hashlib.sha256(code_verifier.encode('ascii')).digest()
+    code_challenge = base64.urlsafe_b64encode(digest).decode('ascii').rstrip('=')
+
+    redirect_uri = request.build_absolute_uri(reverse('mp_callback'))
+
+    params = {
+        'response_type': 'code',
+        'client_id': settings.MP_CLIENT_ID,
+        'redirect_uri': redirect_uri,
+        'code_challenge': code_challenge,
+        'code_challenge_method': 'S256',
+    }
+    query = '&'.join(f'{key}={value}' for key, value in params.items())
+    return redirect(f'https://auth.mercadopago.com/authorization?{query}')
+
+@login_required
+def mp_callback(request):
+    code = request.GET.get('code')
+    code_verifier = request.session.pop('mp_code_verifier', None)
+
+    if not code or not code_verifier:
+        messages.error(request, 'Não foi possível conectar sua conta Mercado Pago')
+        return redirect('seller_dashboard')
+
+    redirect_uri = request.build_absolute_uri(reverse('mp_callback'))
+
+    response = requests.post(
+        'https://api.mercadopago.com/oauth/token',
+        json={
+            'client_id': settings.MP_CLIENT_ID,
+            'client_secret': settings.MP_CLIENT_SECRET,
+            'grant_type': 'authorization_code',
+            'code': code,
+            'redirect_uri': redirect_uri,
+            'code_verifier': code_verifier,
+        },
+        headers={'Accept': 'application/json'},
+        timeout=10,
+    )
+
+    if response.status_code != 200:
+        messages.error(request, 'A conexão com o Mercado Pago falhou. Tente novamente.')
+        return redirect('seller_dashboard')
+
+    data = response.json()
+
+    MercadoPagoAccount.objects.update_or_create(
+        user=request.user,
+        defaults={
+            'mp_user_id': str(data.get('user_id', '')),
+            'access_token': data.get('access_token', ''),
+            'refresh_token': data.get('refresh_token', ''),
+            'public_key': data.get('public_key', ''),
+        },
+    )
+    messages.success(request, 'Conta Mercado Pago conectada com sucesso')
+    return redirect('seller_dashboard')

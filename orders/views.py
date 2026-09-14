@@ -1,4 +1,4 @@
-import requests
+import json, requests
 from datetime import timedelta
 from decimal import Decimal
 from django.conf import settings
@@ -7,10 +7,13 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 
 from .forms import DisputeForm, DisputeMessageForm, DisputeResolutionForm
 from .models import Order, Cart, CartItem, generate_tracking_code, PlatformConfig, Commission, Dispute, DisputeMessage
+from accounts.models import MercadoPagoAccount
 from catalog.models import Product, ProductVariant
 
 @login_required
@@ -83,11 +86,12 @@ def checkout(request):
         return redirect('cart_detail')
 
     if request.method == 'POST':
+        new_orders = []
         for item in items:
             pickup = request.POST.get(f'pickup_{item.pk}') == '1'
             if pickup and not item.product.accepts_pickup:
                 pickup = False
-            Order.objects.create(
+            order = Order.objects.create(
                 buyer=request.user,
                 product=item.product,
                 variant=item.variant,
@@ -95,8 +99,10 @@ def checkout(request):
                 total_price=item.subtotal,
                 pickup=pickup,
             )
+            new_orders.append(order)
         cart.items.all().delete()
-        return redirect('my_orders')
+        request.session['mp_pending_orders'] = [o.pk for o in new_orders]
+        return redirect('mp_pay_next')
 
     pickup_items = [item for item in items if item.product.accepts_pickup]
     return render(request, 'orders/checkout.html', {
@@ -139,14 +145,14 @@ def my_orders(request):
     return render(request, 'orders/my_orders.html', {'orders': orders})
 
 @login_required
-def simulate_payment(request, order_id):
+def resume_payment(request, order_id):
     order = get_object_or_404(Order, pk=order_id, buyer=request.user)
 
-    if order.status == 'PENDING':
-        order.status = 'PAID'
-        order.save()
+    if order.status != 'PENDING':
+        return redirect('my_orders')
 
-    return redirect('my_orders')
+    request.session['mp_pending_orders'] = [order.pk]
+    return redirect('mp_pay_next')
 
 @login_required
 def cancel_order_buyer(request, order_id):
@@ -354,6 +360,7 @@ def seller_dashboard(request):
         'total_liquido': total_liquido,
         'pendentes': pendentes,
         'produto_mais_vendido': produto_mais_vendido,
+        'mp_connected': hasattr(request.user, 'mp_account'),
     })
 
 @login_required
@@ -598,3 +605,125 @@ def track_order(request, order_id):
         return JsonResponse({'error': 'Não foi possível consultar o rastreio no momento'}, status=502)
 
     return JsonResponse(data, safe=False)
+
+def _create_mp_preference(seller, seller_orders, mp_account, request):
+    rate = PlatformConfig.get_commission_rate()
+    total = sum(o.total_price for o in seller_orders)
+    marketplace_fee = (total * rate / Decimal('100')).quantize(Decimal('0.01'))
+
+    items = [{
+        'title': f'{o.product.title} — {o.variant.name}',
+        'quantity': o.quantity,
+        'unit_price': float(o.variant.price),
+        'currency_id': 'BRL',
+    } for o in seller_orders]
+
+    order_ids_str = ','.join(str(o.pk) for o in seller_orders)
+    notification_url = request.build_absolute_uri(reverse('mp_webhook')) + f'?seller_id={seller.pk}'
+    return_url = request.build_absolute_uri(reverse('mp_return'))
+
+    response = requests.post(
+        'https://api.mercadopago.com/checkout/preferences',
+        json={
+            'items': items,
+            'marketplace_fee': float(marketplace_fee),
+            'external_reference': order_ids_str,
+            'back_urls': {
+                'success': return_url,
+                'failure': return_url,
+                'pending': return_url,
+            },
+            'auto_return': 'approved',
+            'notification_url': notification_url,
+        },
+        headers={
+            'Authorization': f'Bearer {mp_account.access_token}',
+            'Content-Type': 'application/json',
+        },
+        timeout=10,
+    )
+
+    if response.status_code not in (200, 201):
+        return None
+    return response.json()
+
+@login_required
+def mp_pay_next(request):
+    order_ids = request.session.get('mp_pending_orders', [])
+    orders = list(Order.objects.filter(
+        pk__in=order_ids, buyer=request.user, status='PENDING'
+    ).select_related('product__seller', 'variant'))
+
+    if not orders:
+        request.session.pop('mp_pending_orders', None)
+        return redirect('my_orders')
+
+    seller = orders[0].product.seller
+    seller_orders = [o for o in orders if o.product.seller_id == seller.pk]
+    mp_account = getattr(seller, 'mp_account', None)
+
+    if not mp_account:
+        remaining = [o.pk for o in orders if o.product.seller_id != seller.pk]
+        request.session['mp_pending_orders'] = remaining
+        messages.error(request, f'"{seller.username}" ainda não conectou o Mercado Pago; esses itens não puderam ser cobrados.')
+        return redirect('mp_pay_next')
+
+    preference = _create_mp_preference(seller, seller_orders, mp_account, request)
+    if not preference:
+        messages.error(request, 'Não foi possível iniciar o pagamento. Tente novamente.')
+        return redirect('cart_detail')
+
+    is_test = mp_account.access_token.startswith('TEST-')
+    init_point = preference.get('sandbox_init_point') if is_test else preference.get('init_point')
+    return redirect(init_point)
+
+@login_required
+def mp_return(request):
+    return redirect('mp_pay_next')
+
+@csrf_exempt
+def mp_webhook(request):
+    if request.method != 'POST':
+        return JsonResponse({'status': 'ok'})
+
+    payment_id = request.GET.get('data.id') or request.GET.get('id')
+    if not payment_id:
+        try:
+            body = json.loads(request.body.decode('utf-8'))
+            payment_id = body.get('data', {}).get('id')
+        except (json.JSONDecodeError, AttributeError):
+            payment_id = None
+
+    seller_id = request.GET.get('seller_id')
+    if not payment_id or not seller_id:
+        return JsonResponse({'status': 'ignored'})
+
+    mp_account = MercadoPagoAccount.objects.filter(user_id=seller_id).first()
+    if not mp_account:
+        return JsonResponse({'status': 'ignored'})
+
+    response = requests.get(
+        f'https://api.mercadopago.com/v1/payments/{payment_id}',
+        headers={'Authorization': f'Bearer {mp_account.access_token}'},
+        timeout=10,
+    )
+    if response.status_code != 200:
+        return JsonResponse({'status': 'error'}, status=502)
+
+    payment = response.json()
+    if payment.get('status') == 'approved':
+        order_ids = payment.get('external_reference', '').split(',')
+        Order.objects.filter(pk__in=order_ids, status='PENDING').update(status='PAID')
+
+    return JsonResponse({'status': 'ok'})
+
+@login_required
+def choose_pickup(request, order_id):
+    order = get_object_or_404(Order, pk=order_id, buyer=request.user)
+
+    if order.status == 'PAID' and order.product.accepts_pickup and not order.pickup:
+        order.pickup = True
+        order.save()
+        messages.success(request, 'Pedido atualizado para retirada em mãos')
+
+    return redirect('my_orders')

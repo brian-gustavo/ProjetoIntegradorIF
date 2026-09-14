@@ -12,6 +12,14 @@ SECRET_KEY = config('SECRET_KEY')
 
 SITERASTREIO_API_KEY = config('SITERASTREIO_API_KEY')
 
+MP_CLIENT_ID = config('MP_CLIENT_ID')
+
+MP_CLIENT_SECRET = config('MP_CLIENT_SECRET')
+
+MP_ACCESS_TOKEN = config('MP_ACCESS_TOKEN')
+
+MP_PUBLIC_KEY = config('MP_PUBLIC_KEY')
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',

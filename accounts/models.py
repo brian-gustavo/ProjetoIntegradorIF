@@ -52,3 +52,18 @@ class SellerReview(models.Model):
 
     def __str__(self):
         return f"{self.reviewer.username} → {self.seller.username}: {self.rating}"
+
+class MercadoPagoAccount(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='mp_account')
+    mp_user_id = models.CharField(max_length=50, verbose_name="ID do usuário no Mercado Pago")
+    access_token = models.CharField(max_length=255)
+    refresh_token = models.CharField(max_length=255)
+    public_key = models.CharField(max_length=255, blank=True)
+    connected_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Conta Mercado Pago"
+        verbose_name_plural = "Contas Mercado Pago"
+
+    def __str__(self):
+        return f"Conta MP de {self.user.username}"

@@ -4,7 +4,7 @@ from . import views
 
 urlpatterns = [
     path('pedidos/', views.my_orders, name='my_orders'),
-    path('pedidos/<int:order_id>/pagar/', views.simulate_payment, name='simulate_payment'),
+    path('pedidos/<int:order_id>/pagar/', views.resume_payment, name='resume_payment'),
     path('pedidos/<int:order_id>/cancelar/', views.cancel_order_buyer, name='cancel_order_buyer'),
     path('pedidos/<int:order_id>/entregar/', views.confirm_delivery, name='confirm_delivery'),
     path('pedidos/<int:order_id>/devolver/', views.request_return, name='request_return'),
@@ -32,4 +32,8 @@ urlpatterns = [
     path('disputas/<int:dispute_id>/', views.dispute_detail, name='dispute_detail'),
     path('disputas/<int:dispute_id>/resolver/', views.resolve_dispute, name='resolve_dispute'),
     path('pedidos/<int:order_id>/rastreio/', views.track_order, name='track_order'),
+    path('pagamento/proximo/', views.mp_pay_next, name='mp_pay_next'),
+    path('pagamento/retorno/', views.mp_return, name='mp_return'),
+    path('pagamento/webhook/', views.mp_webhook, name='mp_webhook'),
+    path('pedidos/<int:order_id>/retirada/', views.choose_pickup, name='choose_pickup'),
 ]

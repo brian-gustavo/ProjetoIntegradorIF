@@ -4,6 +4,19 @@
 {% block title %}Dashboard do vendedor — MegaGame{% endblock %}
 
 {% block content %}
+<div style="border:2px solid var(--black);border-radius:8px;padding:20px;margin-bottom:32px;display:flex;justify-content:space-between;align-items:center;">
+    <div>
+        <p style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;">Mercado Pago</p>
+        {% if mp_connected %}
+            <p style="font-size:13px;color:var(--green-dark);">Conta conectada</p>
+        {% else %}
+            <p style="font-size:13px;color:var(--gray-500);">Conecte sua conta para poder receber pagamentos</p>
+        {% endif %}
+    </div>
+    {% if not mp_connected %}
+        <a href="{% url 'mp_connect' %}" class="btn btn-primary" style="padding:8px 20px;font-size:14px;">Conectar</a>
+    {% endif %}
+</div>
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:40px;">
     <h2 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:32px;text-transform:uppercase;letter-spacing:0.06em;">
         Painel do vendedor

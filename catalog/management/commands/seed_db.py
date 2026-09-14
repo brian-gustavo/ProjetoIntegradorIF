@@ -62,7 +62,6 @@ TRACKING_ELIGIBLE_STATUSES = {
     'RETURN_ACCEPTED', 'RETURNED', 'CANCELLED_NO_RETURN', 'COMPLETED',
 }
 
-
 class Command(BaseCommand):
     help = 'Povoa o banco de dados com dados fictícios para testes'
 

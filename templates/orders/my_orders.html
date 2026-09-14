@@ -32,8 +32,8 @@
                     {{ order.get_status_display }}
                 </span>
                 {% if order.status == 'PENDING' %}
-                    <a href="{% url 'simulate_payment' order.pk %}" class="btn btn-primary" style="padding:8px 20px;font-size:14px;">
-                        Simular pagamento
+                    <a href="{% url 'resume_payment' order.pk %}" class="btn btn-primary" style="padding:8px 20px;font-size:14px;">
+                        Retomar pagamento
                     </a>
                 {% endif %}
                 {% if order.status == 'PAID' and order.product.accepts_pickup and not order.pickup %}
