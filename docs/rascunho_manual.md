@@ -67,7 +67,3 @@ página de pedidos (recebidos ou feitos):
 * \[informações de cada estado...]
 
 \[informações das páginas restantes...]
-
-
-
-
