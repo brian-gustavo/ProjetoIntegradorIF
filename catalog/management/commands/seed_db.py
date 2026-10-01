@@ -1,8 +1,11 @@
 import random
+from datetime import timedelta
 from decimal import Decimal
+from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from django.utils import timezone
 from faker import Faker
 
 from accounts.models import UF_CHOICES, SellerReview
@@ -17,7 +20,7 @@ CATEGORIES = [
     ('Periféricos', 'perifericos'),
     ('Keys', 'keys'),
     ('Jogos de Tabuleiro', 'jogos-de-tabuleiro'),
-    ('Itens In-Game', 'itens-in-game'),
+    ('Itens In-game', 'itens-in-game'),
     ('Action Figures', 'action-figures'),
     ('Bottons', 'bottons'),
     ('Pôsteres', 'posteres'),
@@ -37,7 +40,7 @@ KEY_STORES = ['Steam', 'PlayStation Store', 'Xbox Store', 'Nintendo eShop', 'Epi
 PERIPHERAL_ITEMS = ['Controle', 'Headset', 'Mouse Gamer', 'Teclado Mecânico', 'Volante']
 INGAME_ITEMS = ['Moeda Premium', 'Pacote de Skins', 'Passe de Batalha', 'Pacote de Gemas']
 INGAME_VARIANTS = ['100 unidades', '500 unidades', '1000 unidades']
-COLLECTIBLE_VARIANTS = ['Padrão', 'Edição Especial', 'Edição Colecionador']
+COLLECTIBLE_VARIANTS = ['Padrão', 'Edição Especial', 'Edição de Colecionador']
 
 STATUS_WEIGHTS = [
     ('PENDING', 8), ('PAID', 8), ('CONFIRMED', 5), ('PREPARING', 5),
@@ -61,15 +64,37 @@ TRACKING_ELIGIBLE_STATUSES = {
     'SHIPPED', 'READY_PICKUP', 'DELIVERED', 'RETURN_WINDOW', 'RETURN_REQUESTED',
     'RETURN_ACCEPTED', 'RETURNED', 'CANCELLED_NO_RETURN', 'COMPLETED',
 }
+RECENT_STATUSES = {'PENDING', 'PAID', 'CONFIRMED', 'PREPARING', 'SHIPPED', 'READY_PICKUP'}
+MID_STATUSES = {'DELIVERED', 'RETURN_WINDOW', 'RETURN_REQUESTED', 'RETURN_ACCEPTED', 'CANCELLED_NO_RETURN'}
+
+CATEGORY_WEIGHTS = [14, 30, 14, 12, 8, 8, 6, 4, 4]
+
+STATUS_BY_AGE = [
+    (2, [('PENDING', 30), ('PAID', 30), ('CONFIRMED', 15), ('PREPARING', 10), ('CANCELLED', 15)]),
+    (7, [('PAID', 5), ('CONFIRMED', 10), ('PREPARING', 20), ('SHIPPED', 35), ('READY_PICKUP', 10), ('CANCELLED', 20)]),
+    (20, [('SHIPPED', 15), ('READY_PICKUP', 5), ('DELIVERED', 35), ('RETURN_WINDOW', 15), ('RETURN_REQUESTED', 5), ('CANCELLED', 10), ('COMPLETED', 15)]),
+    (60, [('DELIVERED', 10), ('RETURN_WINDOW', 10), ('RETURN_REQUESTED', 4), ('RETURN_ACCEPTED', 4), ('CANCELLED_NO_RETURN', 4), ('RETURNED', 6), ('COMPLETED', 55), ('CANCELLED', 7)]),
+    (None, [('COMPLETED', 78), ('RETURNED', 8), ('CANCELLED', 8), ('CANCELLED_NO_RETURN', 6)]),
+]
+
+def status_for_age(age_days):
+    for limit, options in STATUS_BY_AGE:
+        if limit is None or age_days < limit:
+            statuses, weights = zip(*options)
+            return random.choices(statuses, weights=weights)[0]
+
+def random_between(start, end):
+    if end <= start:
+        return start
+    return start + (end - start) * random.random()
 
 class Command(BaseCommand):
-    help = 'Povoa o banco de dados com dados fictícios para testes'
-
     def add_arguments(self, parser):
         parser.add_argument('--sellers', type=int, default=25)
         parser.add_argument('--buyers', type=int, default=60)
         parser.add_argument('--products', type=int, default=250)
         parser.add_argument('--orders', type=int, default=400)
+        parser.add_argument('--days', type=int, default=365)
         parser.add_argument('--flush', action='store_true')
 
     def handle(self, *args, **options):
@@ -78,12 +103,16 @@ class Command(BaseCommand):
 
         self._reviewed_products = set()
         self._reviewed_sellers = set()
+        self._now = timezone.now()
+        self._span_start = self._now - timedelta(days=options['days'])
+        sellers_latest = self._span_start + (self._now - self._span_start) * 0.5
+        buyers_latest = self._now - timedelta(days=2)
 
         with transaction.atomic():
             PlatformConfig.objects.get_or_create(pk=1, defaults={'commission_rate': Decimal('10.00')})
             categories = self._seed_categories()
-            sellers = self._seed_users('vendedor', options['sellers'])
-            buyers = self._seed_users('comprador', options['buyers'])
+            sellers = self._seed_users('vendedor', options['sellers'], sellers_latest)
+            buyers = self._seed_users('comprador', options['buyers'], buyers_latest)
             products = self._seed_products(categories, sellers, options['products'])
             self._seed_orders(products, buyers, options['orders'])
             self._seed_carts(products, buyers)
@@ -108,17 +137,19 @@ class Command(BaseCommand):
             categories.append(category)
         return categories
 
-    def _seed_users(self, prefix, count):
+    def _seed_users(self, prefix, count, latest_join):
+        hashed_password = make_password('senha123')
         users = []
         for i in range(count):
             username = f'{prefix}{i + 1}'
             user, created = User.objects.get_or_create(
                 username=username,
-                defaults={'email': f'{username}@teste.com'},
+                defaults={'email': f'{username}@teste.com', 'password': hashed_password},
             )
             if created:
-                user.set_password('senha123')
-                user.save()
+                joined = random_between(self._span_start, latest_join)
+                User.objects.filter(pk=user.pk).update(date_joined=joined)
+                user.date_joined = joined
             user.profile.city = fake.city()
             user.profile.uf = random.choice(UF_CHOICES)[0]
             user.profile.save()
@@ -148,14 +179,17 @@ class Command(BaseCommand):
         return f'{kind} — {random.choice(FRANCHISES)}', COLLECTIBLE_VARIANTS
 
     def _seed_products(self, categories, sellers, count):
+        self.stdout.write('Gerando produtos...')
         products = []
+        seller_weights = [random.lognormvariate(0, 1) for _ in sellers]
+
         for _ in range(count):
-            category = random.choice(categories)
-            seller = random.choice(sellers)
+            category = random.choices(categories, weights=CATEGORY_WEIGHTS)[0]
+            seller = random.choices(sellers, weights=seller_weights)[0]
             title, variant_pool = self._generate_title(category)
             is_draft = random.random() < 0.05
 
-            product = Product.objects.create(
+            product = Product(
                 category=category,
                 seller=seller,
                 title=title,
@@ -165,45 +199,85 @@ class Command(BaseCommand):
                 published=not is_draft and random.random() < 0.9,
                 deleted=False,
             )
-
-            if not is_draft:
-                variant_count = random.randint(1, min(4, len(variant_pool)))
-                for variant_name in random.sample(variant_pool, variant_count):
-                    ProductVariant.objects.create(
-                        product=product,
-                        name=variant_name,
-                        price=Decimal(random.randrange(2000, 45000)) / 100,
-                        quantity=random.randint(0, 30),
-                    )
-
+            product.seed_date = random_between(seller.date_joined, self._now - timedelta(days=1))
+            product.seed_weight = random.lognormvariate(0, 1)
+            product.seed_variant_names = [] if is_draft else random.sample(
+                variant_pool, random.randint(1, min(4, len(variant_pool)))
+            )
             products.append(product)
+
+        Product.objects.bulk_create(products, batch_size=500)
+        for product in products:
+            product.created_at = product.seed_date
+            product.updated_at = product.seed_date
+        Product.objects.bulk_update(products, ['created_at', 'updated_at'], batch_size=500)
+
+        variants = []
+        for product in products:
+            product.seed_variants = [
+                ProductVariant(
+                    product=product,
+                    name=name,
+                    price=Decimal(random.randrange(2000, 45000)) / 100,
+                    quantity=random.randint(0, 30),
+                )
+                for name in product.seed_variant_names
+            ]
+            variants.extend(product.seed_variants)
+        ProductVariant.objects.bulk_create(variants, batch_size=500)
+
         return products
 
+    def _order_timeline(self, status, created_at):
+        now = self._now
+        if status == 'PENDING':
+            return created_at, None
+        if status in RECENT_STATUSES or status == 'CANCELLED':
+            return min(now, created_at + timedelta(hours=random.randint(1, 120))), None
+        delivered_at = min(now, created_at + timedelta(days=random.randint(3, 12), hours=random.randint(0, 23)))
+        updated_at = min(now, delivered_at + timedelta(hours=random.randint(0, 240)))
+        return updated_at, delivered_at
+
     def _seed_orders(self, products, buyers, count):
-        published = [p for p in products if p.published and p.variants.exists()]
+        published = [p for p in products if p.published and p.seed_variants]
         if not published:
             return
 
+        self.stdout.write('Gerando pedidos...')
         commission_rate = PlatformConfig.get_commission_rate()
-        statuses, weights = zip(*STATUS_WEIGHTS)
+        product_weights = [p.seed_weight for p in published]
+        buyer_weights = [random.lognormvariate(0, 1.2) for _ in buyers]
 
-        for _ in range(count):
-            product = random.choice(published)
-            eligible_buyers = [b for b in buyers if b != product.seller]
-            if not eligible_buyers:
+        drafts = []
+        touched_variants = {}
+        attempts = 0
+
+        while len(drafts) < count and attempts < count * 5:
+            attempts += 1
+            product = random.choices(published, weights=product_weights)[0]
+            buyer = random.choices(buyers, weights=buyer_weights)[0]
+            if buyer == product.seller:
                 continue
-            buyer = random.choice(eligible_buyers)
-            variant = random.choice(list(product.variants.all()))
-            status = random.choices(statuses, weights=weights)[0]
+
+            created_at = random_between(max(product.created_at, buyer.date_joined), self._now - timedelta(hours=1))
+            status = status_for_age((self._now - created_at).days)
+            variant = random.choice(product.seed_variants)
+            pickup = product.accepts_pickup and random.random() < 0.2
+
+            if pickup and status == 'SHIPPED':
+                status = 'READY_PICKUP'
+            elif not pickup and status == 'READY_PICKUP':
+                status = 'SHIPPED'
 
             if status in STOCK_DECREMENTED_STATUSES and variant.quantity < 1:
-                status = 'PENDING'
+                continue
 
             quantity = random.randint(1, min(3, max(variant.quantity, 1)))
             total_price = (variant.price * quantity).quantize(Decimal('0.01'))
-            pickup = product.accepts_pickup and random.random() < 0.2
+            updated_at, delivered_at = self._order_timeline(status, created_at)
 
-            order = Order.objects.create(
+            has_tracking = not pickup and status in TRACKING_ELIGIBLE_STATUSES
+            order = Order(
                 buyer=buyer,
                 product=product,
                 variant=variant,
@@ -211,63 +285,93 @@ class Command(BaseCommand):
                 total_price=total_price,
                 status=status,
                 pickup=pickup,
+                tracking_code=generate_tracking_code() if has_tracking else '',
             )
-
-            if not pickup and status in TRACKING_ELIGIBLE_STATUSES:
-                order.tracking_code = generate_tracking_code()
-                order.save()
 
             if status in STOCK_DECREMENTED_STATUSES:
                 variant.quantity = max(variant.quantity - quantity, 0)
-                variant.save()
+                touched_variants[variant.pk] = variant
 
-            if status in HAS_COMMISSION_STATUSES:
-                commission_amount = (total_price * commission_rate / Decimal('100')).quantize(Decimal('0.01'))
-                Commission.objects.create(
+            drafts.append((order, created_at, updated_at, delivered_at))
+
+        orders = [d[0] for d in drafts]
+        Order.objects.bulk_create(orders, batch_size=500)
+        for order, created_at, updated_at, _ in drafts:
+            order.created_at = created_at
+            order.updated_at = updated_at
+        Order.objects.bulk_update(orders, ['created_at', 'updated_at'], batch_size=500)
+
+        commissions = []
+        for order, _, _, delivered_at in drafts:
+            if order.status in HAS_COMMISSION_STATUSES:
+                commission_amount = (order.total_price * commission_rate / Decimal('100')).quantize(Decimal('0.01'))
+                commission = Commission(
                     order=order,
                     rate=commission_rate,
-                    gross_amount=total_price,
+                    gross_amount=order.total_price,
                     commission_amount=commission_amount,
-                    net_amount=total_price - commission_amount,
+                    net_amount=order.total_price - commission_amount,
                 )
+                commissions.append((commission, delivered_at))
+        Commission.objects.bulk_create([c for c, _ in commissions], batch_size=500)
+        for commission, delivered_at in commissions:
+            commission.created_at = delivered_at
+        Commission.objects.bulk_update([c for c, _ in commissions], ['created_at'], batch_size=500)
 
-            if status in CAN_REVIEW_STATUSES and random.random() < 0.6:
-                self._maybe_review(order)
+        product_reviews, seller_reviews = [], []
+        for order, _, _, delivered_at in drafts:
+            if order.status in CAN_REVIEW_STATUSES and random.random() < 0.6:
+                self._maybe_review(order, delivered_at, product_reviews, seller_reviews)
 
-    def _maybe_review(self, order):
+        ProductReview.objects.bulk_create([r for r, _ in product_reviews], batch_size=500)
+        SellerReview.objects.bulk_create([r for r, _ in seller_reviews], batch_size=500)
+        for review, review_date in product_reviews + seller_reviews:
+            review.created_at = review_date
+        ProductReview.objects.bulk_update([r for r, _ in product_reviews], ['created_at'], batch_size=500)
+        SellerReview.objects.bulk_update([r for r, _ in seller_reviews], ['created_at'], batch_size=500)
+
+        ProductVariant.objects.bulk_update(list(touched_variants.values()), ['quantity'], batch_size=500)
+
+    def _review_date(self, delivered_at):
+        return min(self._now, delivered_at + timedelta(days=random.randint(1, 14), hours=random.randint(0, 23)))
+
+    def _maybe_review(self, order, delivered_at, product_reviews, seller_reviews):
         rating = lambda: Decimal(random.choice([str(x / 2) for x in range(1, 11)]))
 
         product_key = (order.product_id, order.buyer_id)
         if product_key not in self._reviewed_products:
             self._reviewed_products.add(product_key)
-            ProductReview.objects.create(
+            review = ProductReview(
                 product=order.product,
                 reviewer=order.buyer,
                 rating=rating(),
                 comment=fake.sentence() if random.random() < 0.7 else '',
             )
+            product_reviews.append((review, self._review_date(delivered_at)))
 
         seller_key = (order.product.seller_id, order.buyer_id)
         if seller_key not in self._reviewed_sellers:
             self._reviewed_sellers.add(seller_key)
-            SellerReview.objects.create(
+            review = SellerReview(
                 seller=order.product.seller,
                 reviewer=order.buyer,
                 rating=rating(),
                 comment=fake.sentence() if random.random() < 0.7 else '',
             )
+            seller_reviews.append((review, self._review_date(delivered_at)))
 
     def _seed_carts(self, products, buyers):
-        published = [p for p in products if p.published and p.variants.exists()]
+        published = [p for p in products if p.published and p.seed_variants]
         if not published or not buyers:
             return
 
+        self.stdout.write('Gerando carrinhos...')
         for buyer in random.sample(buyers, k=max(1, len(buyers) // 4)):
             cart, _ = Cart.objects.get_or_create(user=buyer)
             for product in random.sample(published, k=min(3, len(published))):
                 if product.seller == buyer:
                     continue
-                variant = random.choice(list(product.variants.all()))
+                variant = random.choice(product.seed_variants)
                 if variant.quantity < 1:
                     continue
                 CartItem.objects.get_or_create(

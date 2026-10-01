@@ -7,6 +7,7 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.models import User
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
+from urllib.parse import urlencode
 
 from .forms import RegisterForm, ProfileForm, ProfileDetailForm, ReviewForm
 from .models import Profile, SellerReview, MercadoPagoAccount
@@ -128,7 +129,9 @@ def mp_connect(request):
         return redirect('home')
 
     code_verifier = secrets.token_urlsafe(64)[:128]
+    state = secrets.token_urlsafe(16)
     request.session['mp_code_verifier'] = code_verifier
+    request.session['mp_state'] = state
 
     digest = hashlib.sha256(code_verifier.encode('ascii')).digest()
     code_challenge = base64.urlsafe_b64encode(digest).decode('ascii').rstrip('=')
@@ -136,21 +139,24 @@ def mp_connect(request):
     redirect_uri = request.build_absolute_uri(reverse('mp_callback'))
 
     params = {
-        'response_type': 'code',
         'client_id': settings.MP_CLIENT_ID,
+        'response_type': 'code',
+        'platform_id': 'mp',
+        'state': state,
         'redirect_uri': redirect_uri,
         'code_challenge': code_challenge,
         'code_challenge_method': 'S256',
     }
-    query = '&'.join(f'{key}={value}' for key, value in params.items())
-    return redirect(f'https://auth.mercadopago.com/authorization?{query}')
+    return redirect(f'https://auth.mercadopago.com/authorization?{urlencode(params)}')
 
 @login_required
 def mp_callback(request):
     code = request.GET.get('code')
+    state = request.GET.get('state')
     code_verifier = request.session.pop('mp_code_verifier', None)
+    expected_state = request.session.pop('mp_state', None)
 
-    if not code or not code_verifier:
+    if not code or not code_verifier or not state or state != expected_state:
         messages.error(request, 'Não foi possível conectar sua conta Mercado Pago')
         return redirect('seller_dashboard')
 
@@ -165,13 +171,14 @@ def mp_callback(request):
             'code': code,
             'redirect_uri': redirect_uri,
             'code_verifier': code_verifier,
+            'test_token': True,
         },
         headers={'Accept': 'application/json'},
         timeout=10,
     )
 
     if response.status_code != 200:
-        messages.error(request, 'A conexão com o Mercado Pago falhou. Tente novamente.')
+        messages.error(request, f'Erro do Mercado Pago (HTTP {response.status_code}): {response.text}')
         return redirect('seller_dashboard')
 
     data = response.json()

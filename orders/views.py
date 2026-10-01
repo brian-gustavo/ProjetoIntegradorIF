@@ -1,10 +1,11 @@
 import json, requests
-from datetime import timedelta
+from datetime import timedelta, date
 from decimal import Decimal
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
+from django.db.models.functions import TruncDate, TruncMonth
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
@@ -363,6 +364,45 @@ def seller_dashboard(request):
         'mp_connected': hasattr(request.user, 'mp_account'),
     })
 
+def _get_period_range(request):
+    preset = request.GET.get('periodo', '30d')
+    hoje = timezone.now().date()
+
+    if preset == '7d':
+        inicio, fim = hoje - timedelta(days=6), hoje
+    elif preset == 'mes':
+        inicio, fim = hoje.replace(day=1), hoje
+    elif preset == 'ano':
+        inicio, fim = hoje.replace(month=1, day=1), hoje
+    elif preset == 'personalizado':
+        try:
+            inicio = date.fromisoformat(request.GET.get('inicio', ''))
+            fim = date.fromisoformat(request.GET.get('fim', ''))
+        except ValueError:
+            preset = '30d'
+            inicio, fim = hoje - timedelta(days=29), hoje
+    else:
+        preset = '30d'
+        inicio, fim = hoje - timedelta(days=29), hoje
+
+    dias = (fim - inicio).days + 1
+    inicio_anterior = inicio - timedelta(days=dias)
+    fim_anterior = inicio - timedelta(days=1)
+
+    return {
+        'preset': preset,
+        'inicio': inicio, 'fim': fim,
+        'inicio_anterior': inicio_anterior, 'fim_anterior': fim_anterior,
+        'dias': dias,
+    }
+
+def _variacao(atual, anterior):
+    if not anterior:
+        return None
+    return float((atual - anterior) / anterior * 100)
+
+PERIODO_OPCOES = [('7d', '7 dias'), ('30d', '30 dias'), ('mes', 'Este mês'), ('ano', 'Este ano')]
+
 @login_required
 def admin_dashboard(request):
     if not request.user.is_staff:
@@ -381,6 +421,8 @@ def admin_dashboard(request):
         except:
             messages.error(request, 'Taxa inválida')
         return redirect('admin_dashboard')
+
+    periodo = _get_period_range(request)
 
     total_vendas = Order.objects.filter(
         status__in=['DELIVERED', 'RETURN_WINDOW', 'COMPLETED']
@@ -406,12 +448,54 @@ def admin_dashboard(request):
         .order_by('-total_bruto')[:10]
     )
 
+    commissions_periodo = Commission.objects.filter(
+        created_at__date__gte=periodo['inicio'], created_at__date__lte=periodo['fim']
+    )
+    commissions_anterior = Commission.objects.filter(
+        created_at__date__gte=periodo['inicio_anterior'], created_at__date__lte=periodo['fim_anterior']
+    )
+
+    gmv_atual = commissions_periodo.aggregate(total=Sum('gross_amount'))['total'] or Decimal('0')
+    gmv_anterior = commissions_anterior.aggregate(total=Sum('gross_amount'))['total'] or Decimal('0')
+
+    comissao_periodo = commissions_periodo.aggregate(total=Sum('commission_amount'))['total'] or Decimal('0')
+    comissao_periodo_anterior = commissions_anterior.aggregate(total=Sum('commission_amount'))['total'] or Decimal('0')
+
+    pedidos_periodo = commissions_periodo.count()
+    pedidos_periodo_anterior = commissions_anterior.count()
+
+    ticket_medio = (gmv_atual / pedidos_periodo) if pedidos_periodo else Decimal('0')
+    ticket_medio_anterior = (gmv_anterior / pedidos_periodo_anterior) if pedidos_periodo_anterior else Decimal('0')
+
+    trunc_fn = TruncMonth if periodo['dias'] > 62 else TruncDate
+    serie = list(
+        commissions_periodo
+        .annotate(bucket=trunc_fn('created_at'))
+        .values('bucket')
+        .annotate(total=Sum('gross_amount'))
+        .order_by('bucket')
+    )
+    fmt = '%m/%Y' if trunc_fn is TruncMonth else '%d/%m'
+    serie_labels = [item['bucket'].strftime(fmt) for item in serie]
+    serie_valores = [float(item['total']) for item in serie]
+
     return render(request, 'orders/admin_dashboard.html', {
         'total_vendas': total_vendas,
         'total_transacionado': total_transacionado,
         'total_comissao': total_comissao,
         'taxa_atual': taxa_atual,
         'vendedores': vendedores,
+        'periodo': periodo,
+        'periodo_opcoes': PERIODO_OPCOES,
+        'gmv_atual': gmv_atual,
+        'gmv_variacao': _variacao(gmv_atual, gmv_anterior),
+        'comissao_periodo': comissao_periodo,
+        'comissao_variacao': _variacao(comissao_periodo, comissao_periodo_anterior),
+        'pedidos_periodo': pedidos_periodo,
+        'pedidos_variacao': _variacao(pedidos_periodo, pedidos_periodo_anterior),
+        'ticket_medio': ticket_medio,
+        'ticket_medio_variacao': _variacao(ticket_medio, ticket_medio_anterior),
+        'serie': {'labels': serie_labels, 'valores': serie_valores},
     })
 
 @login_required
@@ -673,8 +757,7 @@ def mp_pay_next(request):
         messages.error(request, 'Não foi possível iniciar o pagamento. Tente novamente.')
         return redirect('cart_detail')
 
-    is_test = mp_account.access_token.startswith('TEST-')
-    init_point = preference.get('sandbox_init_point') if is_test else preference.get('init_point')
+    init_point = preference.get('sandbox_init_point') or preference.get('init_point')
     return redirect(init_point)
 
 @login_required
