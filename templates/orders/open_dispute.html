@@ -3,18 +3,18 @@
 {% block title %}{% if contesting %}Contestar decisão{% else %}Abrir disputa{% endif %} — MegaGame{% endblock %}
 
 {% block content %}
-<div style="max-width:560px;margin:0 auto;">
-    <h2 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:32px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">
-        {% if contesting %}Contestar decisão{% else %}Abrir disputa{% endif %}
-    </h2>
-    <p style="font-size:15px;color:var(--gray-500);margin-bottom:32px;">
-        Pedido: <strong style="color:var(--black);">{{ order.product.title }} — {{ order.variant.name }}</strong>
-    </p>
+<div class="narrow">
+    <div class="page-head">
+        <div>
+            <h1 class="page-title">{% if contesting %}Contestar decisão{% else %}Abrir disputa{% endif %}</h1>
+            <p class="page-sub">{{ order.product.title }} — {{ order.variant.name }}</p>
+        </div>
+    </div>
 
-    <div style="border:2px solid var(--black);border-radius:12px;padding:32px;">
-        <p style="font-size:14px;color:var(--gray-500);margin-bottom:20px;">
-            Descreva o motivo. A equipe do MegaGame vai analisar o caso e entrar em contato pela própria página da disputa.
-        </p>
+    <div class="card">
+        <div class="alert alert-info mb-6">
+            A equipe da MegaGame vai analisar o caso e responder pela própria página da disputa.
+        </div>
         <form method="post" id="dispute-form" novalidate>
             {% csrf_token %}
             {% for field in form %}
@@ -24,29 +24,21 @@
                     {{ field.errors }}
                 </div>
             {% endfor %}
-            <button type="button" class="btn btn-primary" style="width:100%;margin-top:8px;"
-                    onclick="document.getElementById('confirm-dialog').showModal()">
-                {% if contesting %}Enviar contestação{% else %}Abrir disputa{% endif %}
-            </button>
+            <div class="form-footer-actions">
+                <button type="button" class="btn btn-primary" onclick="document.getElementById('confirm-dialog').showModal()">
+                    {% if contesting %}Enviar contestação{% else %}Abrir disputa{% endif %}
+                </button>
+            </div>
         </form>
     </div>
 </div>
 
-<dialog id="confirm-dialog" style="border:2px solid var(--black);border-radius:12px;padding:32px;max-width:400px;width:100%;">
-    <h3 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:24px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">
-        Confirmar?
-    </h3>
-    <p style="font-size:15px;color:var(--gray-500);margin-bottom:24px;">
-        O pedido ficará marcado como "Em disputa" até a equipe do MegaGame analisar o caso.
-    </p>
-    <div style="display:flex;gap:12px;">
-        <button type="button" class="btn" style="flex:1;border:2px solid var(--black);"
-                onclick="document.getElementById('confirm-dialog').close()">
-            Cancelar
-        </button>
-        <button type="submit" form="dispute-form" class="btn btn-primary" style="flex:1;">
-            Confirmar
-        </button>
+<dialog id="confirm-dialog" class="modal">
+    <h3 class="modal-title">Confirmar?</h3>
+    <p class="modal-text">O pedido ficará marcado como "Em disputa" até a equipe da MegaGame analisar o caso.</p>
+    <div class="modal-actions">
+        <button type="button" class="btn btn-outline" onclick="document.getElementById('confirm-dialog').close()">Cancelar</button>
+        <button type="submit" form="dispute-form" class="btn btn-primary">Confirmar</button>
     </div>
 </dialog>
 {% endblock %}

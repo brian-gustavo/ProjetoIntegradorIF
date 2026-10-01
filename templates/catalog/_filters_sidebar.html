@@ -1,41 +1,66 @@
-<div style="border:2px solid var(--black);border-radius:8px;padding:24px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-        <h3 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:18px;text-transform:uppercase;letter-spacing:0.06em;">Filtros</h3>
+{% load catalog_extras %}
+<details class="filters" id="filters" open>
+    <summary>
+        <span class="filters-title">Filtros</span>
         {% if filtros.filtros_ativos %}
-            <a href="?{% if query %}q={{ query }}{% endif %}" style="font-size:12px;color:var(--red);">Limpar</a>
+            <a href="{{ filtros.limpar_url }}" class="filters-clear">Limpar tudo</a>
+        {% endif %}
+    </summary>
+
+    <div class="filter-section">
+        <p class="filter-heading">Preço</p>
+        <form method="get">
+            {% for key, value in filtros.preco_hidden %}
+                <input type="hidden" name="{{ key }}" value="{{ value }}">
+            {% endfor %}
+            <div class="price-range">
+                <label class="price-field">
+                    <span>R$</span>
+                    <input class="input" type="text" inputmode="decimal" name="preco_min" value="{{ filtros.preco_min }}" placeholder="Mínimo" aria-label="Preço mínimo">
+                </label>
+                <span class="price-sep">—</span>
+                <label class="price-field">
+                    <span>R$</span>
+                    <input class="input" type="text" inputmode="decimal" name="preco_max" value="{{ filtros.preco_max }}" placeholder="Máximo" aria-label="Preço máximo">
+                </label>
+            </div>
+            <button type="submit" class="btn btn-outline btn-sm btn-block">Aplicar</button>
+        </form>
+        {% if filtros.faixa.menor is not None %}
+            <p class="price-hint">Nesta busca: R$ {{ filtros.faixa.menor|brl }} a R$ {{ filtros.faixa.maior|brl }}</p>
         {% endif %}
     </div>
 
-    <p style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Preço</p>
-    <ul style="list-style:none;margin-bottom:24px;">
-        {% for facet in filtros.price_facets %}
-            <li style="margin-bottom:6px;">
-                <a href="{{ facet.url }}" class="facet-link{% if facet.active %} facet-link-active{% endif %}">
-                    {{ facet.label }} ({{ facet.count }})
-                </a>
-            </li>
-        {% endfor %}
-    </ul>
+    {% if filtros.local_facets|length > 1 %}
+    <div class="filter-section">
+        <p class="filter-heading">Localização</p>
+        <ul class="filter-options">
+            {% for facet in filtros.local_facets %}
+                <li>
+                    <a href="{{ facet.url }}" class="filter-option{% if facet.active %} active{% endif %}">
+                        {{ facet.label }}<span class="count">{{ facet.count }}</span>
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
 
-    <p style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Localidade</p>
-    <ul style="list-style:none;margin-bottom:24px;">
-        {% for facet in filtros.local_facets %}
-            <li style="margin-bottom:6px;">
-                <a href="{{ facet.url }}" class="facet-link{% if facet.active %} facet-link-active{% endif %}">
-                    {{ facet.label }} ({{ facet.count }})
-                </a>
-            </li>
-        {% endfor %}
-    </ul>
-
-    <p style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Média de avaliação</p>
-    <ul style="list-style:none;">
-        {% for facet in filtros.rating_facets %}
-            <li style="margin-bottom:6px;">
-                <a href="{{ facet.url }}" class="facet-link{% if facet.active %} facet-link-active{% endif %}">
-                    {{ facet.label }} ({{ facet.count }})
-                </a>
-            </li>
-        {% endfor %}
-    </ul>
-</div>
+    <div class="filter-section">
+        <p class="filter-heading">Avaliação do produto</p>
+        <ul class="filter-options">
+            {% for facet in filtros.rating_facets %}
+                <li>
+                    <a href="{{ facet.url }}" class="filter-option{% if facet.active %} active{% endif %}">
+                        {{ facet.label }}<span class="count">{{ facet.count }}</span>
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+</details>
+<script>
+    if (window.matchMedia('(max-width: 960px)').matches) {
+        document.getElementById('filters').open = false;
+    }
+</script>

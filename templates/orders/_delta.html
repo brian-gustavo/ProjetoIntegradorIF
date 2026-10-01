@@ -1,5 +1,5 @@
 {% if valor is not None %}
     <p class="delta {% if valor >= 0 %}{% if inverso %}delta-down{% else %}delta-up{% endif %}{% else %}{% if inverso %}delta-up{% else %}delta-down{% endif %}{% endif %}{% if compacto %} delta-compacto{% endif %}">
-        {% if valor >= 0 %}▲{% else %}▼{% endif %} {{ valor|floatformat:1 }}{% if sufixo %}{{ sufixo }}{% else %}%{% endif %}{% if not compacto %} vs período anterior{% endif %}
+        <b>{% if valor >= 0 %}▲{% else %}▼{% endif %} {{ valor|floatformat:1 }}{% if sufixo %}{{ sufixo }}{% else %}%{% endif %}</b>{% if not compacto %} vs período anterior{% endif %}
     </p>
 {% endif %}

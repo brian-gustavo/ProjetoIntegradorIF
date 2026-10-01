@@ -1,83 +1,65 @@
 {% extends 'base.html' %}
-{% load catalog_extras %}
+{% load catalog_extras l10n %}
 
 {% block title %}Adicionar ao carrinho — MegaGame{% endblock %}
 
 {% block content %}
-<div style="max-width:480px;margin:0 auto;">
-    <h2 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:32px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:32px;">
-        Adicionar ao carrinho
-    </h2>
-
-    <div style="border:2px solid var(--black);border-radius:8px;padding:24px;margin-bottom:28px;">
-        <p style="font-size:13px;color:var(--gray-500);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Produto</p>
-        <p style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:22px;margin-bottom:16px;">{{ product.title }}</p>
-
-        <div style="display:flex;justify-content:space-between;font-size:15px;padding-top:16px;border-top:1px solid var(--gray-300);">
-            <span style="color:var(--gray-500);">Preço</span>
-            <span style="font-weight:600;" id="selected-price">—</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:15px;padding-top:12px;">
-            <span style="color:var(--gray-500);">Estoque disponível</span>
-            <span style="font-weight:600;" id="selected-stock">—</span>
+<div class="narrow-sm">
+    <div class="page-head">
+        <div>
+            <h1 class="page-title">Adicionar ao carrinho</h1>
+            <p class="page-sub">{{ product.title }}</p>
         </div>
     </div>
 
-    {% if error %}
-        <p style="color:var(--red);font-size:14px;margin-bottom:16px;">{{ error }}</p>
-    {% endif %}
+    <div class="card">
+        {% if error %}
+            <div class="alert alert-danger mb-6">{{ error }}</div>
+        {% endif %}
 
-    <form method="post" id="cart-form">
-        {% csrf_token %}
-        <div class="form-group">
-            <label for="variant_id">Variação</label>
-            <select name="variant_id" id="variant_id">
-                <option value="">Selecione...</option>
-                {% for variant in product.variants.all %}
-                    <option value="{{ variant.pk }}"
-                            data-price="{{ variant.price }}"
-                            data-stock="{{ variant.quantity }}">
-                        {{ variant.name }} — R$ {{ variant.price|brl }}
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="quantity">Quantidade</label>
-            <input type="number" name="quantity" id="quantity" value="1" min="1" max="1">
-        </div>
-        <button type="button" class="btn btn-primary" style="width:100%;"
-                id="open-dialog-btn"
-                onclick="handleAddToCart()">
-            Adicionar ao carrinho
-        </button>
-        <p id="variant-error" style="color:var(--red);font-size:13px;margin-top:8px;display:none;">
-            Selecione uma variação antes de continuar.
-        </p>
-    </form>
+        <form method="post" id="cart-form">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="variant_id">Variação</label>
+                <select name="variant_id" id="variant_id">
+                    <option value="">Selecione...</option>
+                    {% for variant in product.variants.all %}
+                        <option value="{{ variant.pk }}"
+                                data-price="{{ variant.price|unlocalize }}"
+                                data-stock="{{ variant.quantity|unlocalize }}">
+                            {{ variant.name }} — R$ {{ variant.price|brl }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="quantity">Quantidade</label>
+                <input type="number" name="quantity" id="quantity" value="1" min="1" max="1">
+            </div>
+
+            <dl>
+                <div class="kv"><dt>Preço unitário</dt><dd id="selected-price">—</dd></div>
+                <div class="kv"><dt>Estoque disponível</dt><dd id="selected-stock">—</dd></div>
+            </dl>
+
+            <button type="button" class="btn btn-primary btn-lg btn-block mt-4"
+                    id="open-dialog-btn"
+                    onclick="handleAddToCart()">
+                Adicionar ao carrinho
+            </button>
+            <p id="variant-error" class="form-error" hidden>Selecione uma variação antes de continuar.</p>
+        </form>
+    </div>
 </div>
 
-<dialog id="confirm-dialog" style="border:2px solid var(--black);border-radius:12px;padding:32px;max-width:400px;width:100%;">
-    <h3 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:24px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">
-        Adicionar ao carrinho?
-    </h3>
-    <p style="font-size:15px;color:var(--gray-500);margin-bottom:4px;">
-        Produto: <strong style="color:var(--black);">{{ product.title }}</strong>
-    </p>
-    <p style="font-size:15px;color:var(--gray-500);margin-bottom:4px;">
-        Variação: <strong style="color:var(--black);" id="dialog-variant">—</strong>
-    </p>
-    <p style="font-size:15px;color:var(--gray-500);margin-bottom:24px;">
-        Total: <strong style="color:var(--black);" id="dialog-total">—</strong>
-    </p>
-    <div style="display:flex;gap:12px;">
-        <button type="button" class="btn" style="flex:1;border:2px solid var(--black);"
-                onclick="document.getElementById('confirm-dialog').close()">
-            Cancelar
-        </button>
-        <button type="submit" form="cart-form" class="btn btn-primary" style="flex:1;">
-            Confirmar
-        </button>
+<dialog id="confirm-dialog" class="modal">
+    <h3 class="modal-title">Adicionar ao carrinho?</h3>
+    <p class="modal-text">Produto: <strong>{{ product.title }}</strong></p>
+    <p class="modal-text">Variação: <strong id="dialog-variant">—</strong></p>
+    <p class="modal-text">Total: <strong id="dialog-total">—</strong></p>
+    <div class="modal-actions">
+        <button type="button" class="btn btn-outline" onclick="document.getElementById('confirm-dialog').close()">Cancelar</button>
+        <button type="submit" form="cart-form" class="btn btn-primary">Confirmar</button>
     </div>
 </dialog>
 {% endblock %}
@@ -89,9 +71,10 @@
     const qtyInput = document.getElementById('quantity');
     const priceDisplay = document.getElementById('selected-price');
     const stockDisplay = document.getElementById('selected-stock');
-    const openBtn = document.getElementById('open-dialog-btn');
     const dialogVariant = document.getElementById('dialog-variant');
     const dialogTotal = document.getElementById('dialog-total');
+    const variantError = document.getElementById('variant-error');
+    const brl = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
     function updateUI() {
         const opt = variantSelect.options[variantSelect.selectedIndex];
@@ -102,23 +85,24 @@
             return;
         }
 
-        document.getElementById('variant-error').style.display = 'none';
+        variantError.hidden = true;
 
         const price = parseFloat(opt.dataset.price);
         const stock = parseInt(opt.dataset.stock);
 
-        priceDisplay.textContent = 'R$ ' + price.toFixed(2).replace('.', ',');
+        priceDisplay.textContent = brl(price);
         stockDisplay.textContent = stock + ' unidade' + (stock !== 1 ? 's' : '');
         qtyInput.max = stock;
 
         const qty = parseInt(qtyInput.value) || 1;
         dialogVariant.textContent = opt.text;
-        dialogTotal.textContent = 'R$ ' + (price * qty).toFixed(2).replace('.', ',');
+        dialogTotal.textContent = brl(price * qty);
     }
 
     function handleAddToCart() {
         if (!variantSelect.value) {
-            document.getElementById('variant-error').style.display = 'block';
+            variantError.textContent = 'Selecione uma variação antes de continuar.';
+            variantError.hidden = false;
             return;
         }
 
@@ -126,12 +110,12 @@
         const qty = parseInt(qtyInput.value) || 1;
 
         if (qty > stock) {
-            document.getElementById('variant-error').textContent = `Quantidade indisponível em estoque (máximo: ${stock})`;
-            document.getElementById('variant-error').style.display = 'block';
+            variantError.textContent = `Quantidade indisponível em estoque (máximo: ${stock})`;
+            variantError.hidden = false;
             return;
         }
 
-        document.getElementById('variant-error').style.display = 'none';
+        variantError.hidden = true;
         document.getElementById('confirm-dialog').showModal();
     }
 

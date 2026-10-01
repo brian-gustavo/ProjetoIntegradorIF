@@ -1,30 +1,27 @@
 {% extends 'base.html' %}
 
-{% block title %}Login — MegaGame{% endblock %}
+{% block title %}Entrar — MegaGame{% endblock %}
 
 {% block content %}
-<div class="form-card">
-    <h2 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:26px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:32px;text-align:center;">
-        Entrar
-    </h2>
+<div class="card auth-card">
+    <h1 class="page-title">Entrar</h1>
+    <p class="page-sub">Acesse sua conta para comprar e vender</p>
     <form method="post" novalidate>
         {% csrf_token %} <!-- Token de segurança, obrigatório pro Django -->
         {% if form.non_field_errors %}
-            <ul class="errorlist" style="margin-bottom:16px;">
-                {% for error in form.non_field_errors %}
-                    <li>{{ error }}</li>
-                {% endfor %}
-            </ul>
+            <div class="alert alert-danger mb-6">
+                {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+            </div>
         {% endif %}
         {% for field in form %}
             <div class="form-group">
                 <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                {{ field }}
+                {% if field.widget_type == 'password' %}{% include '_password_field.html' %}{% else %}{{ field }}{% endif %}
                 {{ field.errors }}
             </div>
         {% endfor %}
-        <button type="submit" class="btn btn-primary" style="width:100%;">Entrar</button>
+        <button type="submit" class="btn btn-primary btn-lg btn-block">Entrar</button>
     </form>
-    <p class="form-footer">Ainda não tem conta? <a href="{% url 'register' %}">Cadastre-se</a></p>
+    <p class="auth-footer">Ainda não tem conta? <a href="{% url 'register' %}">Cadastre-se</a></p>
 </div>
 {% endblock %}

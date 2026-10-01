@@ -4,120 +4,144 @@
 {% block title %}{{ product.title }} — MegaGame{% endblock %}
 
 {% block content %}
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start;">
+<nav class="breadcrumb">
+    <a href="{% url 'home' %}">Início</a>
+    <span><a href="{% url 'category_detail' product.category.slug %}">{{ product.category.name }}</a></span>
+</nav>
+
+<div class="pd-layout">
     <div>
-        {% if product.images.all %}
-            <img id="main-image" src="{{ product.images.first.image.url }}" alt="{{ product.title }}"
-                 style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;border:2px solid var(--black);">
-        {% if product.images.count > 1 %}
-            <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
-                {% for img in product.images.all %}
-                    <img src="{{ img.image.url }}" alt="{{ product.title }}"
-                        onclick="document.getElementById('main-image').src = this.src"
-                        style="width:72px;height:72px;object-fit:cover;border-radius:4px;border:2px solid var(--gray-300);cursor:pointer;">
-                {% endfor %}
-            </div>
-        {% endif %}
-        {% else %}
-            <div style="width:100%;aspect-ratio:4/3;background:var(--gray-100);border-radius:8px;border:2px solid var(--black);display:flex;align-items:center;justify-content:center;color:var(--gray-500);">
-                Sem imagens
-            </div>
-        {% endif %}
-    </div>
-
-    <div>
-        <p style="font-size:13px;text-transform:uppercase;letter-spacing:0.1em;color:var(--gray-500);margin-bottom:8px;">
-            {{ product.category.name }}
-        </p>
-        <h1 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:36px;line-height:1.1;margin-bottom:16px;">
-            {{ product.title }}
-        </h1>
-
-        <div style="display:flex;gap:12px;margin-bottom:24px;">
-            <span style="background:var(--gray-100);border:1px solid var(--gray-300);border-radius:4px;padding:4px 12px;font-size:13px;font-weight:600;">
-                {{ product.get_condition_display }}
-            </span>
-            <span style="background:var(--gray-100);border:1px solid var(--gray-300);border-radius:4px;padding:4px 12px;font-size:13px;">
-                📍 {{ product.seller.profile.city }}, {{ product.seller.profile.uf }}
-            </span>
-        </div>
-
-        <p style="font-size:15px;line-height:1.6;color:#333;margin-bottom:24px;">{{ product.description }}</p>
-
-        <div style="border-top:1px solid var(--gray-300);padding-top:20px;margin-bottom:24px;">
-            <p style="font-size:13px;color:var(--gray-500);">Vendedor</p>
-            <p style="font-weight:600;font-size:16px;">{{ product.seller.username }}</p>
-            {% if seller_rating %}
-                <p style="font-size:14px;color:var(--gray-500);margin-top:4px;">★ {{ seller_rating }} / 5,0</p>
-            {% else %}
-                <p style="font-size:14px;color:var(--gray-500);margin-top:4px;">Sem avaliações ainda</p>
-            {% endif %}
-            {% if can_review_seller %}
-                <a href="{% url 'review_seller' product.seller.pk %}" class="btn btn-primary"
-                style="display:inline-block;margin-top:12px;padding:8px 20px;font-size:14px;">
-                    Avaliar vendedor
-                </a>
-            {% elif already_reviewed_seller %}
-                <p style="font-size:13px;color:var(--gray-500);margin-top:8px;">Você já avaliou este vendedor</p>
-            {% endif %}
-        </div>
-
-        <div style="border-top:1px solid var(--gray-300);padding-top:20px;margin-bottom:28px;">
-            <p style="font-size:13px;color:var(--gray-500);margin-bottom:12px;">Variações disponíveis</p>
-            {% for variant in variants %}
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-100);">
-                    <span style="font-weight:600;">{{ variant.name }}</span>
-                    <span style="font-size:15px;">R$ {{ variant.price|brl }}</span>
-                    <span style="font-size:13px;color:var(--gray-500);">{{ variant.quantity }} un.</span>
+        <div class="card">
+            {% with imagens=product.images.all %}
+            <div class="gallery{% if imagens|length < 2 %} gallery-single{% endif %}">
+                {% if imagens|length > 1 %}
+                    <div class="gallery-thumbs">
+                        {% for img in imagens %}
+                            <button type="button" class="gallery-thumb{% if forloop.first %} active{% endif %}" data-src="{{ img.image.url }}" aria-label="Imagem {{ forloop.counter }}">
+                                <img src="{{ img.image.url }}" alt="">
+                            </button>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                <div class="gallery-main">
+                    {% if imagens %}
+                        <img id="main-image" src="{{ imagens.0.image.url }}" alt="{{ product.title }}">
+                    {% else %}
+                        <div class="img-placeholder">Sem imagens</div>
+                    {% endif %}
                 </div>
+            </div>
+            {% endwith %}
+        </div>
+
+        <div class="card">
+            <h2 class="card-title mb-3">Descrição</h2>
+            <p class="pd-description">{{ product.description }}</p>
+        </div>
+
+        <div class="card">
+            <div class="card-head">
+                <h2 class="card-title">Avaliações do produto</h2>
+                {% if product_rating %}
+                    <div class="reviews-summary">
+                        <span class="reviews-score">{{ product_rating }}</span>
+                        <span class="muted text-sm">de 5 · {{ reviews|length }} avaliação{{ reviews|length|pluralize:"ões" }}</span>
+                    </div>
+                {% endif %}
+            </div>
+            {% for review in reviews %}
+                <div class="review">
+                    <div class="review-head">
+                        <strong>{{ review.reviewer.username }}</strong>
+                        <span class="rating">{{ review.rating }}</span>
+                    </div>
+                    {% if review.comment %}<p>{{ review.comment }}</p>{% endif %}
+                    <time>{{ review.created_at|date:"d/m/Y" }}</time>
+                </div>
+            {% empty %}
+                <p class="muted text-sm">Este produto ainda não foi avaliado.</p>
             {% endfor %}
         </div>
-
-        {% if user.is_authenticated and user != product.seller and not user.is_staff %}
-            <a href="{% url 'add_to_cart' product.pk %}" class="btn btn-primary" style="width:100%;text-align:center;display:block;">
-                Adicionar ao carrinho
-            </a>
-        {% elif not user.is_authenticated %}
-            <a href="{% url 'login' %}" class="btn btn-primary" style="width:100%;text-align:center;display:block;">
-                Faça login para comprar
-            </a>
-        {% endif %}
-
-        {% if can_review_product %}
-            <a href="{% url 'review_product' product.pk %}" class="btn btn-primary"
-            style="width:100%;text-align:center;display:block;margin-top:12px;">
-                Avaliar produto
-            </a>
-        {% elif already_reviewed_product %}
-            <p style="font-size:13px;color:var(--gray-500);margin-top:12px;text-align:center;">
-                Você já avaliou este produto
-            </p>
-        {% endif %}
-
-        {% if reviews %}
-            <div style="margin-top:48px;border-top:2px solid var(--black);padding-top:32px;">
-                <h2 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:24px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:24px;">
-                    Avaliações
-                    {% if product_rating %}
-                        <span style="font-size:18px;color:var(--gray-500);font-weight:400;">★ {{ product_rating }} / 5,0</span>
-                    {% endif %}
-                </h2>
-                {% for review in reviews %}
-                    <div style="border:1px solid var(--gray-300);border-radius:8px;padding:20px;margin-bottom:12px;">
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                            <p style="font-weight:600;font-size:15px;">{{ review.reviewer.username }}</p>
-                            <span style="font-size:14px;color:var(--star);">★ {{ review.rating }}</span>
-                        </div>
-                        {% if review.comment %}
-                            <p style="font-size:14px;color:#333;line-height:1.6;">{{ review.comment }}</p>
-                        {% endif %}
-                        <p style="font-size:12px;color:var(--gray-500);margin-top:8px;">
-                            {{ review.created_at|date:"d/m/Y" }}
-                        </p>
-                    </div>
-                {% endfor %}
-            </div>
-        {% endif %}
     </div>
+
+    <aside class="buybox">
+        <div class="card">
+            <p class="buybox-meta">{{ product.get_condition_display }} · {{ product.category.name }}</p>
+            <h1 class="buybox-title">{{ product.title }}</h1>
+            {% if product_rating %}
+                <span class="rating">{{ product_rating }} <span class="muted">({{ reviews|length }})</span></span>
+            {% endif %}
+
+            {% with menor=variants|dictsort:"price"|first %}
+                {% if menor %}
+                    <p class="price-from">{% if variants|length > 1 %}a partir de{% else %}preço{% endif %}</p>
+                    <p class="buybox-price price">R$ {{ menor.price|brl }}</p>
+                {% endif %}
+            {% endwith %}
+
+            <div class="buybox-tags">
+                <span class="tag">📍 {{ product.seller.profile.city }}, {{ product.seller.profile.uf }}</span>
+                {% if product.accepts_pickup %}<span class="tag tag-success">Aceita retirada em mãos</span>{% endif %}
+            </div>
+
+            <p class="field-label">Variações disponíveis</p>
+            <ul class="variant-list">
+                {% for variant in variants %}
+                    <li>
+                        <span>{{ variant.name }}</span>
+                        <span class="stock">{{ variant.quantity }} un.</span>
+                        <strong class="price">R$ {{ variant.price|brl }}</strong>
+                    </li>
+                {% endfor %}
+            </ul>
+
+            {% if user.is_authenticated and user != product.seller and not user.is_staff %}
+                <a href="{% url 'add_to_cart' product.pk %}" class="btn btn-primary btn-lg btn-block">Adicionar ao carrinho</a>
+            {% elif not user.is_authenticated %}
+                <a href="{% url 'login' %}" class="btn btn-primary btn-lg btn-block">Entre para comprar</a>
+            {% elif user == product.seller %}
+                <a href="{% url 'edit_product' product.pk %}" class="btn btn-outline btn-block">Editar anúncio</a>
+            {% endif %}
+
+            {% if can_review_product %}
+                <a href="{% url 'review_product' product.pk %}" class="btn btn-outline btn-block">Avaliar produto</a>
+            {% elif already_reviewed_product %}
+                <p class="muted text-sm text-center">Você já avaliou este produto</p>
+            {% endif %}
+        </div>
+
+        <div class="card">
+            <p class="field-label">Vendedor</p>
+            <div class="seller-box">
+                <span class="user-avatar">{{ product.seller.username|first|upper }}</span>
+                <div>
+                    <strong>{{ product.seller.username }}</strong>
+                    {% if seller_rating %}
+                        <span class="rating">{{ seller_rating }} <span class="muted">/ 5,0</span></span>
+                    {% else %}
+                        <p>Sem avaliações ainda</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% if can_review_seller %}
+                <a href="{% url 'review_seller' product.seller.pk %}" class="btn btn-outline btn-sm btn-block mt-4">Avaliar vendedor</a>
+            {% elif already_reviewed_seller %}
+                <p class="muted text-sm mt-4">Você já avaliou este vendedor</p>
+            {% endif %}
+        </div>
+    </aside>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+    const mainImage = document.getElementById('main-image');
+    document.querySelectorAll('.gallery-thumb').forEach(thumb => {
+        thumb.addEventListener('click', () => {
+            mainImage.src = thumb.dataset.src;
+            document.querySelectorAll('.gallery-thumb').forEach(t => t.classList.toggle('active', t === thumb));
+        });
+    });
+</script>
 {% endblock %}

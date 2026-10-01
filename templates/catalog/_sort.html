@@ -1,0 +1,12 @@
+<form method="get" class="sort-form">
+    {% for key, value in ordenacao.hidden %}
+        <input type="hidden" name="{{ key }}" value="{{ value }}">
+    {% endfor %}
+    <label for="ordem">Ordenar por</label>
+    <select name="ordem" id="ordem" class="input" onchange="this.form.submit()">
+        {% for opcao in ordenacao.opcoes %}
+            <option value="{{ opcao.key }}"{% if opcao.key == ordenacao.atual %} selected{% endif %}>{{ opcao.label }}</option>
+        {% endfor %}
+    </select>
+    <noscript><button type="submit" class="btn btn-outline btn-sm">Aplicar</button></noscript>
+</form>

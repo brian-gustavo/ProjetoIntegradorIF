@@ -1,0 +1,71 @@
+<template id="variant-template">
+    <div class="variant-item">
+        <div class="variant-fields">
+            <div class="form-group">
+                <label>Variação</label>
+                <input type="text" name="variants-__index__-name" maxlength="100">
+            </div>
+            <div class="form-group">
+                <label>Preço (em reais)</label>
+                <input type="number" name="variants-__index__-price" step="0.01" min="0.01">
+                <p class="help">Use ponto como separador decimal (ex: 4.5)</p>
+            </div>
+            <div class="form-group">
+                <label>Quantidade</label>
+                <input type="number" name="variants-__index__-quantity" value="1" min="1">
+            </div>
+        </div>
+        <input type="hidden" name="variants-__index__-id" value="">
+        <button type="button" class="variant-remove" onclick="removeVariant(this)" aria-label="Remover variação">✕</button>
+    </div>
+</template>
+<script>
+    const totalForms = document.getElementById('id_variants-TOTAL_FORMS');
+
+    function addVariant() {
+        const list = document.getElementById('variant-list');
+        const index = parseInt(totalForms.value);
+        const clone = document.getElementById('variant-template').content.cloneNode(true);
+
+        clone.querySelectorAll('input, select, textarea').forEach(el => {
+            el.name = el.name.replace('__index__', index);
+            if (el.id) el.id = el.id.replace('__index__', index);
+        });
+
+        list.appendChild(clone);
+        totalForms.value = index + 1;
+    }
+
+    function removeVariant(btn) {
+        const list = document.getElementById('variant-list');
+        const visibleItems = list.querySelectorAll('.variant-item:not([style*="display: none"])');
+
+        if (visibleItems.length <= 1) return;
+
+        const item = btn.closest('.variant-item');
+        const deleteInput = item.querySelector('input[id$="-DELETE"]');
+
+        if (deleteInput) {
+            deleteInput.checked = true;
+            item.style.display = 'none';
+        } else {
+            item.remove();
+        }
+    }
+
+    function previewImages(files, container) {
+        container.innerHTML = '';
+        files.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = e => {
+                const thumb = document.createElement('div');
+                thumb.className = 'image-thumb';
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                thumb.appendChild(img);
+                container.appendChild(thumb);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+</script>

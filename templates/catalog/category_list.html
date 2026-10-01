@@ -3,14 +3,17 @@
 {% block title %}Categorias — MegaGame{% endblock %}
 
 {% block content %}
-<h2 class="section-header">Categorias</h2>
-<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Categorias</h1>
+        <p class="page-sub">Navegue pelos anúncios por tipo de produto</p>
+    </div>
+</div>
+<div class="category-grid">
     {% for cat in categorias %}
-        <a href="{% url 'category_detail' cat.slug %}" class="btn btn-primary" style="text-align:center;">
-            {{ cat.name }}
-        </a>
+        <a href="{% url 'category_detail' cat.slug %}" class="category-card">{{ cat.name }}</a>
     {% empty %}
-        <p style="color:var(--gray-500);">Nenhuma categoria cadastrada ainda</p>
+        <div class="empty-state"><strong>Nenhuma categoria cadastrada ainda</strong></div>
     {% endfor %}
 </div>
 {% endblock %}

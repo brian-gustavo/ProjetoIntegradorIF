@@ -4,152 +4,118 @@
 {% block title %}Meus anúncios — MegaGame{% endblock %}
 
 {% block content %}
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:32px;">
-    <h2 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:32px;text-transform:uppercase;letter-spacing:0.06em;">
-        Meus anúncios
-    </h2>
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Meus anúncios</h1>
+        <p class="page-sub">{{ produtos.paginator.count }} anúncio{{ produtos.paginator.count|pluralize }}{% if rascunhos %} · {{ rascunhos|length }} rascunho{{ rascunhos|length|pluralize }}{% endif %}</p>
+    </div>
     {% if not user.is_staff %}
-        <a href="{% url 'create_product' %}" class="btn btn-primary">Novo anúncio</a>
+        <div class="page-actions">
+            <a href="{% url 'create_product' %}" class="btn btn-primary">+ Novo anúncio</a>
+        </div>
     {% endif %}
 </div>
 
 <div class="product-grid">
     {% for prod in produtos %}
-        <div style="display:flex;flex-direction:column;gap:8px;">
-            <a href="{% url 'product_detail' prod.pk %}" class="product-card">
-                {% if prod.images.all %}
-                    <img class="product-card-img" src="{{ prod.images.first.image.url }}" alt="{{ prod.title }}">
+        <div class="product-card">
+            <a href="{% url 'product_detail' prod.pk %}" class="product-card-media">
+                {% with img=prod.images.all.0 %}
+                    {% if img %}<img src="{{ img.image.url }}" alt="{{ prod.title }}" loading="lazy">{% else %}<div class="img-placeholder">Sem foto</div>{% endif %}
+                {% endwith %}
+                {% if prod.published %}
+                    <span class="badge badge-paid">Ativo</span>
                 {% else %}
-                    <div class="product-card-img-placeholder">Sem foto</div>
+                    <span class="badge badge-cancelled">Fora do ar</span>
                 {% endif %}
-                <div class="product-card-body">
-                    <div class="product-card-title">{{ prod.title }}</div>
-                    <div class="product-card-price">a partir de R$ {{ prod.base_price|brl }}</div>
-                    <div class="product-card-meta">
-                        Estoque total: {{ prod.total_stock }} unidade{{ prod.total_stock|pluralize }}
-                        {% if not prod.published %} · <span style="color:var(--red);font-weight:600;">Fora do ar</span>{% endif %}
-                    </div>
-                </div>
             </a>
-            <a href="{% url 'edit_product' prod.pk %}" class="btn" style="width:100%;border:2px solid var(--black);font-size:13px;padding:8px;text-align:center;display:block;">
-                Editar
-            </a>
-            {% if prod.published %}
-                <form method="post" action="{% url 'unpublish_product' prod.pk %}" id="unpublish-form-{{ prod.pk }}">
-                    {% csrf_token %}
-                    <button type="button" class="btn" style="width:100%;border:2px solid var(--black);font-size:13px;padding:8px;"
-                            onclick="document.getElementById('unpublish-dialog-{{ prod.pk }}').showModal()">
-                        Retirar do ar
-                    </button>
-                </form>
-
-                <dialog id="unpublish-dialog-{{ prod.pk }}" style="border:2px solid var(--black);border-radius:12px;padding:32px;max-width:400px;width:100%;">
-                    <h3 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:24px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">
-                        Retirar do ar?
-                    </h3>
-                    <p style="font-size:15px;color:var(--gray-500);margin-bottom:24px;">
-                        O anúncio <strong style="color:var(--black);">{{ prod.title }}</strong> ficará invisível para outros usuários.
-                    </p>
-                    <div style="display:flex;gap:12px;">
-                        <button type="button" class="btn" style="flex:1;border:2px solid var(--black);"
-                                onclick="document.getElementById('unpublish-dialog-{{ prod.pk }}').close()">
-                            Cancelar
-                        </button>
-                        <button type="submit" form="unpublish-form-{{ prod.pk }}" class="btn btn-primary" style="flex:1;">
-                            Confirmar
-                        </button>
-                    </div>
-                </dialog>
-            {% else %}
-                <form method="post" action="{% url 'republish_product' prod.pk %}">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-primary" style="width:100%;font-size:13px;padding:8px;">
-                        Republicar
-                    </button>
-                </form>
-            {% endif %}
-            <form method="post" action="{% url 'delete_product' prod.pk %}" id="delete-form-{{ prod.pk }}">
-                {% csrf_token %}
-                <button type="button" class="btn" style="width:100%;border:2px solid var(--black);font-size:13px;padding:8px;"
-                        onclick="document.getElementById('delete-dialog-{{ prod.pk }}').showModal()">
-                    Excluir
-                </button>
-            </form>
-
-            <dialog id="delete-dialog-{{ prod.pk }}" style="border:2px solid var(--black);border-radius:12px;padding:32px;max-width:400px;width:100%;">
-                <h3 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:24px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">
-                    Excluir anúncio?
-                </h3>
-                <p style="font-size:15px;color:var(--gray-500);margin-bottom:24px;">
-                    <strong style="color:var(--black);">{{ prod.title }}</strong> será removido permanentemente da plataforma.
-                </p>
-                <div style="display:flex;gap:12px;">
-                    <button type="button" class="btn" style="flex:1;border:2px solid var(--black);"
-                            onclick="document.getElementById('delete-dialog-{{ prod.pk }}').close()">
-                        Cancelar
-                    </button>
-                    <button type="submit" form="delete-form-{{ prod.pk }}" class="btn btn-primary" style="flex:1;">
-                        Confirmar
-                    </button>
+            <div class="product-card-body">
+                <a href="{% url 'product_detail' prod.pk %}" class="product-card-title">{{ prod.title }}</a>
+                <div class="price-from">a partir de</div>
+                <div class="product-card-price price">R$ {{ prod.base_price|brl }}</div>
+                <div class="product-card-foot">
+                    <span>Estoque: {{ prod.total_stock }} un.</span>
                 </div>
-            </dialog>
+            </div>
+            <div class="product-card-actions">
+                <a href="{% url 'edit_product' prod.pk %}" class="btn btn-outline btn-sm">Editar</a>
+                {% if prod.published %}
+                    <form method="post" action="{% url 'unpublish_product' prod.pk %}" id="unpublish-form-{{ prod.pk }}">
+                        {% csrf_token %}
+                        <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('unpublish-dialog-{{ prod.pk }}').showModal()">Pausar</button>
+                    </form>
+                {% else %}
+                    <form method="post" action="{% url 'republish_product' prod.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary btn-sm">Republicar</button>
+                    </form>
+                {% endif %}
+                <form method="post" action="{% url 'delete_product' prod.pk %}" id="delete-form-{{ prod.pk }}" class="span-2">
+                    {% csrf_token %}
+                    <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('delete-dialog-{{ prod.pk }}').showModal()">Excluir</button>
+                </form>
+            </div>
         </div>
+
+        {% if prod.published %}
+        <dialog id="unpublish-dialog-{{ prod.pk }}" class="modal">
+            <h3 class="modal-title">Retirar do ar?</h3>
+            <p class="modal-text">O anúncio <strong>{{ prod.title }}</strong> ficará invisível para outros usuários até ser republicado.</p>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('unpublish-dialog-{{ prod.pk }}').close()">Cancelar</button>
+                <button type="submit" form="unpublish-form-{{ prod.pk }}" class="btn btn-primary">Retirar do ar</button>
+            </div>
+        </dialog>
+        {% endif %}
+
+        <dialog id="delete-dialog-{{ prod.pk }}" class="modal">
+            <h3 class="modal-title">Excluir anúncio?</h3>
+            <p class="modal-text"><strong>{{ prod.title }}</strong> será removido permanentemente da plataforma.</p>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('delete-dialog-{{ prod.pk }}').close()">Cancelar</button>
+                <button type="submit" form="delete-form-{{ prod.pk }}" class="btn btn-danger">Excluir</button>
+            </div>
+        </dialog>
     {% empty %}
-        <p style="color:var(--gray-500);">Você ainda não publicou nenhum anúncio</p>
+        <div class="empty-state">
+            <strong>Você ainda não publicou nenhum anúncio</strong>
+            Venda jogos, consoles e acessórios que você não usa mais.
+            <br><a href="{% url 'create_product' %}" class="btn btn-primary">Criar primeiro anúncio</a>
+        </div>
     {% endfor %}
 </div>
+{% include '_pagination.html' with page=produtos %}
+
 {% if rascunhos %}
-    <h2 class="section-header" style="margin-top:48px;">Rascunhos</h2>
+    <h2 class="section-title">Rascunhos</h2>
+    <p class="section-note">Anúncios que ainda não têm variações e por isso não foram publicados.</p>
     <div class="product-grid">
         {% for prod in rascunhos %}
-            <div style="display:flex;flex-direction:column;gap:8px;">
-                <div class="product-card">
-                    <div class="product-card-img-placeholder">Sem foto</div>
-                    <div class="product-card-body">
-                        <div class="product-card-title">{{ prod.title }}</div>
-                        <div class="product-card-meta" style="color:var(--gray-500);">Rascunho incompleto</div>
-                    </div>
+            <div class="product-card">
+                <div class="product-card-media">
+                    <div class="img-placeholder">Rascunho</div>
                 </div>
-                <a href="{% url 'manage_variants' prod.pk %}" class="btn btn-primary" style="width:100%;text-align:center;font-size:13px;padding:8px;">
-                    Continuar criação
-                </a>
-                <form method="post" action="{% url 'delete_product' prod.pk %}" id="delete-draft-form-{{ prod.pk }}">
-                    {% csrf_token %}
-                    <button type="button" class="btn" style="width:100%;border:2px solid var(--black);font-size:13px;padding:8px;"
-                            onclick="document.getElementById('delete-draft-dialog-{{ prod.pk }}').showModal()">
-                        Excluir rascunho
-                    </button>
-                </form>
-                <dialog id="delete-draft-dialog-{{ prod.pk }}" style="border:2px solid var(--black);border-radius:12px;padding:32px;max-width:400px;width:100%;">
-                    <h3 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:24px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">
-                        Excluir rascunho?
-                    </h3>
-                    <p style="font-size:15px;color:var(--gray-500);margin-bottom:24px;">
-                        O rascunho <strong style="color:var(--black);">{{ prod.title }}</strong> será excluído permanentemente.
-                    </p>
-                    <div style="display:flex;gap:12px;">
-                        <button type="button" class="btn" style="flex:1;border:2px solid var(--black);"
-                                onclick="document.getElementById('delete-draft-dialog-{{ prod.pk }}').close()">
-                            Cancelar
-                        </button>
-                        <button type="submit" form="delete-draft-form-{{ prod.pk }}" class="btn btn-primary" style="flex:1;">
-                            Confirmar
-                        </button>
-                    </div>
-                </dialog>
+                <div class="product-card-body">
+                    <div class="product-card-title">{{ prod.title }}</div>
+                    <div class="product-card-foot"><span>Rascunho incompleto</span></div>
+                </div>
+                <div class="product-card-actions">
+                    <a href="{% url 'manage_variants' prod.pk %}" class="btn btn-primary btn-sm span-2">Continuar criação</a>
+                    <form method="post" action="{% url 'delete_product' prod.pk %}" id="delete-draft-form-{{ prod.pk }}" class="span-2">
+                        {% csrf_token %}
+                        <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('delete-draft-dialog-{{ prod.pk }}').showModal()">Excluir rascunho</button>
+                    </form>
+                </div>
             </div>
+            <dialog id="delete-draft-dialog-{{ prod.pk }}" class="modal">
+                <h3 class="modal-title">Excluir rascunho?</h3>
+                <p class="modal-text">O rascunho <strong>{{ prod.title }}</strong> será excluído permanentemente.</p>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" onclick="document.getElementById('delete-draft-dialog-{{ prod.pk }}').close()">Cancelar</button>
+                    <button type="submit" form="delete-draft-form-{{ prod.pk }}" class="btn btn-danger">Excluir</button>
+                </div>
+            </dialog>
         {% endfor %}
     </div>
-    {% if produtos.paginator.num_pages > 1 %}
-    <div style="display:flex;justify-content:center;align-items:center;gap:16px;margin-top:40px;">
-        {% if produtos.has_previous %}
-            <a href="?page={{ produtos.previous_page_number }}" class="btn" style="border:2px solid var(--black);padding:8px 20px;">Anterior</a>
-        {% endif %}
-        <span style="font-size:14px;color:var(--gray-500);">Página {{ produtos.number }} de {{ produtos.paginator.num_pages }}</span>
-        {% if produtos.has_next %}
-            <a href="?page={{ produtos.next_page_number }}" class="btn btn-primary" style="padding:8px 20px;">Próxima</a>
-        {% endif %}
-    </div>
-    {% endif %}
 {% endif %}
 {% endblock %}

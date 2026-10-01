@@ -5,14 +5,17 @@ from .models import Dispute, DisputeMessage, PlatformConfig
 class PlatformConfigForm(forms.ModelForm):
     class Meta:
         model = PlatformConfig
-        fields = ('commission_rate', 'dispute_window_days', 'return_window_days', 'ranking_size', 'dispute_reasons')
-        widgets = {'dispute_reasons': forms.Textarea(attrs={'rows': 8})}
+        fields = ('commission_rate', 'dispute_window_days', 'return_window_days', 'ranking_size', 'dispute_reasons', 'shelf_size', 'home_categories')
+        widgets = {
+            'dispute_reasons': forms.Textarea(attrs={'rows': 8}),
+            'home_categories': forms.CheckboxSelectMultiple,
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
-            is_textarea = isinstance(field.widget, forms.Textarea)
-            field.widget.attrs['class'] = 'config-input config-textarea' if is_textarea else 'config-input'
+            if not isinstance(field.widget, forms.CheckboxSelectMultiple):
+                field.widget.attrs['class'] = 'input'
 
     def clean_dispute_reasons(self):
         linhas = [linha.strip() for linha in self.cleaned_data['dispute_reasons'].splitlines() if linha.strip()]

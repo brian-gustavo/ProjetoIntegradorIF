@@ -1,129 +1,109 @@
 {% extends 'base.html' %}
 {% load catalog_extras %}
 
-{% block title %}Meus pedidos — MegaGame{% endblock %}
+{% block title %}Minhas compras — MegaGame{% endblock %}
 
 {% block content %}
-<h2 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:32px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:32px;">
-    Meus pedidos
-</h2>
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Minhas compras</h1>
+        <p class="page-sub">Acompanhe seus pedidos e avalie suas compras</p>
+    </div>
+</div>
 
+<div class="order-list">
 {% for order in orders %}
-    <div style="border:2px solid var(--black);border-radius:8px;padding:24px;margin-bottom:16px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:24px;">
-            <div style="flex:1;">
-                <p style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;margin-bottom:8px;">
-                    {{ order.product.title }} — {{ order.variant.name }}
-                </p>
-                <p style="font-size:14px;color:var(--gray-500);">
-                    {{ order.quantity }} unidade{{ order.quantity|pluralize }} ·
-                    <strong style="color:var(--black);">R$ {{ order.total_price|brl }}</strong>
-                    {% if order.pickup %} · <span style="color:var(--green-dark);font-weight:600;">Retirada em mãos</span>{% endif %}
-                </p>
+    <article class="card order-card">
+        <div class="order-card-main">
+            <div>
+                <p class="order-card-title">{{ order.product.title }}</p>
+                <div class="order-card-meta">
+                    <span>{{ order.variant.name }}</span>
+                    <span>{{ order.quantity }} unidade{{ order.quantity|pluralize }}</span>
+                    <span>Vendedor: <strong>{{ order.product.seller.username }}</strong></span>
+                    {% if order.pickup %}<span class="text-success">Retirada em mãos</span>{% endif %}
+                </div>
             </div>
-            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:12px;">
-                <span class="badge 
-                    {% if order.status == 'PENDING' %}badge-pending
-                    {% elif order.status == 'PAID' %}badge-paid
-                    {% elif order.status == 'DELIVERED' or order.status == 'RETURN_WINDOW' %}badge-delivered
-                    {% elif order.status == 'COMPLETED' or order.status == 'CANCELLED_NO_RETURN' %}badge-paid
-                    {% elif order.status == 'CANCELLED' or order.status == 'RETURNED' %}badge-cancelled
-                    {% else %}badge-progress{% endif %}">
-                    {{ order.get_status_display }}
-                </span>
-                {% if order.status == 'PENDING' %}
-                    <a href="{% url 'resume_payment' order.pk %}" class="btn btn-primary" style="padding:8px 20px;font-size:14px;">
-                        Retomar pagamento
-                    </a>
-                {% endif %}
-                {% if order.status == 'PAID' and order.product.accepts_pickup and not order.pickup %}
-                    <a href="{% url 'choose_pickup' order.pk %}" class="btn" style="padding:8px 20px;font-size:14px;border:2px solid var(--black);">
-                        Optar por retirada em mãos
-                    </a>
-                {% endif %}
-                {% if order.status == 'PENDING' or order.status == 'PAID' %}
-                    <a href="{% url 'cancel_order_buyer' order.pk %}" class="btn" style="padding:8px 20px;font-size:14px;border:2px solid var(--black);">
-                        Cancelar pedido
-                    </a>
-                {% endif %}
-                {% if order.status == 'SHIPPED' or order.status == 'READY_PICKUP' %}
-                    <a href="{% url 'confirm_delivery' order.pk %}" class="btn btn-primary" style="padding:8px 20px;font-size:14px;">
-                        Confirmar entrega
-                    </a>
-                {% endif %}
-                {% if order.status == 'DELIVERED' or order.status == 'RETURN_WINDOW' %}
-                    <a href="{% url 'complete_order' order.pk %}" class="btn btn-primary" style="padding:8px 20px;font-size:14px;">
-                        Concluir pedido
-                    </a>
-                {% endif %}
-                {% if order.can_request_return %}
-                    <a href="{% url 'request_return' order.pk %}" class="btn" style="padding:8px 20px;font-size:14px;border:2px solid var(--black);">
-                        Solicitar devolução
-                    </a>
-                {% endif %}
-                {% if order.status == 'COMPLETED' and not order.seller_reviewed %}
-                    <a href="{% url 'review_seller' order.product.seller.pk %}" class="btn btn-primary" style="padding:8px 20px;font-size:14px;">
-                        Avaliar vendedor
-                    </a>
-                {% endif %}
-                {% if order.status == 'COMPLETED' and order.seller_reviewed and not order.seller_review_edited %}
-                    <a href="{% url 'edit_seller_review' order.product.seller.pk %}" class="btn" style="padding:8px 20px;font-size:14px;border:2px solid var(--black);">
-                        Editar avaliação do vendedor
-                    </a>
-                {% endif %}
-                {% if order.status == 'COMPLETED' and not order.product_reviewed %}
-                    <a href="{% url 'review_product' order.product.pk %}" class="btn btn-primary" style="padding:8px 20px;font-size:14px;">
-                        Avaliar produto
-                    </a>
-                {% endif %}
-                {% if order.status == 'COMPLETED' and order.product_reviewed and not order.product_review_edited %}
-                    <a href="{% url 'edit_product_review' order.product.pk %}" class="btn" style="padding:8px 20px;font-size:14px;border:2px solid var(--black);">
-                        Editar avaliação do produto
-                    </a>
-                {% endif %}
-                {% if order.status == 'RETURN_REQUESTED' %}
-                    <a href="{% url 'open_dispute' order.pk %}" class="btn" style="padding:8px 20px;font-size:14px;border:2px solid var(--black);">
-                        Abrir disputa
-                    </a>
-                {% endif %}
-                {% if order.can_contest %}
-                    <a href="{% url 'contest_decision' order.pk %}" class="btn" style="padding:8px 20px;font-size:14px;border:2px solid var(--black);">
-                        Contestar decisão
-                    </a>
-                {% endif %}
-                {% if order.status == 'DISPUTE_OPEN' %}
-                    <a href="{% url 'dispute_detail' order.dispute.pk %}" class="btn btn-primary" style="padding:8px 20px;font-size:14px;">
-                        Ver disputa
-                    </a>
-                {% endif %}
+            <div class="order-card-side">
+                {% include 'orders/_status_badge.html' %}
+                <span class="order-card-price price">R$ {{ order.total_price|brl }}</span>
             </div>
         </div>
 
         {% if order.status == 'SHIPPED' or order.status == 'DELIVERED' or order.status == 'RETURN_WINDOW' or order.status == 'COMPLETED' %}
             {% if not order.pickup and order.tracking_code %}
-            <details id="tracking-{{ order.pk }}" style="margin-top:20px;border-top:1px solid var(--gray-300);padding-top:16px;">
-                <summary style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;cursor:pointer;list-style:none;">
-                    ▶ Rastreio — {{ order.tracking_code }}
-                </summary>
-                <div id="tracking-result-{{ order.pk }}" style="margin-top:16px;font-size:14px;color:var(--gray-500);">
-                        <button data-order="{{ order.pk }}"
-                            onclick="fetchTracking(this.dataset.order)"
-                            class="btn btn-primary" style="padding:8px 20px;font-size:14px;">
+            <details class="tracking" id="tracking-{{ order.pk }}">
+                <summary>Rastreio · {{ order.tracking_code }}</summary>
+                <div class="tracking-body" id="tracking-result-{{ order.pk }}">
+                    <button type="button" data-order="{{ order.pk }}" onclick="fetchTracking(this.dataset.order)" class="btn btn-outline btn-sm">
                         Consultar rastreio
                     </button>
                 </div>
             </details>
             {% endif %}
         {% endif %}
-    </div>
+
+        <div class="order-card-actions">{% spaceless %}
+            {% if order.status == 'PENDING' or order.status == 'PAID' %}
+                <a href="{% url 'cancel_order_buyer' order.pk %}" class="btn btn-ghost btn-sm">Cancelar pedido</a>
+            {% endif %}
+            {% if order.status == 'PAID' and order.product.accepts_pickup and not order.pickup %}
+                <a href="{% url 'choose_pickup' order.pk %}" class="btn btn-outline btn-sm">Optar por retirada em mãos</a>
+            {% endif %}
+            {% if order.can_request_return %}
+                <a href="{% url 'request_return' order.pk %}" class="btn btn-outline btn-sm">Solicitar devolução</a>
+            {% endif %}
+            {% if order.status == 'RETURN_REQUESTED' %}
+                <a href="{% url 'open_dispute' order.pk %}" class="btn btn-outline btn-sm">Abrir disputa</a>
+            {% endif %}
+            {% if order.can_contest %}
+                <a href="{% url 'contest_decision' order.pk %}" class="btn btn-outline btn-sm">Contestar decisão</a>
+            {% endif %}
+            {% if order.status == 'COMPLETED' and order.seller_reviewed and not order.seller_review_edited %}
+                <a href="{% url 'edit_seller_review' order.product.seller.pk %}" class="btn btn-outline btn-sm">Editar avaliação do vendedor</a>
+            {% endif %}
+            {% if order.status == 'COMPLETED' and order.product_reviewed and not order.product_review_edited %}
+                <a href="{% url 'edit_product_review' order.product.pk %}" class="btn btn-outline btn-sm">Editar avaliação do produto</a>
+            {% endif %}
+            {% if order.status == 'COMPLETED' and not order.seller_reviewed %}
+                <a href="{% url 'review_seller' order.product.seller.pk %}" class="btn btn-outline btn-sm">Avaliar vendedor</a>
+            {% endif %}
+            {% if order.status == 'COMPLETED' and not order.product_reviewed %}
+                <a href="{% url 'review_product' order.product.pk %}" class="btn btn-primary btn-sm">Avaliar produto</a>
+            {% endif %}
+            {% if order.status == 'PENDING' %}
+                <a href="{% url 'resume_payment' order.pk %}" class="btn btn-primary btn-sm">Retomar pagamento</a>
+            {% endif %}
+            {% if order.status == 'SHIPPED' or order.status == 'READY_PICKUP' %}
+                <a href="{% url 'confirm_delivery' order.pk %}" class="btn btn-primary btn-sm">Confirmar entrega</a>
+            {% endif %}
+            {% if order.status == 'DELIVERED' or order.status == 'RETURN_WINDOW' %}
+                <a href="{% url 'complete_order' order.pk %}" class="btn btn-primary btn-sm">Concluir pedido</a>
+            {% endif %}
+            {% if order.status == 'DISPUTE_OPEN' %}
+                <a href="{% url 'dispute_detail' order.dispute.pk %}" class="btn btn-primary btn-sm">Ver disputa</a>
+            {% endif %}
+        {% endspaceless %}</div>
+    </article>
 {% empty %}
-    <p style="color:var(--gray-500);">Você ainda não realizou nenhum pedido</p>
+    <div class="empty-state">
+        <strong>Você ainda não realizou nenhum pedido</strong>
+        Quando comprar algo, você acompanha tudo por aqui.
+        <br><a href="{% url 'home' %}" class="btn btn-primary">Ver ofertas</a>
+    </div>
 {% endfor %}
+</div>
 {% endblock %}
 
 {% block extra_js %}
 {{ block.super }}
 <script>
+function escapeHtml(valor) {
+    const div = document.createElement('div');
+    div.textContent = valor ?? '';
+    return div.innerHTML;
+}
+
 function fetchTracking(orderId) {
     const container = document.getElementById('tracking-result-' + orderId);
     container.innerHTML = '<p>Consultando...</p>';
@@ -132,7 +112,7 @@ function fetchTracking(orderId) {
         .then(res => res.json())
         .then(data => {
             if (data.error) {
-                container.innerHTML = `<p style="color:var(--red);">${data.error}</p>`;
+                container.innerHTML = `<p class="text-danger">${escapeHtml(data.error)}</p>`;
                 return;
             }
 
@@ -141,20 +121,20 @@ function fetchTracking(orderId) {
             if (!eventos || !Array.isArray(eventos) || eventos.length === 0) {
                 container.innerHTML = `
                     <p>Não conseguimos exibir os eventos no formato esperado ainda.</p>
-                    <pre style="background:var(--gray-100);padding:12px;border-radius:6px;font-size:11px;overflow-x:auto;white-space:pre-wrap;">${JSON.stringify(data, null, 2)}</pre>
+                    <pre class="tracking-raw">${escapeHtml(JSON.stringify(data, null, 2))}</pre>
                 `;
                 return;
             }
 
             container.innerHTML = eventos.map(e => `
-                <div style="border-left:3px solid var(--green);padding-left:12px;margin-bottom:12px;">
-                    <p style="font-weight:600;color:var(--black);">${e.status || e.description || ''}</p>
-                    <p style="font-size:12px;color:var(--gray-500);margin-top:4px;">${e.date || e.data || ''} ${e.location || e.local || ''}</p>
+                <div class="tracking-event">
+                    <strong>${escapeHtml(e.status || e.description || '')}</strong>
+                    <span class="text-sm">${escapeHtml(e.date || e.data || '')} ${escapeHtml(e.location || e.local || '')}</span>
                 </div>
             `).join('');
         })
         .catch(() => {
-            container.innerHTML = '<p style="color:var(--red);">Não foi possível consultar o rastreio no momento</p>';
+            container.innerHTML = '<p class="text-danger">Não foi possível consultar o rastreio no momento</p>';
         });
 }
 </script>

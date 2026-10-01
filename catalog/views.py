@@ -1,25 +1,69 @@
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+from urllib.parse import urlencode
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db.models import Avg, Count, Min, OuterRef, Subquery, Sum
+from django.db.models import Avg, Count, F, Max, Min, OuterRef, Subquery, Sum
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 
 from .forms import ProductForm, ProductVariantFormSet, ProductReviewForm
 from .models import Category, Product, ProductImage, ProductVariant, ProductReview
+from .templatetags.catalog_extras import brl
 from accounts.models import SellerReview
-
-PRICE_RANGES = [
-    ('ate50', 'Até R$50,00', Decimal('0'), Decimal('50')),
-    ('50a150', 'R$50,00 — R$150,00', Decimal('50'), Decimal('150')),
-    ('acima150', 'Acima de R$150,00', Decimal('150'), None),
-]
+from orders.models import Order, PlatformConfig
 
 RATING_OPTIONS = [
-    ('4.0', 'Apenas acima de 4,0'),
-    ('4.5', 'Apenas acima de 4,5'),
+    ('4.0', '4,0 ou mais'),
+    ('4.5', '4,5 ou mais'),
 ]
+
+SORT_OPTIONS = {
+    'recentes': ('Mais recentes', ('-created_at',)),
+    'avaliacao': ('Mais bem avaliados', (F('avg_rating').desc(nulls_last=True), '-created_at')),
+    'menor_preco': ('Menor preço', ('min_price', '-created_at')),
+    'maior_preco': ('Maior preço', ('-min_price', '-created_at')),
+}
+
+def _apply_sort(request, qs):
+    ordem = request.GET.get('ordem', '')
+    if ordem not in SORT_OPTIONS:
+        ordem = 'recentes'
+    order_by = SORT_OPTIONS[ordem][1]
+
+    params = request.GET.copy()
+    params.pop('page', None)
+
+    return qs.order_by(*order_by), {
+        'atual': ordem,
+        'opcoes': [{'key': key, 'label': opcao[0]} for key, opcao in SORT_OPTIONS.items()],
+        'hidden': [
+            (key, value)
+            for key, values in params.lists()
+            if key != 'ordem'
+            for value in values
+        ],
+    }
+
+def _parse_preco(valor):
+    valor = (valor or '').strip().replace('R$', '').replace(' ', '')
+    if ',' in valor:
+        valor = valor.replace('.', '').replace(',', '.')
+    try:
+        preco = Decimal(valor)
+    except InvalidOperation:
+        return None
+    if not preco.is_finite() or preco < 0:
+        return None
+    return preco.quantize(Decimal('0.01'))
+
+def _get_preco_range(request):
+    preco_min = _parse_preco(request.GET.get('preco_min'))
+    preco_max = _parse_preco(request.GET.get('preco_max'))
+    if preco_min is not None and preco_max is not None and preco_min > preco_max:
+        preco_min, preco_max = preco_max, preco_min
+    return preco_min, preco_max
 
 def _annotate_products(qs):
     rating_subquery = ProductReview.objects.filter(
@@ -32,14 +76,11 @@ def _annotate_products(qs):
         avg_rating=Subquery(rating_subquery),
     ).filter(stock_total__gt=0)
 
-def _apply_filters(qs, preco, local, avaliacao, profile):
-    if preco:
-        for key, _, pmin, pmax in PRICE_RANGES:
-            if key == preco:
-                qs = qs.filter(min_price__gte=pmin)
-                if pmax is not None:
-                    qs = qs.filter(min_price__lt=pmax)
-                break
+def _apply_filters(qs, preco_min, preco_max, local, avaliacao, profile):
+    if preco_min is not None:
+        qs = qs.filter(min_price__gte=preco_min)
+    if preco_max is not None:
+        qs = qs.filter(min_price__lte=preco_max)
 
     if local == 'cidade' and profile and profile.city:
         qs = qs.filter(seller__profile__city=profile.city)
@@ -63,52 +104,76 @@ def _facet_url(request, **overrides):
     return f'?{query}' if query else '?'
 
 def _build_filter_context(request, base_qs):
-    preco = request.GET.get('preco', '')
+    preco_min, preco_max = _get_preco_range(request)
     local = request.GET.get('local', '')
     avaliacao = request.GET.get('avaliacao', '')
+    if avaliacao not in dict(RATING_OPTIONS):
+        avaliacao = ''
 
     profile = None
     if request.user.is_authenticated and not request.user.is_staff:
         profile = request.user.profile
 
-    produtos_qs = _apply_filters(base_qs, preco, local, avaliacao, profile)
+    produtos_qs = _apply_filters(base_qs, preco_min, preco_max, local, avaliacao, profile)
 
-    price_facets = []
-    for key, label, pmin, pmax in PRICE_RANGES:
-        count = _apply_filters(base_qs, key, local, avaliacao, profile).count()
-        price_facets.append({
-            'label': label, 'count': count,
-            'active': preco == key, 'url': _facet_url(request, preco=key),
-        })
-
-    local_options = [('', 'Qualquer'), ('cidade', 'Na sua cidade'), ('estado', 'No seu estado')]
+    local_options = [('', 'Qualquer lugar'), ('cidade', 'Na sua cidade'), ('estado', 'No seu estado')]
     local_facets = []
     for key, label in local_options:
         disponivel = key == '' or (profile and (profile.city if key == 'cidade' else profile.uf))
         if not disponivel:
             continue
-        count = _apply_filters(base_qs, preco, key, avaliacao, profile).count()
+        count = _apply_filters(base_qs, preco_min, preco_max, key, avaliacao, profile).count()
         local_facets.append({
             'label': label, 'count': count,
             'active': local == key, 'url': _facet_url(request, local=key),
         })
 
     rating_facets = []
-    for key, label in [('', 'Qualquer')] + RATING_OPTIONS:
-        count = _apply_filters(base_qs, preco, local, key, profile).count()
+    for key, label in [('', 'Qualquer nota')] + RATING_OPTIONS:
+        count = _apply_filters(base_qs, preco_min, preco_max, local, key, profile).count()
         rating_facets.append({
             'label': label, 'count': count,
             'active': avaliacao == key, 'url': _facet_url(request, avaliacao=key),
         })
 
+    chips = []
+    if preco_min is not None or preco_max is not None:
+        if preco_min is not None and preco_max is not None:
+            label = f'R$ {brl(preco_min)} a R$ {brl(preco_max)}'
+        elif preco_min is not None:
+            label = f'A partir de R$ {brl(preco_min)}'
+        else:
+            label = f'Até R$ {brl(preco_max)}'
+        chips.append({'label': label, 'url': _facet_url(request, preco_min=None, preco_max=None)})
+    for facet in local_facets:
+        if facet['active'] and local:
+            chips.append({'label': facet['label'], 'url': _facet_url(request, local=None)})
+    if avaliacao:
+        chips.append({'label': f'Nota {dict(RATING_OPTIONS)[avaliacao]}', 'url': _facet_url(request, avaliacao=None)})
+
     params = request.GET.copy()
     params.pop('page', None)
 
+    faixa = base_qs.aggregate(menor=Min('min_price'), maior=Max('min_price'))
+    query = request.GET.get('q', '').strip()
+    ordem = request.GET.get('ordem', '')
+    limpar = {key: value for key, value in (('q', query), ('ordem', ordem)) if value}
+
     return produtos_qs, {
-        'price_facets': price_facets,
+        'preco_min': '' if preco_min is None else brl(preco_min),
+        'preco_max': '' if preco_max is None else brl(preco_max),
+        'preco_hidden': [
+            (key, value)
+            for key, values in params.lists()
+            if key not in ('preco_min', 'preco_max')
+            for value in values
+        ],
+        'faixa': faixa,
         'local_facets': local_facets,
         'rating_facets': rating_facets,
-        'filtros_ativos': bool(preco or local or avaliacao),
+        'chips': chips,
+        'filtros_ativos': bool(chips),
+        'limpar_url': f'?{urlencode(limpar)}' if limpar else '?',
         'page_qs': params.urlencode(),
     }
 
@@ -118,14 +183,17 @@ def home(request):
 
     base_qs = _annotate_products(
         Product.objects.filter(published=True, deleted=False)
-    ).select_related('seller__profile').prefetch_related('images', 'variants').order_by('-created_at')
+    ).select_related('seller__profile').prefetch_related('images', 'variants')
 
-    if query:
-        base_qs = base_qs.filter(title__icontains=query)
-        produtos_qs, filtros = _build_filter_context(request, base_qs)
-    else:
-        produtos_qs = base_qs
-        filtros = None
+    if not query:
+        return render(request, 'home.html', {
+            'categorias': categorias,
+            'prateleiras': _build_shelves(base_qs),
+        })
+
+    base_qs = base_qs.filter(title__icontains=query)
+    produtos_qs, filtros = _build_filter_context(request, base_qs)
+    produtos_qs, ordenacao = _apply_sort(request, produtos_qs)
 
     paginator = Paginator(produtos_qs, 24)
     produtos = paginator.get_page(request.GET.get('page'))
@@ -135,7 +203,45 @@ def home(request):
         'produtos': produtos,
         'query': query,
         'filtros': filtros,
+        'ordenacao': ordenacao,
     })
+
+SHELF_FALLBACK_CATEGORIES = 3
+NOT_SOLD_STATUSES = ('PENDING', 'CANCELLED', 'RETURNED', 'CANCELLED_NO_RETURN')
+
+def _build_shelves(base_qs):
+    review_count = ProductReview.objects.filter(
+        product=OuterRef('pk')
+    ).values('product').annotate(n=Count('pk')).values('n')
+    sold = Order.objects.filter(
+        product=OuterRef('pk')
+    ).exclude(status__in=NOT_SOLD_STATUSES).values('product').annotate(n=Sum('quantity')).values('n')
+
+    qs = base_qs.annotate(review_count=Subquery(review_count), sold=Subquery(sold))
+
+    prateleiras = [
+        {'titulo': 'Mais vendidos', 'produtos': qs.filter(sold__gt=0).order_by('-sold', '-created_at')},
+        {'titulo': 'Mais bem avaliados', 'produtos': qs.filter(avg_rating__isnull=False).order_by('-avg_rating', '-review_count', '-created_at')},
+        {'titulo': 'Novidades', 'produtos': qs.order_by('-created_at')},
+        {'titulo': 'Menores preços', 'produtos': qs.order_by('min_price', '-created_at')},
+    ]
+
+    config = PlatformConfig.load()
+    destaques = Category.objects.filter(
+        products__published=True, products__deleted=False
+    ).annotate(n=Count('products')).order_by('-n', 'name')
+    escolhidas = config.home_categories.all()
+    destaques = destaques.filter(pk__in=escolhidas) if escolhidas.exists() else destaques[:SHELF_FALLBACK_CATEGORIES]
+    for categoria in destaques:
+        prateleiras.append({
+            'titulo': categoria.name,
+            'url': reverse('category_detail', args=[categoria.slug]),
+            'produtos': qs.filter(category=categoria).order_by('-created_at'),
+        })
+
+    for prateleira in prateleiras:
+        prateleira['produtos'] = list(prateleira['produtos'][:config.shelf_size])
+    return [p for p in prateleiras if p['produtos']]
 
 def product_detail(request, product_id):
     product = get_object_or_404(Product, pk=product_id, deleted=False)
@@ -190,9 +296,10 @@ def category_detail(request, slug):
 
     base_qs = _annotate_products(
         Product.objects.filter(category=category, published=True, deleted=False)
-    ).select_related('seller__profile').prefetch_related('images', 'variants').order_by('-created_at')
+    ).select_related('seller__profile').prefetch_related('images', 'variants')
 
     produtos_qs, filtros = _build_filter_context(request, base_qs)
+    produtos_qs, ordenacao = _apply_sort(request, produtos_qs)
 
     paginator = Paginator(produtos_qs, 24)
     produtos = paginator.get_page(request.GET.get('page'))
@@ -201,6 +308,7 @@ def category_detail(request, slug):
         'category': category,
         'produtos': produtos,
         'filtros': filtros,
+        'ordenacao': ordenacao,
     })
 
 def category_list(request):

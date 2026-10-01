@@ -1,0 +1,19 @@
+<div class="results-bar">
+    <span class="count"><strong>{{ produtos.paginator.count }}</strong> resultado{{ produtos.paginator.count|pluralize }}</span>
+    {% for chip in filtros.chips %}
+        <a href="{{ chip.url }}" class="chip chip-active chip-remove" title="Remover filtro">{{ chip.label }}</a>
+    {% endfor %}
+    {% include 'catalog/_sort.html' %}
+</div>
+<div class="product-grid">
+    {% for prod in produtos %}
+        {% include 'catalog/_product_card.html' %}
+    {% empty %}
+        <div class="empty-state">
+            <strong>Nenhum produto encontrado</strong>
+            {% if filtros.filtros_ativos %}Tente ampliar a faixa de preço ou remover alguns filtros.{% else %}{{ vazio }}{% endif %}
+            {% if filtros.filtros_ativos %}<br><a href="{{ filtros.limpar_url }}" class="btn btn-outline btn-sm">Limpar filtros</a>{% endif %}
+        </div>
+    {% endfor %}
+</div>
+{% include '_pagination.html' with page=produtos qs=filtros.page_qs %}

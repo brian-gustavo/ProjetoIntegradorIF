@@ -10,60 +10,89 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
+{% with rota=request.resolver_match.url_name %}
+<header class="site-header">
+    <div class="header-inner">
+        <a class="brand" href="{% url 'home' %}">
+            <img src="{% static 'img/logo.png' %}" alt="MegaGame">
+            <span class="brand-name">Mega<span>Game</span></span>
+        </a>
 
-<nav class="navbar">
-    <a class="navbar-logo" href="{% url 'home' %}">
-        <img src="{% static 'img/logo.png' %}" alt="MegaGame">
-    </a>
-
-    <form class="navbar-search" method="get" action="{% url 'home' %}">
-        <input type="text" name="q" id="searchInput" placeholder="Buscar produtos..." value="{{ request.GET.q }}">
-        <button type="submit">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-        </button>
-        <ul id="autocomplete-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--white);border:2px solid var(--black);border-radius:8px;margin-top:4px;list-style:none;z-index:300;box-shadow:4px 4px 0 var(--black);"></ul>
-    </form>
-
-    <div class="navbar-center">
-        <a href="{% url 'category_list' %}">Categorias</a>
-        {% if user.is_authenticated and not user.is_staff %}
-            <a href="{% url 'my_products' %}">Meus anúncios</a>
-        {% endif %}
-    </div>
-
-    <div class="navbar-right" id="userMenuWrapper">
-        {% if user.is_authenticated and not user.is_staff %}
-            <a href="{% url 'cart_detail' %}" style="display:flex;align-items:center;">
-                <img src="{% static 'img/carrinho.png' %}" alt="Carrinho" style="height:32px;width:32px;object-fit:contain;">
-            </a>
-        {% endif %}
-        {% if user.is_authenticated %}
-            <button class="user-menu-trigger" id="userMenuTrigger" type="button">
-                <div class="user-avatar">{{ user.username|first|upper }}</div>
-                {{ user.username }}
+        <form class="header-search" method="get" action="{% url 'home' %}" role="search">
+            <input type="search" name="q" id="searchInput" placeholder="Buscar jogos, consoles, acessórios..." value="{{ request.GET.q }}" autocomplete="off" aria-label="Buscar produtos">
+            <button type="submit" aria-label="Buscar">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
             </button>
-            <div class="user-dropdown" id="userDropdown">
-                <a href="{% url 'profile_settings' %}">Configurações do perfil</a>
-                {% if user.is_staff %}
-                    <a href="{% url 'admin_dashboard' %}">Painel administrativo</a>
-                    <a href="{% url 'dispute_list' %}">Disputas</a>
-                {% endif %}
-                {% if not user.is_staff %}
-                    <a href="{% url 'seller_dashboard' %}">Minhas estatísticas de vendedor</a>
-                    <a href="{% url 'my_orders' %}">Meus pedidos</a>
-                {% endif %}
-                <form method="post" action="{% url 'logout' %}">
-                    {% csrf_token %}
-                    <button type="submit" class="logout-btn">Logout</button>
-                </form>
-            </div>
-        {% else %}
-            <a href="{% url 'login' %}" class="navbar-login-link">Fazer login</a>
-        {% endif %}
+            <ul id="autocomplete-list" class="autocomplete-list"></ul>
+        </form>
+
+        <nav class="header-nav">
+            <a href="{% url 'category_list' %}" class="{% if rota == 'category_list' or rota == 'category_detail' %}active{% endif %}">Categorias</a>
+            {% if user.is_authenticated and user.is_staff %}
+                <a href="{% url 'admin_dashboard' %}" class="{% if rota == 'admin_dashboard' %}active{% endif %}">Painel</a>
+                <a href="{% url 'dispute_list' %}" class="{% if rota == 'dispute_list' or rota == 'dispute_detail' %}active{% endif %}">Disputas</a>
+            {% elif user.is_authenticated %}
+                <a href="{% url 'my_orders' %}" class="{% if rota == 'my_orders' %}active{% endif %}">Minhas compras</a>
+            {% endif %}
+        </nav>
+
+        <div class="header-actions">
+            {% if not user.is_staff %}
+                <a href="{% if user.is_authenticated %}{% url 'create_product' %}{% else %}{% url 'login' %}{% endif %}" class="btn btn-accent btn-sm">Anunciar</a>
+            {% endif %}
+            {% if user.is_authenticated and not user.is_staff %}
+                <a href="{% url 'cart_detail' %}" class="icon-btn cart-btn" aria-label="Carrinho{% if cart_count %} ({{ cart_count }} ite{{ cart_count|pluralize:'m,ns' }}){% endif %}" title="Carrinho">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                    </svg>
+                    {% if cart_count %}<span class="cart-count">{% if cart_count > 99 %}99+{% else %}{{ cart_count }}{% endif %}</span>{% endif %}
+                </a>
+            {% endif %}
+            {% if user.is_authenticated %}
+                <div class="user-menu" id="userMenu">
+                    <button class="user-menu-trigger" id="userMenuTrigger" type="button" aria-haspopup="true" aria-expanded="false">
+                        <span class="user-avatar">{{ user.username|first|upper }}</span>
+                        <span class="user-name">{{ user.username }}</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="user-dropdown" role="menu">
+                        <div class="user-dropdown-head">
+                            <strong>{{ user.username }}</strong>
+                            <span>{% if user.is_staff %}Equipe MegaGame{% else %}{{ user.email }}{% endif %}</span>
+                        </div>
+                        <div class="only-narrow">
+                            <a href="{% url 'category_list' %}">Categorias</a>
+                            {% if user.is_staff %}
+                                <a href="{% url 'admin_dashboard' %}">Painel administrativo</a>
+                                <a href="{% url 'dispute_list' %}">Disputas</a>
+                            {% else %}
+                                <a href="{% url 'my_orders' %}">Minhas compras</a>
+                            {% endif %}
+                            <hr>
+                        </div>
+                        {% if not user.is_staff %}
+                            <p class="user-dropdown-label">Vendas</p>
+                            <a href="{% url 'my_products' %}">Meus anúncios</a>
+                            <a href="{% url 'seller_orders' %}">Pedidos recebidos</a>
+                            <a href="{% url 'seller_dashboard' %}">Painel do vendedor</a>
+                            <hr>
+                        {% endif %}
+                        <a href="{% url 'profile_settings' %}">Configurações do perfil</a>
+                        <form method="post" action="{% url 'logout' %}">
+                            {% csrf_token %}
+                            <button type="submit" class="logout-btn">Sair</button>
+                        </form>
+                    </div>
+                </div>
+            {% else %}
+                <a href="{% url 'login' %}" class="header-login">Entrar</a>
+            {% endif %}
+        </div>
     </div>
-</nav>
+</header>
+{% endwith %}
 
 <main>
     {% if messages %}
@@ -78,14 +107,32 @@
 </main>
 
 <script>
-    const trigger = document.getElementById('userMenuTrigger');
-    const wrapper = document.getElementById('userMenuWrapper');
-    if (trigger) {
-        trigger.addEventListener('click', () => wrapper.classList.toggle('open'));
+    const userMenu = document.getElementById('userMenu');
+    if (userMenu) {
+        const trigger = document.getElementById('userMenuTrigger');
+        const setOpen = (open) => {
+            userMenu.classList.toggle('open', open);
+            trigger.setAttribute('aria-expanded', open);
+        };
+        trigger.addEventListener('click', () => setOpen(!userMenu.classList.contains('open')));
         document.addEventListener('click', (e) => {
-            if (!wrapper.contains(e.target)) wrapper.classList.remove('open');
+            if (!userMenu.contains(e.target)) setOpen(false);
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') setOpen(false);
         });
     }
+
+    document.addEventListener('click', (e) => {
+        const toggle = e.target.closest('.password-toggle');
+        if (!toggle) return;
+        const input = toggle.parentElement.querySelector('input');
+        const visivel = input.type === 'password';
+        input.type = visivel ? 'text' : 'password';
+        toggle.setAttribute('aria-pressed', visivel);
+        toggle.setAttribute('aria-label', visivel ? 'Ocultar senha' : 'Mostrar senha');
+        input.focus();
+    });
 </script>
 
 {% block extra_js %}
@@ -95,12 +142,14 @@
     let debounceTimer;
 
     if (searchInput) {
+        const fechar = () => autocompleteList.classList.remove('open');
+
         searchInput.addEventListener('input', () => {
             clearTimeout(debounceTimer);
             const query = searchInput.value.trim();
 
             if (query.length < 3) {
-                autocompleteList.style.display = 'none';
+                fechar();
                 return;
             }
 
@@ -111,7 +160,7 @@
                         autocompleteList.innerHTML = '';
 
                         if (results.length === 0) {
-                            autocompleteList.style.display = 'none';
+                            fechar();
                             return;
                         }
 
@@ -120,21 +169,19 @@
                             li.textContent = title;
                             li.addEventListener('click', () => {
                                 searchInput.value = title;
-                                autocompleteList.style.display = 'none';
+                                fechar();
                                 searchInput.closest('form').submit();
                             });
                             autocompleteList.appendChild(li);
                         });
 
-                        autocompleteList.style.display = 'block';
+                        autocompleteList.classList.add('open');
                     });
             }, 250);
         });
 
         document.addEventListener('click', (e) => {
-            if (!searchInput.contains(e.target)) {
-                autocompleteList.style.display = 'none';
-            }
+            if (!searchInput.contains(e.target)) fechar();
         });
     }
 </script>

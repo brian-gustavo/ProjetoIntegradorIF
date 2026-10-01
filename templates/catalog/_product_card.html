@@ -1,0 +1,23 @@
+{% load catalog_extras %}
+<a href="{% url 'product_detail' prod.pk %}" class="product-card">
+    <div class="product-card-media">
+        {% with img=prod.images.all.0 %}
+            {% if img %}
+                <img src="{{ img.image.url }}" alt="{{ prod.title }}" loading="lazy">
+            {% else %}
+                <div class="img-placeholder">Sem foto</div>
+            {% endif %}
+        {% endwith %}
+    </div>
+    <div class="product-card-body">
+        <div class="product-card-title">{{ prod.title }}</div>
+        <div class="price-from">a partir de</div>
+        <div class="product-card-price price">R$ {{ prod.min_price|brl }}</div>
+        <div class="product-card-foot">
+            <span class="loc">{{ prod.seller.profile.city }}, {{ prod.seller.profile.uf }}</span>
+            {% if prod.avg_rating %}
+                <span class="rating">{{ prod.avg_rating|floatformat:1 }}</span>
+            {% endif %}
+        </div>
+    </div>
+</a>

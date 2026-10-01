@@ -692,7 +692,7 @@ def admin_dashboard(request):
         if config_form.is_valid():
             config_form.save()
             messages.success(request, 'Configurações atualizadas com sucesso')
-            return redirect('admin_dashboard')
+            return redirect(reverse('admin_dashboard') + '#configuracoes')
         messages.error(request, 'Configuração inválida')
     else:
         config_form = PlatformConfigForm(instance=config)

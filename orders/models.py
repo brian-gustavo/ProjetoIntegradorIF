@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
-from catalog.models import Product, ProductVariant
+from catalog.models import Category, Product, ProductVariant
 from django.contrib.auth.models import User
 
 def generate_tracking_code():
@@ -115,6 +115,19 @@ class PlatformConfig(models.Model):
         default=DEFAULT_DISPUTE_REASONS,
         help_text="Um motivo por linha",
         verbose_name="Motivos de disputa"
+    )
+    shelf_size = models.PositiveIntegerField(
+        default=15,
+        validators=[MinValueValidator(5), MaxValueValidator(30)],
+        help_text="Quantidade máxima de produtos em cada prateleira (entre 5 e 30)",
+        verbose_name="Produtos por prateleira da página inicial"
+    )
+    home_categories = models.ManyToManyField(
+        Category,
+        blank=True,
+        related_name='+',
+        help_text="Cada categoria marcada vira uma prateleira na página inicial. Se nenhuma for marcada, são exibidas as 3 categorias com mais anúncios.",
+        verbose_name="Categorias em destaque na página inicial"
     )
 
     class Meta:

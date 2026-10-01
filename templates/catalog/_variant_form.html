@@ -1,0 +1,26 @@
+<div class="variant-item">
+    <div class="variant-fields">
+        {% for field in form %}
+            {% if field.is_hidden %}
+                {{ field }}
+            {% elif field.html_name|slice:"-7:" == '-DELETE' or field.html_name == 'product' %}
+                <div hidden>{{ field }}</div>
+            {% else %}
+                <div class="form-group">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}<p class="help">{{ field.help_text }}</p>{% endif %}
+                    {{ field.errors }}
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+    {% if form.non_field_errors %}
+        <ul class="errorlist mb-3">
+            {% for error in form.non_field_errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+    <button type="button" class="variant-remove" onclick="removeVariant(this)" aria-label="Remover variação">✕</button>
+</div>

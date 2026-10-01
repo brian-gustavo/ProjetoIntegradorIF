@@ -1,89 +1,118 @@
 {% extends 'base.html' %}
-{% load catalog_extras %}
 
-{% block title %}Início — MegaGame{% endblock %}
+{% block title %}{% if query %}{{ query }} — {% endif %}MegaGame{% endblock %}
 
 {% block content %}
 {% if query %}
-    <h2 class="section-header">Resultados para "{{ query }}"</h2>
-    <div style="display:grid;grid-template-columns:260px 1fr;gap:32px;align-items:start;">
+    <div class="page-head">
+        <div>
+            <h1 class="page-title">Resultados para "{{ query }}"</h1>
+        </div>
+    </div>
+    <div class="catalog-layout">
         {% include 'catalog/_filters_sidebar.html' %}
         <div>
-            <div class="product-grid">
-                {% for prod in produtos %}
-                    <a href="{% url 'product_detail' prod.pk %}" class="product-card">
-                        {% if prod.images.all %}
-                            <img class="product-card-img" src="{{ prod.images.first.image.url }}" alt="{{ prod.title }}">
-                        {% else %}
-                            <div class="product-card-img-placeholder">Sem foto</div>
-                        {% endif %}
-                        <div class="product-card-body">
-                            <div class="product-card-title">{{ prod.title }}</div>
-                            <div class="product-card-price">a partir de R$ {{ prod.min_price|brl }}</div>
-                            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
-                                <div class="product-card-meta" style="margin-top:0;">{{ prod.seller.profile.city }}, {{ prod.seller.profile.uf }} · {{ prod.seller.username }}</div>
-                                <span style="font-size:12px;color:var(--star);white-space:nowrap;">
-                                    {% if prod.avg_rating %}★ {{ prod.avg_rating|floatformat:1 }}{% else %}★ —{% endif %}
-                                </span>
-                            </div>
-                        </div>
-                    </a>
-                {% empty %}
-                    <p style="color:var(--gray-500);">Nenhum produto encontrado</p>
-                {% endfor %}
-            </div>
-
-            {% if produtos.paginator.num_pages > 1 %}
-            <div style="display:flex;justify-content:center;align-items:center;gap:16px;margin-top:40px;">
-                {% if produtos.has_previous %}
-                    <a href="?{{ filtros.page_qs }}{% if filtros.page_qs %}&{% endif %}page={{ produtos.previous_page_number }}"
-                       class="btn" style="border:2px solid var(--black);padding:8px 20px;">Anterior</a>
-                {% endif %}
-                <span style="font-size:14px;color:var(--gray-500);">Página {{ produtos.number }} de {{ produtos.paginator.num_pages }}</span>
-                {% if produtos.has_next %}
-                    <a href="?{{ filtros.page_qs }}{% if filtros.page_qs %}&{% endif %}page={{ produtos.next_page_number }}"
-                       class="btn btn-primary" style="padding:8px 20px;">Próxima</a>
-                {% endif %}
-            </div>
-            {% endif %}
+            {% include 'catalog/_results.html' with vazio='Confira a ortografia ou tente termos mais genéricos.' %}
         </div>
     </div>
 {% else %}
-    <h2 class="section-header">Ofertas mais novas</h2>
-    <div class="product-grid">
-        {% for prod in produtos %}
-            <a href="{% url 'product_detail' prod.pk %}" class="product-card">
-                {% if prod.images.all %}
-                    <img class="product-card-img" src="{{ prod.images.first.image.url }}" alt="{{ prod.title }}">
-                {% else %}
-                    <div class="product-card-img-placeholder">Sem foto</div>
-                {% endif %}
-                <div class="product-card-body">
-                    <div class="product-card-title">{{ prod.title }}</div>
-                    <div class="product-card-price">a partir de R$ {{ prod.min_price|brl }}</div>
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
-                        <div class="product-card-meta" style="margin-top:0;">{{ prod.seller.profile.city }}, {{ prod.seller.profile.uf }} · {{ prod.seller.username }}</div>
-                        <span style="font-size:12px;color:var(--star);white-space:nowrap;">
-                            {% if prod.avg_rating %}★ {{ prod.avg_rating|floatformat:1 }}{% else %}★ —{% endif %}
-                        </span>
-                    </div>
-                </div>
-            </a>
-        {% empty %}
-            <p style="color:var(--gray-500);">Nenhum produto encontrado</p>
-        {% endfor %}
-    </div>
-
-    {% if produtos.paginator.num_pages > 1 %}
-    <div style="display:flex;justify-content:center;align-items:center;gap:16px;margin-top:40px;">
-        {% if produtos.has_previous %}
-            <a href="?page={{ produtos.previous_page_number }}" class="btn" style="border:2px solid var(--black);padding:8px 20px;">Anterior</a>
-        {% endif %}
-        <span style="font-size:14px;color:var(--gray-500);">Página {{ produtos.number }} de {{ produtos.paginator.num_pages }}</span>
-        {% if produtos.has_next %}
-            <a href="?page={{ produtos.next_page_number }}" class="btn btn-primary" style="padding:8px 20px;">Próxima</a>
-        {% endif %}
-    </div>
+    {% if categorias %}
+        <nav class="category-strip" aria-label="Categorias">
+            {% for cat in categorias %}
+                <a href="{% url 'category_detail' cat.slug %}" class="chip">{{ cat.name }}</a>
+            {% endfor %}
+        </nav>
     {% endif %}
+
+    {% for prateleira in prateleiras %}
+        <section class="card shelf" aria-labelledby="shelf-{{ forloop.counter }}">
+            <div class="shelf-head">
+                <h2 class="shelf-title" id="shelf-{{ forloop.counter }}">{{ prateleira.titulo }}</h2>
+                {% if prateleira.url %}<a href="{{ prateleira.url }}" class="link text-sm">Ver todos</a>{% endif %}
+                <div class="carousel-dots" aria-hidden="true"></div>
+            </div>
+            <div class="carousel" data-carousel>
+                <button type="button" class="carousel-btn carousel-prev" aria-label="Ver anteriores" hidden>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <div class="carousel-track">
+                    {% for prod in prateleira.produtos %}
+                        <div class="carousel-item">{% include 'catalog/_product_card.html' %}</div>
+                    {% endfor %}
+                </div>
+                <button type="button" class="carousel-btn carousel-next" aria-label="Ver mais" hidden>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+            </div>
+        </section>
+    {% empty %}
+        <div class="empty-state">
+            <strong>Nenhum anúncio publicado ainda</strong>
+            Seja o primeiro a anunciar na MegaGame.
+        </div>
+    {% endfor %}
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+{% if not query %}
+<script>
+    document.querySelectorAll('[data-carousel]').forEach(carousel => {
+        const track = carousel.querySelector('.carousel-track');
+        const prev = carousel.querySelector('.carousel-prev');
+        const next = carousel.querySelector('.carousel-next');
+        const dots = carousel.closest('.shelf').querySelector('.carousel-dots');
+
+        const atualizar = () => {
+            const max = track.scrollWidth - track.clientWidth;
+            prev.hidden = track.scrollLeft <= 4;
+            next.hidden = track.scrollLeft >= max - 4;
+
+            const paginas = Math.ceil(track.scrollWidth / track.clientWidth - 0.05);
+            const atual = track.scrollLeft >= max - 4 ? paginas - 1 : Math.round(track.scrollLeft / track.clientWidth);
+            if (dots.childElementCount !== paginas) {
+                dots.replaceChildren(...Array.from({ length: paginas > 1 ? paginas : 0 }, () => document.createElement('span')));
+            }
+            [...dots.children].forEach((dot, i) => dot.classList.toggle('active', i === atual));
+        };
+
+        const rolar = (direcao) => track.scrollBy({ left: direcao * track.clientWidth, behavior: 'smooth' });
+        prev.addEventListener('click', () => rolar(-1));
+        next.addEventListener('click', () => rolar(1));
+        track.addEventListener('scroll', atualizar, { passive: true });
+        window.addEventListener('resize', atualizar);
+
+        let inicioX = 0, inicioScroll = 0, arrastando = false, moveu = false;
+        track.addEventListener('dragstart', e => e.preventDefault());
+        track.addEventListener('pointerdown', e => {
+            if (e.pointerType !== 'mouse' || e.button !== 0) return;
+            arrastando = true;
+            moveu = false;
+            inicioX = e.clientX;
+            inicioScroll = track.scrollLeft;
+        });
+        window.addEventListener('pointermove', e => {
+            if (!arrastando) return;
+            const dx = e.clientX - inicioX;
+            if (!moveu && Math.abs(dx) > 5) {
+                moveu = true;
+                track.classList.add('dragging');
+            }
+            if (moveu) track.scrollLeft = inicioScroll - dx;
+        });
+        window.addEventListener('pointerup', () => {
+            if (!arrastando) return;
+            arrastando = false;
+            if (!moveu) return;
+            track.classList.remove('dragging');
+            const bloquear = e => { e.preventDefault(); e.stopPropagation(); };
+            track.addEventListener('click', bloquear, { capture: true, once: true });
+            setTimeout(() => track.removeEventListener('click', bloquear, { capture: true }), 0);
+        });
+
+        atualizar();
+    });
+</script>
 {% endif %}
 {% endblock %}

@@ -3,21 +3,20 @@
 {% block title %}Cadastro — MegaGame{% endblock %}
 
 {% block content %}
-<div class="form-card">
-    <h2 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:26px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:32px;text-align:center;">
-        Cadastrar-se
-    </h2>
-    <form method="post"  novalidate>
+<div class="card auth-card">
+    <h1 class="page-title">Criar conta</h1>
+    <p class="page-sub">Leva menos de um minuto</p>
+    <form method="post" novalidate>
         {% csrf_token %}
         {% for field in form %}
             <div class="form-group">
                 <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                {{ field }}
+                {% if field.widget_type == 'password' %}{% include '_password_field.html' %}{% else %}{{ field }}{% endif %}
                 {{ field.errors }}
             </div>
         {% endfor %}
-        <button type="submit" class="btn btn-primary" style="width:100%;">Cadastrar-se</button>
+        <button type="submit" class="btn btn-primary btn-lg btn-block">Cadastrar-se</button>
     </form>
-    <p class="form-footer">Já possui cadastro? Faça <a href="{% url 'login' %}">login</a>!</p>
+    <p class="auth-footer">Já possui cadastro? <a href="{% url 'login' %}">Entrar</a></p>
 </div>
 {% endblock %}
