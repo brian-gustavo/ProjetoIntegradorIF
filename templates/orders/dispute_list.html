@@ -13,7 +13,7 @@
             {{ dispute.order.product.title }} — {{ dispute.order.variant.name }}
         </p>
         <p style="font-size:14px;color:var(--gray-500);">
-            Aberta por {{ dispute.opened_by.username }} em {{ dispute.created_at|date:"d/m/Y" }}
+            {% if dispute.reason_category %}{{ dispute.reason_category }} · {% endif %}Aberta por {{ dispute.opened_by.username }} em {{ dispute.created_at|date:"d/m/Y" }}
         </p>
     </a>
 {% empty %}

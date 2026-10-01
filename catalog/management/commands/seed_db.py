@@ -10,7 +10,7 @@ from faker import Faker
 
 from accounts.models import UF_CHOICES, SellerReview
 from catalog.models import Category, Product, ProductVariant, ProductReview
-from orders.models import Order, Cart, CartItem, PlatformConfig, Commission, generate_tracking_code
+from orders.models import Order, Cart, CartItem, PlatformConfig, Commission, Dispute, DisputeMessage, generate_tracking_code
 
 fake = Faker('pt_BR')
 
@@ -50,20 +50,46 @@ STATUS_WEIGHTS = [
 ]
 
 STOCK_DECREMENTED_STATUSES = {
-    'DELIVERED', 'RETURN_WINDOW', 'RETURN_REQUESTED', 'RETURN_ACCEPTED',
+    'DELIVERED', 'RETURN_WINDOW', 'RETURN_REQUESTED', 'DISPUTE_OPEN', 'RETURN_ACCEPTED',
     'CANCELLED_NO_RETURN', 'COMPLETED',
 }
 HAS_COMMISSION_STATUSES = {
-    'DELIVERED', 'RETURN_WINDOW', 'RETURN_REQUESTED', 'RETURN_ACCEPTED', 'COMPLETED',
+    'DELIVERED', 'RETURN_WINDOW', 'RETURN_REQUESTED', 'DISPUTE_OPEN', 'RETURN_ACCEPTED', 'COMPLETED',
 }
 CAN_REVIEW_STATUSES = {
-    'DELIVERED', 'RETURN_WINDOW', 'RETURN_REQUESTED', 'RETURN_ACCEPTED',
+    'DELIVERED', 'RETURN_WINDOW', 'RETURN_REQUESTED', 'DISPUTE_OPEN', 'RETURN_ACCEPTED',
     'RETURNED', 'CANCELLED_NO_RETURN', 'COMPLETED',
 }
 TRACKING_ELIGIBLE_STATUSES = {
-    'SHIPPED', 'READY_PICKUP', 'DELIVERED', 'RETURN_WINDOW', 'RETURN_REQUESTED',
+    'SHIPPED', 'READY_PICKUP', 'DELIVERED', 'RETURN_WINDOW', 'RETURN_REQUESTED', 'DISPUTE_OPEN',
     'RETURN_ACCEPTED', 'RETURNED', 'CANCELLED_NO_RETURN', 'COMPLETED',
 }
+
+DISPUTE_CHANCES = {
+    'RETURN_REQUESTED': ('OPEN', 0.35),
+    'RETURN_ACCEPTED': ('RESOLVED_BUYER_RETURN', 0.3),
+    'CANCELLED_NO_RETURN': ('RESOLVED_BUYER_REFUND', 0.35),
+    'COMPLETED': ('RESOLVED_SELLER', 0.03),
+}
+BUYER_DISPUTE_REASONS = [
+    ('Produto com defeito', 'O produto chegou com defeito e o vendedor não aceitou a devolução.'),
+    ('Produto diferente do anunciado', 'O item recebido é diferente do que estava no anúncio.'),
+    ('Produto incompleto', 'O produto veio incompleto, faltando acessórios descritos no anúncio.'),
+    ('Key ou código digital inválido', 'A key digital já tinha sido resgatada quando tentei ativar.'),
+    ('Outro', 'O vendedor recusou a devolução sem justificativa.'),
+]
+SELLER_DISPUTE_REASONS = [
+    ('Produto devolvido com avarias', 'O comprador quer devolver o produto com avarias que não existiam no envio.'),
+    ('Devolução sem justificativa', 'A devolução foi solicitada sem nenhum defeito aparente no item.'),
+    ('Produto não recebido', 'O comprador alega não ter recebido, mas o rastreio consta como entregue.'),
+]
+DISPUTE_REPLIES = [
+    'Enviei fotos do produto no momento do envio, estava em perfeito estado.',
+    'Posso mandar fotos do item como chegou, se for necessário.',
+    'Aguardo uma posição da equipe do MegaGame.',
+    'Tentei resolver diretamente, mas não houve acordo.',
+    'Concordo em receber o produto de volta se ele estiver lacrado.',
+]
 RECENT_STATUSES = {'PENDING', 'PAID', 'CONFIRMED', 'PREPARING', 'SHIPPED', 'READY_PICKUP'}
 MID_STATUSES = {'DELIVERED', 'RETURN_WINDOW', 'RETURN_REQUESTED', 'RETURN_ACCEPTED', 'CANCELLED_NO_RETURN'}
 
@@ -249,6 +275,7 @@ class Command(BaseCommand):
         buyer_weights = [random.lognormvariate(0, 1.2) for _ in buyers]
 
         drafts = []
+        dispute_drafts = []
         touched_variants = {}
         attempts = 0
 
@@ -268,6 +295,14 @@ class Command(BaseCommand):
                 status = 'READY_PICKUP'
             elif not pickup and status == 'READY_PICKUP':
                 status = 'SHIPPED'
+
+            dispute_outcome = None
+            if status in DISPUTE_CHANCES:
+                outcome, chance = DISPUTE_CHANCES[status]
+                if random.random() < chance:
+                    dispute_outcome = outcome
+                    if outcome == 'OPEN':
+                        status = 'DISPUTE_OPEN'
 
             if status in STOCK_DECREMENTED_STATUSES and variant.quantity < 1:
                 continue
@@ -293,6 +328,8 @@ class Command(BaseCommand):
                 touched_variants[variant.pk] = variant
 
             drafts.append((order, created_at, updated_at, delivered_at))
+            if dispute_outcome:
+                dispute_drafts.append((order, dispute_outcome, delivered_at, updated_at))
 
         orders = [d[0] for d in drafts]
         Order.objects.bulk_create(orders, batch_size=500)
@@ -300,6 +337,8 @@ class Command(BaseCommand):
             order.created_at = created_at
             order.updated_at = updated_at
         Order.objects.bulk_update(orders, ['created_at', 'updated_at'], batch_size=500)
+
+        self._seed_disputes(dispute_drafts)
 
         commissions = []
         for order, _, _, delivered_at in drafts:
@@ -331,6 +370,59 @@ class Command(BaseCommand):
         SellerReview.objects.bulk_update([r for r, _ in seller_reviews], ['created_at'], batch_size=500)
 
         ProductVariant.objects.bulk_update(list(touched_variants.values()), ['quantity'], batch_size=500)
+
+    def _seed_disputes(self, dispute_drafts):
+        if not dispute_drafts:
+            return
+
+        self.stdout.write('Gerando disputas...')
+        staff = User.objects.filter(is_staff=True).first()
+        disputes, messages = [], []
+
+        for order, outcome, delivered_at, updated_at in dispute_drafts:
+            seller = order.product.seller
+            if outcome == 'RESOLVED_BUYER_REFUND' or random.random() < 0.7:
+                opened_by, other = order.buyer, seller
+                category, reason = random.choice(BUYER_DISPUTE_REASONS)
+            else:
+                opened_by, other = seller, order.buyer
+                category, reason = random.choice(SELLER_DISPUTE_REASONS)
+
+            if outcome == 'OPEN':
+                created_at, resolved_at = updated_at, None
+            else:
+                resolved_at = updated_at
+                created_at = random_between(delivered_at, resolved_at - timedelta(hours=12))
+
+            dispute = Dispute(
+                order=order,
+                opened_by=opened_by,
+                reason_category=category,
+                reason=reason,
+                status=outcome,
+                resolved_by=staff if resolved_at else None,
+                resolved_at=resolved_at,
+                resolution_notes=fake.sentence() if resolved_at else '',
+            )
+            dispute.seed_date = created_at
+            disputes.append(dispute)
+
+            last_message_at = resolved_at or self._now
+            for i in range(random.randint(0, 3)):
+                messages.append((
+                    DisputeMessage(dispute=dispute, author=other if i % 2 == 0 else opened_by, message=random.choice(DISPUTE_REPLIES)),
+                    random_between(created_at, last_message_at),
+                ))
+
+        Dispute.objects.bulk_create(disputes, batch_size=500)
+        for dispute in disputes:
+            dispute.created_at = dispute.seed_date
+        Dispute.objects.bulk_update(disputes, ['created_at'], batch_size=500)
+
+        DisputeMessage.objects.bulk_create([m for m, _ in messages], batch_size=500)
+        for message, sent_at in messages:
+            message.created_at = sent_at
+        DisputeMessage.objects.bulk_update([m for m, _ in messages], ['created_at'], batch_size=500)
 
     def _review_date(self, delivered_at):
         return min(self._now, delivered_at + timedelta(days=random.randint(1, 14), hours=random.randint(0, 23)))

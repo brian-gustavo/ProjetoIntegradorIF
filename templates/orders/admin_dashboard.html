@@ -23,6 +23,8 @@
         <input type="hidden" name="periodo" value="personalizado">
         <button type="submit" class="btn" style="border:2px solid var(--black);font-size:13px;padding:8px 16px;">Aplicar</button>
     </form>
+    <a href="{% url 'admin_dashboard_pdf' %}?periodo={{ periodo.preset }}&inicio={{ periodo.inicio|date:'Y-m-d' }}&fim={{ periodo.fim|date:'Y-m-d' }}"
+       class="btn btn-primary export-btn">Exportar PDF</a>
 </div>
 
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px;margin-bottom:32px;">
@@ -72,56 +74,296 @@
         <p style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:48px;line-height:1;color:var(--green);">R$ {{ total_comissao|brl }}</p>
     </div>
 
-    <div style="border:2px solid var(--black);border-radius:8px;padding:28px;">
-        <p style="font-size:13px;text-transform:uppercase;letter-spacing:0.1em;color:var(--gray-500);margin-bottom:12px;">Taxa de comissão atual</p>
-        <p style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:48px;line-height:1;margin-bottom:16px;">{{ taxa_atual }}%</p>
-        <form method="post">
-            {% csrf_token %}
-            <div style="display:flex;gap:8px;align-items:center;">
-                <input type="number" name="commission_rate" value="{{ taxa_atual }}"
-                    min="0" max="100" step="0.01"
-                    style="padding:8px 12px;border:2px solid var(--black);border-radius:6px;font-size:14px;width:100px;">
-                <button type="submit" class="btn btn-primary" style="padding:8px 20px;font-size:14px;">Alterar</button>
-            </div>
-        </form>
-    </div>
 </div>
 
-<h3 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:22px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:20px;">
-    Top vendedores (histórico)
-</h3>
-<div style="border:2px solid var(--black);border-radius:8px;overflow:hidden;">
-    <table style="width:100%;border-collapse:collapse;font-size:15px;">
+<h3 class="dash-section-title">Ranking de vendedores no período</h3>
+{% with c=ranking.concentracao %}
+{% if c %}
+<div class="dash-grid">
+    <div class="dash-card">
+        <p class="dash-label">Vendedores com vendas</p>
+        <p class="dash-value">{{ c.ativos }}</p>
+    </div>
+    <div class="dash-card">
+        <p class="dash-label">Participação do líder</p>
+        <p class="dash-value">{{ c.top1|floatformat:1 }}%</p>
+        <p class="dash-sub">do GMV do período</p>
+    </div>
+    <div class="dash-card">
+        <p class="dash-label">Participação do top 5</p>
+        <p class="dash-value">{{ c.top5|floatformat:1 }}%</p>
+        {% include 'orders/_delta.html' with valor=c.top5_diferenca sufixo=" p.p." inverso=True %}
+    </div>
+    <div class="dash-card">
+        <p class="dash-label">Top 20% dos vendedores</p>
+        <p class="dash-value">{{ c.pareto|floatformat:1 }}%</p>
+        <p class="dash-sub">{{ c.pareto_n }} vendedor{{ c.pareto_n|pluralize:"es" }} concentra{{ c.pareto_n|pluralize:"m" }} essa fatia do GMV</p>
+        {% include 'orders/_delta.html' with valor=c.pareto_diferenca sufixo=" p.p." inverso=True %}
+    </div>
+    <div class="dash-card">
+        <p class="dash-label">Índice HHI</p>
+        <p class="dash-value">{{ c.hhi|floatformat:0 }}</p>
+        <p class="nivel nivel-{{ c.nivel }}">Concentração {{ c.nivel }}</p>
+        {% if c.hhi_anterior is not None %}<p class="dash-sub">Período anterior: {{ c.hhi_anterior|floatformat:0 }}</p>{% endif %}
+    </div>
+</div>
+{% endif %}
+{% endwith %}
+
+<div class="dash-table-wrap">
+    <table class="dash-table">
         <thead>
-            <tr style="background:var(--black);color:var(--white);">
-                <th style="padding:14px 20px;text-align:left;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.06em;">Vendedor</th>
-                <th style="padding:14px 20px;text-align:right;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.06em;">Vendas</th>
-                <th style="padding:14px 20px;text-align:right;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.06em;">Total bruto</th>
+            <tr>
+                <th>#</th>
+                <th>Vendedor</th>
+                <th class="num">Pedidos</th>
+                <th class="num">GMV</th>
+                <th class="num">Comissão</th>
+                <th class="num">Ticket médio</th>
+                <th>Participação</th>
+                <th class="num">Acumulado</th>
             </tr>
         </thead>
         <tbody>
-            {% for v in vendedores %}
-                <tr style="border-top:1px solid var(--gray-300);">
-                    <td style="padding:14px 20px;">{{ v.product__seller__username }}</td>
-                    <td style="padding:14px 20px;text-align:right;">{{ v.total_vendas }}</td>
-                    <td style="padding:14px 20px;text-align:right;font-weight:600;">R$ {{ v.total_bruto|brl }}</td>
+            {% for v in ranking.linhas %}
+                <tr>
+                    <td>{{ v.posicao }}</td>
+                    <td>{{ v.vendedor }}</td>
+                    <td class="num">{{ v.pedidos }}</td>
+                    <td class="num strong">R$ {{ v.gmv|brl }}</td>
+                    <td class="num">R$ {{ v.comissao|brl }}</td>
+                    <td class="num">R$ {{ v.ticket_medio|brl }}</td>
+                    <td>
+                        <div class="share">
+                            <div class="share-bar"><div class="share-bar-fill" data-pct="{{ v.participacao|stringformat:'.2f' }}"></div></div>
+                            <span>{{ v.participacao|floatformat:1 }}%</span>
+                        </div>
+                    </td>
+                    <td class="num">{{ v.acumulado|floatformat:1 }}%</td>
                 </tr>
             {% empty %}
                 <tr>
-                    <td colspan="3" style="padding:20px;text-align:center;color:var(--gray-500);">Nenhuma venda concluída ainda</td>
+                    <td colspan="8" class="empty">Nenhuma venda concluída no período</td>
+                </tr>
+            {% endfor %}
+            {% if ranking.demais %}
+                <tr class="row-muted">
+                    <td></td>
+                    <td>Demais {{ ranking.demais.quantidade }} vendedor{{ ranking.demais.quantidade|pluralize:"es" }}</td>
+                    <td class="num">{{ ranking.demais.pedidos }}</td>
+                    <td class="num strong">R$ {{ ranking.demais.gmv|brl }}</td>
+                    <td class="num">R$ {{ ranking.demais.comissao|brl }}</td>
+                    <td class="num">—</td>
+                    <td>
+                        <div class="share">
+                            <div class="share-bar"><div class="share-bar-fill" data-pct="{{ ranking.demais.participacao|stringformat:'.2f' }}"></div></div>
+                            <span>{{ ranking.demais.participacao|floatformat:1 }}%</span>
+                        </div>
+                    </td>
+                    <td class="num">100%</td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<h3 class="dash-section-title">Vendas por categoria</h3>
+<div class="dash-split">
+    <div class="dash-card">
+        <canvas id="categoryChart"></canvas>
+    </div>
+    <div class="dash-table-wrap">
+        <table class="dash-table">
+            <thead>
+                <tr>
+                    <th>Categoria</th>
+                    <th class="num">Pedidos</th>
+                    <th class="num">GMV</th>
+                    <th class="num">Ticket médio</th>
+                    <th class="num">Participação</th>
+                    <th class="num">Variação</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cat in categorias %}
+                    <tr>
+                        <td>{{ cat.categoria }}</td>
+                        <td class="num">{{ cat.pedidos }}</td>
+                        <td class="num strong">R$ {{ cat.gmv|brl }}</td>
+                        <td class="num">R$ {{ cat.ticket_medio|brl }}</td>
+                        <td class="num">{{ cat.participacao|floatformat:1 }}%</td>
+                        <td class="num">
+                            {% if cat.variacao is None %}<span class="dash-sub">—</span>{% else %}{% include 'orders/_delta.html' with valor=cat.variacao compacto=True %}{% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" class="empty">Nenhuma venda concluída no período</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<h3 class="dash-section-title">Saúde operacional</h3>
+<p class="dash-note">Taxas calculadas sobre os {{ saude.pedidos }} pedidos criados no período (exceto os que ainda aguardam pagamento).</p>
+<div class="dash-grid">
+    <div class="dash-card">
+        <p class="dash-label">Taxa de cancelamento</p>
+        <p class="dash-value">{{ saude.taxa_cancelamento|floatformat:1 }}%</p>
+        <p class="dash-sub">{{ saude.cancelados }} pedido{{ saude.cancelados|pluralize }}</p>
+        {% include 'orders/_delta.html' with valor=saude.taxa_cancelamento_diferenca sufixo=" p.p." inverso=True %}
+    </div>
+    <div class="dash-card">
+        <p class="dash-label">Taxa de devolução</p>
+        <p class="dash-value">{{ saude.taxa_devolucao|floatformat:1 }}%</p>
+        <p class="dash-sub">{{ saude.devolucoes }} pedido{{ saude.devolucoes|pluralize }} com devolução solicitada</p>
+        {% include 'orders/_delta.html' with valor=saude.taxa_devolucao_diferenca sufixo=" p.p." inverso=True %}
+    </div>
+    <div class="dash-card">
+        <p class="dash-label">Taxa de disputa</p>
+        <p class="dash-value">{{ saude.taxa_disputa|floatformat:1 }}%</p>
+        <p class="dash-sub">{{ saude.disputas }} pedido{{ saude.disputas|pluralize }} com disputa</p>
+        {% include 'orders/_delta.html' with valor=saude.taxa_disputa_diferenca sufixo=" p.p." inverso=True %}
+    </div>
+    <div class="dash-card">
+        <p class="dash-label">Disputas em aberto agora</p>
+        <p class="dash-value">{{ disputas_abertas_agora }}</p>
+        <a href="{% url 'dispute_list' %}" class="dash-link">Ver disputas →</a>
+    </div>
+    <div class="dash-card">
+        <p class="dash-label">Disputas resolvidas no período</p>
+        <p class="dash-value">{{ saude.disputas_resolvidas }}</p>
+        {% if saude.disputas_resolvidas %}
+            <p class="dash-sub">
+                Tempo médio: {{ saude.tempo_medio_resolucao|floatformat:1 }} dia{{ saude.tempo_medio_resolucao|pluralize }}<br>
+                {{ saude.pct_favor_comprador|floatformat:0 }}% a favor do comprador ({{ saude.favor_comprador }} × {{ saude.favor_vendedor }})
+            </p>
+        {% endif %}
+    </div>
+</div>
+{% if saude.motivos %}
+<div class="dash-table-wrap motivos-table">
+    <table class="dash-table">
+        <thead>
+            <tr>
+                <th>Motivo das disputas abertas no período</th>
+                <th class="num">Disputas</th>
+                <th>Participação</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for m in saude.motivos %}
+                <tr>
+                    <td>{{ m.motivo }}</td>
+                    <td class="num">{{ m.disputas }}</td>
+                    <td>
+                        <div class="share">
+                            <div class="share-bar"><div class="share-bar-fill" data-pct="{{ m.participacao|stringformat:'.2f' }}"></div></div>
+                            <span>{{ m.participacao|floatformat:1 }}%</span>
+                        </div>
+                    </td>
                 </tr>
             {% endfor %}
         </tbody>
     </table>
+</div>
+{% endif %}
+
+<h3 class="dash-section-title">Compradores novos vs. recorrentes</h3>
+<p class="dash-note">"Novo" é o comprador cuja primeira compra concluída na plataforma aconteceu dentro do período.</p>
+{% with novos=compradores.novos recorrentes=compradores.recorrentes %}
+<div class="dash-grid">
+    <div class="dash-card">
+        <p class="dash-label">Compradores ativos</p>
+        <p class="dash-value">{{ compradores.ativos }}</p>
+    </div>
+    <div class="dash-card">
+        <p class="dash-label">Novos</p>
+        <p class="dash-value">{{ novos.compradores }}</p>
+        <p class="dash-sub">R$ {{ novos.gmv|brl }} em GMV · R$ {{ novos.gmv_por_comprador|brl }} por comprador</p>
+        {% include 'orders/_delta.html' with valor=compradores.novos_variacao %}
+    </div>
+    <div class="dash-card">
+        <p class="dash-label">Recorrentes</p>
+        <p class="dash-value">{{ recorrentes.compradores }}</p>
+        <p class="dash-sub">R$ {{ recorrentes.gmv|brl }} em GMV · R$ {{ recorrentes.gmv_por_comprador|brl }} por comprador</p>
+        {% include 'orders/_delta.html' with valor=compradores.recorrentes_variacao %}
+    </div>
+    <div class="dash-card">
+        <p class="dash-label">Taxa de recorrência</p>
+        <p class="dash-value">{{ compradores.pct_recorrentes|floatformat:1 }}%</p>
+        <p class="dash-sub">dos compradores · {{ compradores.pct_gmv_recorrentes|floatformat:1 }}% do GMV</p>
+        {% include 'orders/_delta.html' with valor=compradores.pct_recorrentes_diferenca sufixo=" p.p." %}
+    </div>
+</div>
+{% if compradores.ativos %}
+<div class="dash-card split-card">
+    <p class="dash-label">Composição do GMV</p>
+    <div class="split-bar">
+        <div class="split-bar-recorrentes" data-pct="{{ compradores.pct_gmv_recorrentes|stringformat:'.2f' }}"></div>
+    </div>
+    <div class="split-legend">
+        <span><i class="legend-dot legend-recorrentes"></i>Recorrentes</span>
+        <span><i class="legend-dot legend-novos"></i>Novos</span>
+    </div>
+</div>
+{% endif %}
+{% endwith %}
+
+<h3 class="dash-section-title">Configurações da plataforma</h3>
+<div class="dash-card">
+    <form method="post" class="config-form">
+        {% csrf_token %}
+        {% for field in config_form %}
+            <label class="config-field">
+                <span class="dash-label">{{ field.label }}</span>
+                {{ field }}
+                {% if field.help_text %}<span class="config-help">{{ field.help_text }}</span>{% endif %}
+                {% for error in field.errors %}<span class="config-error">{{ error }}</span>{% endfor %}
+            </label>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary config-submit">Salvar configurações</button>
+    </form>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 {{ block.super }}
 {{ serie|json_script:"serie-data" }}
+{{ categorias_grafico|json_script:"categorias-data" }}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script>
     const serie = JSON.parse(document.getElementById('serie-data').textContent);
+    const categorias = JSON.parse(document.getElementById('categorias-data').textContent);
+    const brl = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    document.querySelectorAll('[data-pct]').forEach(el => {
+        el.style.width = `${el.dataset.pct}%`;
+    });
+
+    new Chart(document.getElementById('categoryChart'), {
+        type: 'bar',
+        data: {
+            labels: categorias.labels,
+            datasets: [{
+                label: 'GMV (R$)',
+                data: categorias.valores,
+                backgroundColor: '#22c55e',
+                borderRadius: 4,
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: ctx => brl(ctx.parsed.x) } },
+            },
+            scales: { x: { beginAtZero: true } },
+        }
+    });
 
     new Chart(document.getElementById('revenueChart'), {
         type: 'line',

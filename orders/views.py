@@ -1,19 +1,20 @@
-import json, requests
+import json, math, requests
 from datetime import timedelta, date
 from decimal import Decimal
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum
+from django.db.models import Count, Min, Q, Sum
 from django.db.models.functions import TruncDate, TruncMonth
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
-from .forms import DisputeForm, DisputeMessageForm, DisputeResolutionForm
+from .forms import DisputeForm, DisputeMessageForm, DisputeResolutionForm, PlatformConfigForm
 from .models import Order, Cart, CartItem, generate_tracking_code, PlatformConfig, Commission, Dispute, DisputeMessage
+from .reports import build_admin_report_pdf
 from accounts.models import MercadoPagoAccount
 from catalog.models import Product, ProductVariant
 
@@ -132,6 +133,10 @@ def my_orders(request):
         ProductReview.objects.filter(reviewer=request.user, edited=True).values_list('product_id', flat=True)
     )
 
+    config = PlatformConfig.load()
+    dispute_window = timedelta(days=config.dispute_window_days)
+    return_window = timedelta(days=config.return_window_days)
+
     for order in orders:
         order.seller_reviewed = order.product.seller.pk in reviewed_sellers
         order.seller_review_edited = order.product.seller.pk in edited_seller_reviews
@@ -140,7 +145,11 @@ def my_orders(request):
         order.can_contest = (
             order.status == 'CANCELLED_NO_RETURN'
             and not hasattr(order, 'dispute')
-            and timezone.now() - order.updated_at <= timedelta(days=DISPUTE_WINDOW_DAYS)
+            and timezone.now() - order.updated_at <= dispute_window
+        )
+        order.can_request_return = (
+            order.status in ('DELIVERED', 'RETURN_WINDOW')
+            and timezone.now() - order.updated_at <= return_window
         )
 
     return render(request, 'orders/my_orders.html', {'orders': orders})
@@ -211,6 +220,9 @@ def request_return(request, order_id):
     order = get_object_or_404(Order, pk=order_id, buyer=request.user)
 
     if order.status in ('DELIVERED', 'RETURN_WINDOW'):
+        if timezone.now() - order.updated_at > timedelta(days=PlatformConfig.load().return_window_days):
+            messages.error(request, 'O prazo para solicitar devolução deste pedido já passou.')
+            return redirect('my_orders')
         order.status = 'RETURN_REQUESTED'
         order.save()
         messages.success(request, 'Solicitação de devolução enviada ao vendedor')
@@ -401,29 +413,176 @@ def _variacao(atual, anterior):
         return None
     return float((atual - anterior) / anterior * 100)
 
+def _diferenca_pp(atual, anterior, base_anterior):
+    if not base_anterior:
+        return None
+    return atual - anterior
+
+def _pct(parte, total):
+    return float(parte / total * 100) if total else 0.0
+
 PERIODO_OPCOES = [('7d', '7 dias'), ('30d', '30 dias'), ('mes', 'Este mês'), ('ano', 'Este ano')]
+RETURN_FLOW_STATUSES = ['RETURN_REQUESTED', 'RETURN_ACCEPTED', 'RETURNED', 'CANCELLED_NO_RETURN', 'DISPUTE_OPEN']
 
-@login_required
-def admin_dashboard(request):
-    if not request.user.is_staff:
-        return redirect('home')
+def _commissions_between(inicio, fim):
+    return Commission.objects.filter(created_at__date__gte=inicio, created_at__date__lte=fim)
 
-    if request.method == 'POST':
-        nova_taxa = request.POST.get('commission_rate', '').strip()
-        try:
-            taxa = Decimal(nova_taxa)
-            if taxa < 0 or taxa > 100:
-                raise ValueError
-            config, _ = PlatformConfig.objects.get_or_create(pk=1)
-            config.commission_rate = taxa
-            config.save()
-            messages.success(request, 'Taxa de comissão atualizada com sucesso')
-        except:
-            messages.error(request, 'Taxa inválida')
-        return redirect('admin_dashboard')
+def _concentracao(linhas, total):
+    ativos = len(linhas)
+    if not ativos:
+        return None
 
-    periodo = _get_period_range(request)
+    pareto_n = max(1, math.ceil(ativos * 0.2))
+    hhi = sum(l['participacao'] ** 2 for l in linhas)
 
+    if hhi < 1500:
+        nivel = 'baixa'
+    elif hhi <= 2500:
+        nivel = 'moderada'
+    else:
+        nivel = 'alta'
+
+    return {
+        'ativos': ativos,
+        'top1': linhas[0]['participacao'],
+        'top5': sum(l['participacao'] for l in linhas[:5]),
+        'pareto_n': pareto_n,
+        'pareto': sum(l['participacao'] for l in linhas[:pareto_n]),
+        'hhi': hhi,
+        'nivel': nivel,
+    }
+
+def _ranking_vendedores(commissions, limite):
+    linhas = list(
+        commissions
+        .values('order__product__seller__username')
+        .annotate(gmv=Sum('gross_amount'), comissao=Sum('commission_amount'), pedidos=Count('id'))
+        .order_by('-gmv')
+    )
+    total = sum((l['gmv'] for l in linhas), Decimal('0'))
+
+    acumulado = Decimal('0')
+    for posicao, linha in enumerate(linhas, 1):
+        acumulado += linha['gmv']
+        linha['posicao'] = posicao
+        linha['vendedor'] = linha.pop('order__product__seller__username')
+        linha['ticket_medio'] = linha['gmv'] / linha['pedidos']
+        linha['participacao'] = _pct(linha['gmv'], total)
+        linha['acumulado'] = _pct(acumulado, total)
+
+    demais = linhas[limite:]
+    demais_resumo = None
+    if demais:
+        gmv_demais = sum((l['gmv'] for l in demais), Decimal('0'))
+        demais_resumo = {
+            'quantidade': len(demais),
+            'gmv': gmv_demais,
+            'comissao': sum((l['comissao'] for l in demais), Decimal('0')),
+            'pedidos': sum(l['pedidos'] for l in demais),
+            'participacao': _pct(gmv_demais, total),
+        }
+
+    return {
+        'linhas': linhas[:limite],
+        'demais': demais_resumo,
+        'concentracao': _concentracao(linhas, total),
+    }
+
+def _vendas_por_categoria(commissions, commissions_anterior):
+    def agrupar(qs):
+        return {
+            r['order__product__category__name']: r
+            for r in qs.values('order__product__category__name')
+            .annotate(gmv=Sum('gross_amount'), pedidos=Count('id'))
+        }
+
+    atual, anterior = agrupar(commissions), agrupar(commissions_anterior)
+    total = sum((r['gmv'] for r in atual.values()), Decimal('0'))
+
+    linhas = []
+    for nome in set(atual) | set(anterior):
+        gmv = atual[nome]['gmv'] if nome in atual else Decimal('0')
+        pedidos = atual[nome]['pedidos'] if nome in atual else 0
+        linhas.append({
+            'categoria': nome,
+            'gmv': gmv,
+            'pedidos': pedidos,
+            'ticket_medio': gmv / pedidos if pedidos else Decimal('0'),
+            'participacao': _pct(gmv, total),
+            'variacao': _variacao(gmv, anterior[nome]['gmv'] if nome in anterior else None),
+        })
+
+    linhas.sort(key=lambda l: l['gmv'], reverse=True)
+    return linhas
+
+def _saude_operacional(inicio, fim):
+    pedidos = Order.objects.filter(
+        created_at__date__gte=inicio, created_at__date__lte=fim
+    ).exclude(status='PENDING')
+
+    total = pedidos.count()
+    cancelados = pedidos.filter(status='CANCELLED').count()
+    devolucoes = pedidos.filter(Q(status__in=RETURN_FLOW_STATUSES) | Q(dispute__isnull=False)).count()
+    disputas = pedidos.filter(dispute__isnull=False).count()
+
+    resolvidas = list(
+        Dispute.objects.filter(resolved_at__date__gte=inicio, resolved_at__date__lte=fim)
+        .values_list('status', 'created_at', 'resolved_at')
+    )
+    tempos = [(resolvido - criado).total_seconds() / 86400 for _, criado, resolvido in resolvidas]
+    favor_comprador = sum(1 for status, _, _ in resolvidas if status != 'RESOLVED_SELLER')
+
+    abertas_periodo = Dispute.objects.filter(created_at__date__gte=inicio, created_at__date__lte=fim)
+    total_abertas = abertas_periodo.count()
+    motivos = [
+        {
+            'motivo': m['reason_category'] or 'Não informado',
+            'disputas': m['disputas'],
+            'participacao': _pct(m['disputas'], total_abertas),
+        }
+        for m in abertas_periodo.values('reason_category').annotate(disputas=Count('id')).order_by('-disputas')
+    ]
+
+    return {
+        'pedidos': total,
+        'cancelados': cancelados,
+        'taxa_cancelamento': _pct(cancelados, total),
+        'devolucoes': devolucoes,
+        'taxa_devolucao': _pct(devolucoes, total),
+        'disputas': disputas,
+        'taxa_disputa': _pct(disputas, total),
+        'disputas_resolvidas': len(resolvidas),
+        'tempo_medio_resolucao': sum(tempos) / len(tempos) if tempos else None,
+        'favor_comprador': favor_comprador,
+        'favor_vendedor': len(resolvidas) - favor_comprador,
+        'pct_favor_comprador': _pct(favor_comprador, len(resolvidas)),
+        'motivos': motivos,
+    }
+
+def _compradores(commissions, inicio, primeiras_compras):
+    novos = {'compradores': 0, 'gmv': Decimal('0'), 'pedidos': 0}
+    recorrentes = {'compradores': 0, 'gmv': Decimal('0'), 'pedidos': 0}
+
+    for r in commissions.values('order__buyer').annotate(gmv=Sum('gross_amount'), pedidos=Count('id')):
+        grupo = novos if timezone.localtime(primeiras_compras[r['order__buyer']]).date() >= inicio else recorrentes
+        grupo['compradores'] += 1
+        grupo['gmv'] += r['gmv']
+        grupo['pedidos'] += r['pedidos']
+
+    for grupo in (novos, recorrentes):
+        grupo['gmv_por_comprador'] = grupo['gmv'] / grupo['compradores'] if grupo['compradores'] else Decimal('0')
+
+    ativos = novos['compradores'] + recorrentes['compradores']
+    gmv_total = novos['gmv'] + recorrentes['gmv']
+    return {
+        'ativos': ativos,
+        'novos': novos,
+        'recorrentes': recorrentes,
+        'pct_recorrentes': _pct(recorrentes['compradores'], ativos),
+        'pct_gmv_recorrentes': _pct(recorrentes['gmv'], gmv_total),
+    }
+
+def _build_report_data(periodo):
     total_vendas = Order.objects.filter(
         status__in=['DELIVERED', 'RETURN_WINDOW', 'COMPLETED']
     ).aggregate(total=Sum('quantity'))['total'] or 0
@@ -438,22 +597,8 @@ def admin_dashboard(request):
 
     taxa_atual = PlatformConfig.get_commission_rate()
 
-    vendedores = (
-        Order.objects.filter(status__in=['DELIVERED', 'RETURN_WINDOW', 'COMPLETED'])
-        .values('product__seller__username')
-        .annotate(
-            total_vendas=Sum('quantity'),
-            total_bruto=Sum('total_price'),
-        )
-        .order_by('-total_bruto')[:10]
-    )
-
-    commissions_periodo = Commission.objects.filter(
-        created_at__date__gte=periodo['inicio'], created_at__date__lte=periodo['fim']
-    )
-    commissions_anterior = Commission.objects.filter(
-        created_at__date__gte=periodo['inicio_anterior'], created_at__date__lte=periodo['fim_anterior']
-    )
+    commissions_periodo = _commissions_between(periodo['inicio'], periodo['fim'])
+    commissions_anterior = _commissions_between(periodo['inicio_anterior'], periodo['fim_anterior'])
 
     gmv_atual = commissions_periodo.aggregate(total=Sum('gross_amount'))['total'] or Decimal('0')
     gmv_anterior = commissions_anterior.aggregate(total=Sum('gross_amount'))['total'] or Decimal('0')
@@ -479,14 +624,42 @@ def admin_dashboard(request):
     serie_labels = [item['bucket'].strftime(fmt) for item in serie]
     serie_valores = [float(item['total']) for item in serie]
 
-    return render(request, 'orders/admin_dashboard.html', {
+    config = PlatformConfig.load()
+    ranking = _ranking_vendedores(commissions_periodo, config.ranking_size)
+    ranking_anterior = _ranking_vendedores(commissions_anterior, config.ranking_size)
+    concentracao = ranking['concentracao']
+    concentracao_anterior = ranking_anterior['concentracao']
+    if concentracao:
+        tem_anterior = concentracao_anterior is not None
+        concentracao['top5_diferenca'] = concentracao['top5'] - concentracao_anterior['top5'] if tem_anterior else None
+        concentracao['pareto_diferenca'] = concentracao['pareto'] - concentracao_anterior['pareto'] if tem_anterior else None
+        concentracao['hhi_anterior'] = concentracao_anterior['hhi'] if tem_anterior else None
+
+    categorias = _vendas_por_categoria(commissions_periodo, commissions_anterior)
+
+    saude = _saude_operacional(periodo['inicio'], periodo['fim'])
+    saude_anterior = _saude_operacional(periodo['inicio_anterior'], periodo['fim_anterior'])
+    for chave in ('taxa_cancelamento', 'taxa_devolucao', 'taxa_disputa'):
+        saude[f'{chave}_diferenca'] = _diferenca_pp(saude[chave], saude_anterior[chave], saude_anterior['pedidos'])
+
+    primeiras_compras = dict(
+        Commission.objects.values('order__buyer')
+        .annotate(primeira=Min('created_at'))
+        .values_list('order__buyer', 'primeira')
+    )
+    compradores = _compradores(commissions_periodo, periodo['inicio'], primeiras_compras)
+    compradores_anterior = _compradores(commissions_anterior, periodo['inicio_anterior'], primeiras_compras)
+    compradores['novos_variacao'] = _variacao(compradores['novos']['compradores'], compradores_anterior['novos']['compradores'])
+    compradores['recorrentes_variacao'] = _variacao(compradores['recorrentes']['compradores'], compradores_anterior['recorrentes']['compradores'])
+    compradores['pct_recorrentes_diferenca'] = _diferenca_pp(
+        compradores['pct_recorrentes'], compradores_anterior['pct_recorrentes'], compradores_anterior['ativos']
+    )
+
+    return {
         'total_vendas': total_vendas,
         'total_transacionado': total_transacionado,
         'total_comissao': total_comissao,
         'taxa_atual': taxa_atual,
-        'vendedores': vendedores,
-        'periodo': periodo,
-        'periodo_opcoes': PERIODO_OPCOES,
         'gmv_atual': gmv_atual,
         'gmv_variacao': _variacao(gmv_atual, gmv_anterior),
         'comissao_periodo': comissao_periodo,
@@ -496,7 +669,55 @@ def admin_dashboard(request):
         'ticket_medio': ticket_medio,
         'ticket_medio_variacao': _variacao(ticket_medio, ticket_medio_anterior),
         'serie': {'labels': serie_labels, 'valores': serie_valores},
+        'ranking': ranking,
+        'categorias': categorias,
+        'categorias_grafico': {
+            'labels': [c['categoria'] for c in categorias],
+            'valores': [float(c['gmv']) for c in categorias],
+        },
+        'saude': saude,
+        'disputas_abertas_agora': Dispute.objects.filter(status='OPEN').count(),
+        'compradores': compradores,
+        'config': config,
+    }
+
+@login_required
+def admin_dashboard(request):
+    if not request.user.is_staff:
+        return redirect('home')
+
+    config = PlatformConfig.load()
+    if request.method == 'POST':
+        config_form = PlatformConfigForm(request.POST, instance=config)
+        if config_form.is_valid():
+            config_form.save()
+            messages.success(request, 'Configurações atualizadas com sucesso')
+            return redirect('admin_dashboard')
+        messages.error(request, 'Configuração inválida')
+    else:
+        config_form = PlatformConfigForm(instance=config)
+
+    periodo = _get_period_range(request)
+
+    return render(request, 'orders/admin_dashboard.html', {
+        **_build_report_data(periodo),
+        'periodo': periodo,
+        'periodo_opcoes': PERIODO_OPCOES,
+        'config_form': config_form,
     })
+
+@login_required
+def admin_dashboard_pdf(request):
+    if not request.user.is_staff:
+        return redirect('home')
+
+    periodo = _get_period_range(request)
+    pdf = build_admin_report_pdf(_build_report_data(periodo), periodo)
+
+    nome = f"relatorio-megagame-{periodo['inicio']:%Y-%m-%d}-a-{periodo['fim']:%Y-%m-%d}.pdf"
+    response = HttpResponse(pdf, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{nome}"'
+    return response
 
 @login_required
 def update_cart_item(request, item_id):
@@ -518,8 +739,6 @@ def update_cart_item(request, item_id):
             item.save()
 
     return redirect('cart_detail')
-
-DISPUTE_WINDOW_DAYS = 7
 
 @login_required
 def open_dispute(request, order_id):
@@ -554,7 +773,7 @@ def contest_decision(request, order_id):
     if order.status != 'CANCELLED_NO_RETURN' or hasattr(order, 'dispute'):
         return redirect('my_orders')
 
-    if timezone.now() - order.updated_at > timedelta(days=DISPUTE_WINDOW_DAYS):
+    if timezone.now() - order.updated_at > timedelta(days=PlatformConfig.load().dispute_window_days):
         messages.error(request, 'O prazo para contestar essa decisão já passou.')
         return redirect('my_orders')
 

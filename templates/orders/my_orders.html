@@ -55,6 +55,8 @@
                     <a href="{% url 'complete_order' order.pk %}" class="btn btn-primary" style="padding:8px 20px;font-size:14px;">
                         Concluir pedido
                     </a>
+                {% endif %}
+                {% if order.can_request_return %}
                     <a href="{% url 'request_return' order.pk %}" class="btn" style="padding:8px 20px;font-size:14px;border:2px solid var(--black);">
                         Solicitar devolução
                     </a>

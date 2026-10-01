@@ -25,6 +25,7 @@ urlpatterns = [
     path('carrinho/remover/<int:item_id>/', views.remove_from_cart, name='remove_from_cart'),
     path('carrinho/finalizar/', views.checkout, name='checkout'),
     path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),
+    path('admin-dashboard/pdf/', views.admin_dashboard_pdf, name='admin_dashboard_pdf'),
     path('carrinho/atualizar/<int:item_id>/', views.update_cart_item, name='update_cart_item'),
     path('pedidos/<int:order_id>/disputa/abrir/', views.open_dispute, name='open_dispute'),
     path('pedidos/<int:order_id>/disputa/contestar/', views.contest_decision, name='contest_decision'),

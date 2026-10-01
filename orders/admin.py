@@ -18,7 +18,7 @@ class CartItemAdmin(admin.ModelAdmin):
 
 @admin.register(PlatformConfig)
 class PlatformConfigAdmin(admin.ModelAdmin):
-    list_display = ('commission_rate',)
+    list_display = ('commission_rate', 'dispute_window_days', 'return_window_days', 'ranking_size')
 
     def has_add_permission(self, request):
         return not PlatformConfig.objects.exists()
@@ -33,8 +33,8 @@ class CommissionAdmin(admin.ModelAdmin):
 
 @admin.register(Dispute)
 class DisputeAdmin(admin.ModelAdmin):
-    list_display = ('order', 'opened_by', 'status', 'created_at', 'resolved_by')
-    list_filter = ('status',)
+    list_display = ('order', 'opened_by', 'reason_category', 'status', 'created_at', 'resolved_by')
+    list_filter = ('status', 'reason_category')
 
 @admin.register(DisputeMessage)
 class DisputeMessageAdmin(admin.ModelAdmin):

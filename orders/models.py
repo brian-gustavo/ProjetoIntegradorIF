@@ -1,5 +1,6 @@
 import random, string
 from decimal import Decimal
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
 from catalog.models import Product, ProductVariant
@@ -76,12 +77,44 @@ class CartItem(models.Model):
     def subtotal(self):
         return self.variant.price * self.quantity
 
+DEFAULT_DISPUTE_REASONS = '\n'.join([
+    'Produto com defeito',
+    'Produto diferente do anunciado',
+    'Produto incompleto',
+    'Produto não recebido',
+    'Key ou código digital inválido',
+    'Produto devolvido com avarias',
+    'Devolução sem justificativa',
+    'Outro',
+])
+
 class PlatformConfig(models.Model):
     commission_rate = models.DecimalField(
         max_digits=5,
         decimal_places=2,
         default=Decimal('10.00'),
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="Taxa de comissão (%)"
+    )
+    dispute_window_days = models.PositiveIntegerField(
+        default=7,
+        validators=[MinValueValidator(1)],
+        verbose_name="Prazo para contestar cancelamento sem devolução (dias)"
+    )
+    return_window_days = models.PositiveIntegerField(
+        default=7,
+        validators=[MinValueValidator(1)],
+        verbose_name="Prazo para solicitar devolução após a entrega (dias)"
+    )
+    ranking_size = models.PositiveIntegerField(
+        default=10,
+        validators=[MinValueValidator(1), MaxValueValidator(100)],
+        verbose_name="Vendedores exibidos no ranking do painel"
+    )
+    dispute_reasons = models.TextField(
+        default=DEFAULT_DISPUTE_REASONS,
+        help_text="Um motivo por linha",
+        verbose_name="Motivos de disputa"
     )
 
     class Meta:
@@ -90,6 +123,13 @@ class PlatformConfig(models.Model):
 
     def __str__(self):
         return f"Comissão: {self.commission_rate}%"
+
+    @classmethod
+    def load(cls):
+        return cls.objects.first() or cls.objects.create()
+
+    def dispute_reason_list(self):
+        return [linha.strip() for linha in self.dispute_reasons.splitlines() if linha.strip()]
 
     @classmethod
     def get_commission_rate(cls):
@@ -121,7 +161,8 @@ class Dispute(models.Model):
 
     order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='dispute', verbose_name="Pedido")
     opened_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='disputes_opened', verbose_name="Aberta por")
-    reason = models.TextField(verbose_name="Motivo")
+    reason_category = models.CharField(max_length=100, blank=True, verbose_name="Motivo")
+    reason = models.TextField(verbose_name="Descrição")
     status = models.CharField(max_length=25, choices=STATUS_CHOICES, default='OPEN', verbose_name="Status")
     resolution_notes = models.TextField(blank=True, verbose_name="Notas da resolução")
     resolved_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='disputes_resolved', verbose_name="Resolvida por")
