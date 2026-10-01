@@ -7,7 +7,6 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
 *Produtos a serem vendidos:* Jogos físicos, consoles, acessórios para consoles, jogos de tabuleiro, keys para jogos digitais, itens *in-game*, pôsteres, *action figures* e *bottons*
 
 *Requisitos faltantes:*
-- PRIORIDADE: Remodelar a UI/UX do site (adicionar mais imagens, cores mais chamativas, reestruturar os menus para maior intuitividade...)
 - Implementar funcionalidades secundárias (gamificação, cupons de desconto, etc.)
 - Permitir trocas e leilões (similar ao eBay) na plataforma
 - Inserir placeholders em locais como cards de produtos e rastreio de compra, pra fins de prova de conceito
