@@ -5,6 +5,7 @@
 *.sqlite3
 *$py.class
 __pycache__/
+CLAUDE.md
 env/
 ENV/
 media/
