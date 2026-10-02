@@ -27,7 +27,7 @@
                     {% if imagens %}
                         <img id="main-image" src="{{ imagens.0.image.url }}" alt="{{ product.title }}">
                     {% else %}
-                        <div class="img-placeholder">Sem imagens</div>
+                        <div class="img-placeholder" role="img" aria-label="Sem imagens"></div>
                     {% endif %}
                 </div>
             </div>

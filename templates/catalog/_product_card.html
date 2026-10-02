@@ -5,7 +5,7 @@
             {% if img %}
                 <img src="{{ img.image.url }}" alt="{{ prod.title }}" loading="lazy">
             {% else %}
-                <div class="img-placeholder">Sem foto</div>
+                <div class="img-placeholder" role="img" aria-label="Sem foto"></div>
             {% endif %}
         {% endwith %}
     </div>

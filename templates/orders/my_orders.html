@@ -30,18 +30,35 @@
             </div>
         </div>
 
-        {% if order.status == 'SHIPPED' or order.status == 'DELIVERED' or order.status == 'RETURN_WINDOW' or order.status == 'COMPLETED' %}
-            {% if not order.pickup and order.tracking_code %}
-            <details class="tracking" id="tracking-{{ order.pk }}">
-                <summary>Rastreio · {{ order.tracking_code }}</summary>
-                <div class="tracking-body" id="tracking-result-{{ order.pk }}">
-                    <button type="button" data-order="{{ order.pk }}" onclick="fetchTracking(this.dataset.order)" class="btn btn-outline btn-sm">
-                        Consultar rastreio
-                    </button>
+        {% with t=order.tracking %}
+        {% if t %}
+            <details class="tracking">
+                <summary>Rastreio · {{ t.codigo }}</summary>
+                <div class="tracking-body">
+                    <div class="tracking-head">
+                        <span class="tracking-service">Envio padrão</span>
+                        {% if t.entregue %}
+                            <span class="tracking-forecast tracking-forecast-done">Entregue em {{ t.entregue_em|date:"d/m/Y" }}</span>
+                        {% else %}
+                            <span class="tracking-forecast">Previsão de entrega: {{ t.previsao|date:"d/m/Y" }}</span>
+                        {% endif %}
+                    </div>
+                    <ol class="tracking-timeline">
+                        {% for e in t.eventos %}
+                            <li class="tracking-event{% if forloop.first %} is-current{% endif %}{% if e.icone == 'check' %} is-delivered{% endif %}">
+                                <span class="tracking-icon">{% include 'orders/_tracking_icon.html' with icone=e.icone %}</span>
+                                <div class="tracking-info">
+                                    <strong>{{ e.titulo }}</strong>
+                                    {% for linha in e.linhas %}<span>{{ linha }}</span>{% endfor %}
+                                    <time datetime="{{ e.momento|date:'c' }}">{{ e.momento|date:"d/m/Y H:i" }}</time>
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ol>
                 </div>
             </details>
-            {% endif %}
         {% endif %}
+        {% endwith %}
 
         <div class="order-card-actions">{% spaceless %}
             {% if order.status == 'PENDING' or order.status == 'PAID' %}
@@ -93,49 +110,4 @@
     </div>
 {% endfor %}
 </div>
-{% endblock %}
-
-{% block extra_js %}
-{{ block.super }}
-<script>
-function escapeHtml(valor) {
-    const div = document.createElement('div');
-    div.textContent = valor ?? '';
-    return div.innerHTML;
-}
-
-function fetchTracking(orderId) {
-    const container = document.getElementById('tracking-result-' + orderId);
-    container.innerHTML = '<p>Consultando...</p>';
-
-    fetch(`/pedidos/${orderId}/rastreio/`)
-        .then(res => res.json())
-        .then(data => {
-            if (data.error) {
-                container.innerHTML = `<p class="text-danger">${escapeHtml(data.error)}</p>`;
-                return;
-            }
-
-            const eventos = data.events || data.eventos || data.tracking || null;
-
-            if (!eventos || !Array.isArray(eventos) || eventos.length === 0) {
-                container.innerHTML = `
-                    <p>Não conseguimos exibir os eventos no formato esperado ainda.</p>
-                    <pre class="tracking-raw">${escapeHtml(JSON.stringify(data, null, 2))}</pre>
-                `;
-                return;
-            }
-
-            container.innerHTML = eventos.map(e => `
-                <div class="tracking-event">
-                    <strong>${escapeHtml(e.status || e.description || '')}</strong>
-                    <span class="text-sm">${escapeHtml(e.date || e.data || '')} ${escapeHtml(e.location || e.local || '')}</span>
-                </div>
-            `).join('');
-        })
-        .catch(() => {
-            container.innerHTML = '<p class="text-danger">Não foi possível consultar o rastreio no momento</p>';
-        });
-}
-</script>
 {% endblock %}

@@ -6,13 +6,10 @@ from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
-from faker import Faker
 
-from accounts.models import UF_CHOICES, SellerReview
+from accounts.models import SellerReview
 from catalog.models import Category, Product, ProductVariant, ProductReview
 from orders.models import Order, Cart, CartItem, PlatformConfig, Commission, Dispute, DisputeMessage, generate_tracking_code
-
-fake = Faker('pt_BR')
 
 CATEGORIES = [
     ('Consoles', 'consoles'),
@@ -41,6 +38,78 @@ PERIPHERAL_ITEMS = ['Controle', 'Headset', 'Mouse Gamer', 'Teclado Mecânico', '
 INGAME_ITEMS = ['Moeda Premium', 'Pacote de Skins', 'Passe de Batalha', 'Pacote de Gemas']
 INGAME_VARIANTS = ['100 unidades', '500 unidades', '1000 unidades']
 COLLECTIBLE_VARIANTS = ['Padrão', 'Edição Especial', 'Edição de Colecionador']
+PERIPHERAL_MODELS = [
+    'Viper', 'Titan', 'Vortex', 'Phantom', 'Nova', 'Raptor', 'Spectra', 'Apex',
+    'Blaze', 'Orion', 'Falcon', 'Storm', 'Pulse', 'Striker', 'Nebula', 'Fusion',
+]
+
+CITIES = [
+    ('São Paulo', 'SP'), ('Campinas', 'SP'), ('Ribeirão Preto', 'SP'), ('Sorocaba', 'SP'),
+    ('São José dos Campos', 'SP'), ('Rio de Janeiro', 'RJ'), ('Niterói', 'RJ'), ('Petrópolis', 'RJ'),
+    ('Belo Horizonte', 'MG'), ('Uberlândia', 'MG'), ('Juiz de Fora', 'MG'), ('Vitória', 'ES'),
+    ('Vila Velha', 'ES'), ('Curitiba', 'PR'), ('Londrina', 'PR'), ('Maringá', 'PR'),
+    ('Florianópolis', 'SC'), ('Joinville', 'SC'), ('Blumenau', 'SC'), ('Porto Alegre', 'RS'),
+    ('Caxias do Sul', 'RS'), ('Pelotas', 'RS'), ('Brasília', 'DF'), ('Goiânia', 'GO'),
+    ('Anápolis', 'GO'), ('Campo Grande', 'MS'), ('Cuiabá', 'MT'), ('Salvador', 'BA'),
+    ('Feira de Santana', 'BA'), ('Recife', 'PE'), ('Caruaru', 'PE'), ('Fortaleza', 'CE'),
+    ('Natal', 'RN'), ('João Pessoa', 'PB'), ('Campina Grande', 'PB'), ('Maceió', 'AL'),
+    ('Aracaju', 'SE'), ('Teresina', 'PI'), ('São Luís', 'MA'), ('Belém', 'PA'),
+    ('Manaus', 'AM'), ('Porto Velho', 'RO'), ('Palmas', 'TO'), ('Macapá', 'AP'),
+    ('Boa Vista', 'RR'), ('Rio Branco', 'AC'),
+]
+
+DESCRIPTION_SENTENCES = [
+    'Produto conferido e testado antes do envio.',
+    'Enviado com embalagem reforçada para evitar danos no transporte.',
+    'Acompanha todos os itens mostrados nas fotos do anúncio.',
+    'Qualquer dúvida, é só mandar mensagem que respondo rapidinho.',
+    'Postagem em até dois dias úteis após a confirmação do pagamento.',
+    'Item guardado com cuidado, longe de umidade e luz direta.',
+    'Ótima opção para quem quer completar a coleção.',
+    'Envio para todo o Brasil com código de rastreio.',
+    'Funciona perfeitamente, sem nenhum defeito conhecido.',
+    'Vendo porque não uso mais, está em ótimo estado.',
+    'Aceito retirada em mãos quando disponível no anúncio.',
+    'Nota fiscal disponível mediante solicitação.',
+]
+
+POSITIVE_COMMENTS = [
+    'Chegou rápido e muito bem embalado. Recomendo!',
+    'Exatamente como descrito no anúncio.',
+    'Vendedor atencioso, respondeu todas as dúvidas.',
+    'Excelente compra, superou as expectativas.',
+    'Tudo certo, compraria novamente.',
+    'Produto em ótimo estado, valeu cada centavo.',
+]
+NEUTRAL_COMMENTS = [
+    'Produto ok, mas a entrega demorou um pouco.',
+    'Atendeu ao esperado, nada de especial.',
+    'Embalagem poderia ser melhor, mas o item chegou inteiro.',
+    'Bom custo-benefício, apesar de alguns detalhes.',
+]
+NEGATIVE_COMMENTS = [
+    'Demorou muito para ser enviado.',
+    'O produto não estava no estado descrito.',
+    'Vendedor demorou a responder as mensagens.',
+    'Chegou com a caixa danificada.',
+]
+
+RESOLUTION_NOTES = [
+    'Analisadas as evidências enviadas por ambas as partes.',
+    'Decisão tomada com base no histórico de mensagens e no rastreio do pedido.',
+    'As fotos apresentadas comprovam a alegação.',
+    'Não foram apresentadas evidências suficientes para a alegação.',
+    'Caso encerrado após análise da equipe de mediação.',
+]
+
+def comment_for(rating):
+    if random.random() >= 0.7:
+        return ''
+    if rating >= 4:
+        return random.choice(POSITIVE_COMMENTS)
+    if rating >= 2.5:
+        return random.choice(NEUTRAL_COMMENTS)
+    return random.choice(NEGATIVE_COMMENTS)
 
 STATUS_WEIGHTS = [
     ('PENDING', 8), ('PAID', 8), ('CONFIRMED', 5), ('PREPARING', 5),
@@ -176,8 +245,7 @@ class Command(BaseCommand):
                 joined = random_between(self._span_start, latest_join)
                 User.objects.filter(pk=user.pk).update(date_joined=joined)
                 user.date_joined = joined
-            user.profile.city = fake.city()
-            user.profile.uf = random.choice(UF_CHOICES)[0]
+            user.profile.city, user.profile.uf = random.choice(CITIES)
             user.profile.save()
             users.append(user)
         return users
@@ -191,7 +259,7 @@ class Command(BaseCommand):
             return f'Console {random.choice(CONSOLE_MODELS)}', CONSOLE_VARIANTS
         if category.slug == 'perifericos':
             item = random.choice(PERIPHERAL_ITEMS)
-            return f'{item} {fake.word().capitalize()} Pro', ['Padrão', 'Edição RGB']
+            return f'{item} {random.choice(PERIPHERAL_MODELS)} Pro', ['Padrão', 'Edição RGB']
         if category.slug == 'keys':
             franchise = random.choice(FRANCHISES)
             return f'{franchise} (Key Digital)', KEY_STORES
@@ -219,7 +287,7 @@ class Command(BaseCommand):
                 category=category,
                 seller=seller,
                 title=title,
-                description=fake.paragraph(nb_sentences=4),
+                description=' '.join(random.sample(DESCRIPTION_SENTENCES, 4)),
                 condition=random.choices(['NEW', 'USED'], weights=[7, 3])[0],
                 accepts_pickup=random.random() < 0.3,
                 published=not is_draft and random.random() < 0.9,
@@ -402,7 +470,7 @@ class Command(BaseCommand):
                 status=outcome,
                 resolved_by=staff if resolved_at else None,
                 resolved_at=resolved_at,
-                resolution_notes=fake.sentence() if resolved_at else '',
+                resolution_notes=random.choice(RESOLUTION_NOTES) if resolved_at else '',
             )
             dispute.seed_date = created_at
             disputes.append(dispute)
@@ -433,22 +501,24 @@ class Command(BaseCommand):
         product_key = (order.product_id, order.buyer_id)
         if product_key not in self._reviewed_products:
             self._reviewed_products.add(product_key)
+            nota = rating()
             review = ProductReview(
                 product=order.product,
                 reviewer=order.buyer,
-                rating=rating(),
-                comment=fake.sentence() if random.random() < 0.7 else '',
+                rating=nota,
+                comment=comment_for(nota),
             )
             product_reviews.append((review, self._review_date(delivered_at)))
 
         seller_key = (order.product.seller_id, order.buyer_id)
         if seller_key not in self._reviewed_sellers:
             self._reviewed_sellers.add(seller_key)
+            nota = rating()
             review = SellerReview(
                 seller=order.product.seller,
                 reviewer=order.buyer,
-                rating=rating(),
-                comment=fake.sentence() if random.random() < 0.7 else '',
+                rating=nota,
+                comment=comment_for(nota),
             )
             seller_reviews.append((review, self._review_date(delivered_at)))
 

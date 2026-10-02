@@ -21,7 +21,7 @@
         <div class="product-card">
             <a href="{% url 'product_detail' prod.pk %}" class="product-card-media">
                 {% with img=prod.images.all.0 %}
-                    {% if img %}<img src="{{ img.image.url }}" alt="{{ prod.title }}" loading="lazy">{% else %}<div class="img-placeholder">Sem foto</div>{% endif %}
+                    {% if img %}<img src="{{ img.image.url }}" alt="{{ prod.title }}" loading="lazy">{% else %}<div class="img-placeholder" role="img" aria-label="Sem foto"></div>{% endif %}
                 {% endwith %}
                 {% if prod.published %}
                     <span class="badge badge-paid">Ativo</span>
@@ -93,7 +93,7 @@
         {% for prod in rascunhos %}
             <div class="product-card">
                 <div class="product-card-media">
-                    <div class="img-placeholder">Rascunho</div>
+                    <div class="img-placeholder" role="img" aria-label="Rascunho"></div>
                 </div>
                 <div class="product-card-body">
                     <div class="product-card-title">{{ prod.title }}</div>

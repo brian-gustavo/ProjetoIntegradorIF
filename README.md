@@ -7,11 +7,9 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
 *Produtos a serem vendidos:* Jogos físicos, consoles, acessórios para consoles, jogos de tabuleiro, keys para jogos digitais, itens *in-game*, pôsteres, *action figures* e *bottons*
 
 *Requisitos faltantes:*
-- Implementar funcionalidades secundárias (gamificação, cupons de desconto, etc.)
+- Implementar funcionalidades secundárias (gamificação e cupons de desconto)
 - Permitir trocas e leilões (similar ao eBay) na plataforma
-- Inserir placeholders em locais como cards de produtos e rastreio de compra, pra fins de prova de conceito
-- Aprimorar a disputa (não permitir que ela seja aberta automaticamente, inserir opções padronizadas ao criar disputa, permitir inserção de imagens...)
-- Aprimorar os filtros (inserir o preço desejado ao invés de ter limites padronizados, por exemplo)
+- Aprimorar a disputa (não permitir que ela seja aberta automaticamente, permitir inserção de imagens...)
 - APÓS A CONCLUSÃO DOS ANTERIORES: Criar manuais de uso para as páginas (serão embarcados no sistema)
 - APÓS A CONCLUSÃO DOS ANTERIORES: Consertar os problemas restantes da documentação e adicionar o que foi alterado após a última versão
 - ADICIONAL, CASO DÊ TEMPO: Consertar e aprimorar os testes

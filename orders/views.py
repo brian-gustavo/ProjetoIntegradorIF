@@ -15,6 +15,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .forms import DisputeForm, DisputeMessageForm, DisputeResolutionForm, PlatformConfigForm
 from .models import Order, Cart, CartItem, generate_tracking_code, PlatformConfig, Commission, Dispute, DisputeMessage
 from .reports import build_admin_report_pdf
+from .tracking import simulate_tracking
 from accounts.models import MercadoPagoAccount
 from catalog.models import Product, ProductVariant
 
@@ -118,7 +119,9 @@ def my_orders(request):
     from accounts.models import SellerReview
     from catalog.models import ProductReview
 
-    orders = Order.objects.filter(buyer=request.user).order_by('-created_at')
+    orders = Order.objects.filter(buyer=request.user).select_related(
+        'product__seller__profile', 'buyer__profile'
+    ).order_by('-created_at')
 
     reviewed_sellers = set(
         SellerReview.objects.filter(reviewer=request.user).values_list('seller_id', flat=True)
@@ -151,6 +154,7 @@ def my_orders(request):
             order.status in ('DELIVERED', 'RETURN_WINDOW')
             and timezone.now() - order.updated_at <= return_window
         )
+        order.tracking = simulate_tracking(order)
 
     return render(request, 'orders/my_orders.html', {'orders': orders})
 
@@ -678,7 +682,6 @@ def _build_report_data(periodo):
         'saude': saude,
         'disputas_abertas_agora': Dispute.objects.filter(status='OPEN').count(),
         'compradores': compradores,
-        'config': config,
     }
 
 @login_required
@@ -878,36 +881,39 @@ def dispute_list(request):
     ).order_by('created_at')
     return render(request, 'orders/dispute_list.html', {'disputes': disputes})
 
-@login_required
-def track_order(request, order_id):
-    order = get_object_or_404(Order, pk=order_id)
-
-    if request.user not in (order.buyer, order.product.seller):
-        return JsonResponse({'error': 'Não autorizado'}, status=403)
-
-    if not order.tracking_code:
-        return JsonResponse({'error': 'Este pedido não possui código de rastreio'}, status=400)
-
-    try:
-        response = requests.post(
-            'https://api-labs.wonca.com.br/wonca.labs.v1.LabsService/Track',
-            json={'code': order.tracking_code},
-            headers={
-                'Content-Type': 'application/json',
-                'Authorization': f'Apikey {settings.SITERASTREIO_API_KEY}',
-                'User-Agent': 'Mozilla/5.0 (compatible; MegaGame/1.0)',
-                'Accept': 'application/json',
-            },
-            timeout=10,
-        )
-        response.raise_for_status()
-        data = response.json()
-    except requests.exceptions.HTTPError:
-        return JsonResponse({'error': f'Erro ao consultar rastreio (HTTP {response.status_code})'}, status=502)
-    except requests.exceptions.RequestException:
-        return JsonResponse({'error': 'Não foi possível consultar o rastreio no momento'}, status=502)
-
-    return JsonResponse(data, safe=False)
+# Rastreio real via API do SiteRastreio/Wonca, desativado por ser pago por requisição.
+# O rastreio exibido ao usuário é simulado em orders/tracking.py.
+#
+# @login_required
+# def track_order(request, order_id):
+#     order = get_object_or_404(Order, pk=order_id)
+#
+#     if request.user not in (order.buyer, order.product.seller):
+#         return JsonResponse({'error': 'Não autorizado'}, status=403)
+#
+#     if not order.tracking_code:
+#         return JsonResponse({'error': 'Este pedido não possui código de rastreio'}, status=400)
+#
+#     try:
+#         response = requests.post(
+#             'https://api-labs.wonca.com.br/wonca.labs.v1.LabsService/Track',
+#             json={'code': order.tracking_code},
+#             headers={
+#                 'Content-Type': 'application/json',
+#                 'Authorization': f'Apikey {settings.SITERASTREIO_API_KEY}',
+#                 'User-Agent': 'Mozilla/5.0 (compatible; MegaGame/1.0)',
+#                 'Accept': 'application/json',
+#             },
+#             timeout=10,
+#         )
+#         response.raise_for_status()
+#         data = response.json()
+#     except requests.exceptions.HTTPError:
+#         return JsonResponse({'error': f'Erro ao consultar rastreio (HTTP {response.status_code})'}, status=502)
+#     except requests.exceptions.RequestException:
+#         return JsonResponse({'error': 'Não foi possível consultar o rastreio no momento'}, status=502)
+#
+#     return JsonResponse(data, safe=False)
 
 def _create_mp_preference(seller, seller_orders, mp_account, request):
     rate = PlatformConfig.get_commission_rate()

@@ -1,7 +1,5 @@
-from io import BytesIO
-from xml.sax.saxutils import escape
-
 from django.utils import timezone
+from io import BytesIO
 from reportlab.graphics.charts.barcharts import HorizontalBarChart
 from reportlab.graphics.charts.linecharts import HorizontalLineChart
 from reportlab.graphics.shapes import Drawing
@@ -11,6 +9,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
 from reportlab.platypus import KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from xml.sax.saxutils import escape
 
 from catalog.templatetags.catalog_extras import brl
 
@@ -234,30 +233,18 @@ def _secao_compradores(d):
         ['Total', str(c['ativos']), _reais(c['novos']['gmv'] + c['recorrentes']['gmv']), '—', '—'],
     ]
     larguras = [0.2, 0.17, 0.23, 0.23, 0.17]
+    recorrencia = [
+        ['Taxa de recorrência (compradores)', _pct(c['pct_recorrentes']), _variacao(c['pct_recorrentes_diferenca'], ' p.p.')],
+        ['Participação dos recorrentes no GMV', _pct(c['pct_gmv_recorrentes']), '—'],
+    ]
     return [KeepTogether([
         Paragraph('Compradores novos vs. recorrentes', SECAO),
         Paragraph('"Novo" é o comprador cuja primeira compra concluída na plataforma aconteceu dentro do período.', NOTA),
         _tabela(['Grupo', 'Compradores', 'GMV', 'GMV/comprador', 'Variação'], linhas,
                 [LARGURA_UTIL * l for l in larguras], (1, 2, 3, 4), destacar_ultima=True),
-        Spacer(1, 6),
-        Paragraph(
-            f'Taxa de recorrência: <b>{_pct(c["pct_recorrentes"])}</b> dos compradores, '
-            f'responsáveis por <b>{_pct(c["pct_gmv_recorrentes"])}</b> do GMV.', CELULA,
-        ),
-    ])]
-
-def _secao_configuracoes(d):
-    config = d['config']
-    linhas = [
-        ['Taxa de comissão', _pct(config.commission_rate, 2)],
-        ['Prazo para solicitar devolução após a entrega', f'{config.return_window_days} dias'],
-        ['Prazo para contestar cancelamento sem devolução', f'{config.dispute_window_days} dias'],
-        ['Vendedores exibidos no ranking', str(config.ranking_size)],
-        ['Motivos de disputa', Paragraph('<br/>'.join(escape(m) for m in config.dispute_reason_list()), CELULA)],
-    ]
-    return [KeepTogether([
-        Paragraph('Configurações vigentes', SECAO),
-        _tabela(['Configuração', 'Valor'], linhas, [LARGURA_UTIL * 0.55, LARGURA_UTIL * 0.45]),
+        Spacer(1, 10),
+        _tabela(['Indicador', 'Valor', 'Variação'], recorrencia,
+                [LARGURA_UTIL * 0.5, LARGURA_UTIL * 0.3, LARGURA_UTIL * 0.2], (1, 2)),
     ])]
 
 def build_admin_report_pdf(data, periodo):
@@ -277,7 +264,7 @@ def build_admin_report_pdf(data, periodo):
             f'Gerado em {agora:%d/%m/%Y às %H:%M}', SUBTITULO,
         ),
     ]
-    for secao in (_secao_visao_geral, _secao_ranking, _secao_categorias, _secao_saude, _secao_compradores, _secao_configuracoes):
+    for secao in (_secao_visao_geral, _secao_ranking, _secao_categorias, _secao_saude, _secao_compradores):
         elementos += secao(data)
 
     doc.build(elementos, onFirstPage=_rodape, onLaterPages=_rodape)
