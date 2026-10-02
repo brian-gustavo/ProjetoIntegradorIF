@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Order, Cart, CartItem, PlatformConfig, Commission, Dispute, DisputeMessage
+from .models import Order, Cart, CartItem, PlatformConfig, Commission, Dispute, DisputeMessage, DisputeEvidence, ReturnRequest, ReturnRequestImage
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
@@ -39,3 +39,17 @@ class DisputeAdmin(admin.ModelAdmin):
 @admin.register(DisputeMessage)
 class DisputeMessageAdmin(admin.ModelAdmin):
     list_display = ('dispute', 'author', 'created_at')
+
+@admin.register(DisputeEvidence)
+class DisputeEvidenceAdmin(admin.ModelAdmin):
+    list_display = ('dispute', 'uploaded_by', 'message', 'created_at')
+
+class ReturnRequestImageInline(admin.TabularInline):
+    model = ReturnRequestImage
+    extra = 0
+
+@admin.register(ReturnRequest)
+class ReturnRequestAdmin(admin.ModelAdmin):
+    list_display = ('order', 'reason_category', 'created_at')
+    list_filter = ('reason_category',)
+    inlines = (ReturnRequestImageInline,)

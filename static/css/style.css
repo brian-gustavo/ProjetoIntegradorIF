@@ -1873,6 +1873,18 @@ a.product-card:hover {
     font-size: 13px;
 }
 
+.order-card-notice {
+    margin: 0 24px 16px;
+    font-size: 13px;
+}
+
+.return-summary {
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+}
+
 .tracking {
     padding: 0 24px 16px;
 }
@@ -2196,6 +2208,10 @@ a.product-card:hover {
     color: var(--text-2);
     line-height: 1.55;
     white-space: pre-line;
+}
+
+.msg p + .evidence-grid {
+    margin-top: 10px;
 }
 
 .resolution {

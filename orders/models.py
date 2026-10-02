@@ -88,6 +88,16 @@ DEFAULT_DISPUTE_REASONS = '\n'.join([
     'Outro',
 ])
 
+DEFAULT_RETURN_REASONS = '\n'.join([
+    'Produto com defeito',
+    'Produto diferente do anunciado',
+    'Produto incompleto',
+    'Key ou código digital inválido',
+    'Produto chegou danificado',
+    'Desisti da compra',
+    'Outro',
+])
+
 class PlatformConfig(models.Model):
     commission_rate = models.DecimalField(
         max_digits=5,
@@ -106,6 +116,18 @@ class PlatformConfig(models.Model):
         validators=[MinValueValidator(1)],
         verbose_name="Prazo para solicitar devolução após a entrega (dias)"
     )
+    seller_response_days = models.PositiveIntegerField(
+        default=3,
+        validators=[MinValueValidator(1)],
+        help_text="Após uma solicitação de devolução, o comprador só pode abrir disputa depois que esse prazo terminar sem solução",
+        verbose_name="Prazo de resposta do vendedor antes de uma disputa (dias)"
+    )
+    escalation_window_days = models.PositiveIntegerField(
+        default=7,
+        validators=[MinValueValidator(1)],
+        help_text="Encerrado o prazo do vendedor, o comprador tem esse prazo para abrir disputa; depois disso, a solicitação de devolução é encerrada e o pedido é concluído",
+        verbose_name="Prazo para o comprador abrir disputa (dias)"
+    )
     ranking_size = models.PositiveIntegerField(
         default=10,
         validators=[MinValueValidator(1), MaxValueValidator(100)],
@@ -115,6 +137,11 @@ class PlatformConfig(models.Model):
         default=DEFAULT_DISPUTE_REASONS,
         help_text="Um motivo por linha",
         verbose_name="Motivos de disputa"
+    )
+    return_reasons = models.TextField(
+        default=DEFAULT_RETURN_REASONS,
+        help_text="Um motivo por linha",
+        verbose_name="Motivos de devolução"
     )
     shelf_size = models.PositiveIntegerField(
         default=15,
@@ -143,6 +170,9 @@ class PlatformConfig(models.Model):
 
     def dispute_reason_list(self):
         return [linha.strip() for linha in self.dispute_reasons.splitlines() if linha.strip()]
+
+    def return_reason_list(self):
+        return [linha.strip() for linha in self.return_reasons.splitlines() if linha.strip()]
 
     @classmethod
     def get_commission_rate(cls):
@@ -201,3 +231,44 @@ class DisputeMessage(models.Model):
 
     def __str__(self):
         return f"{self.author.username} em Disputa #{self.dispute_id}"
+
+class DisputeEvidence(models.Model):
+    dispute = models.ForeignKey(Dispute, on_delete=models.CASCADE, related_name='evidences', verbose_name="Disputa")
+    message = models.ForeignKey(DisputeMessage, null=True, blank=True, on_delete=models.CASCADE, related_name='images', verbose_name="Mensagem")
+    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="Enviada por")
+    image = models.ImageField(upload_to='disputes/', verbose_name="Imagem")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Enviada em")
+
+    class Meta:
+        verbose_name = "Evidência de disputa"
+        verbose_name_plural = "Evidências de disputa"
+        ordering = ('created_at',)
+
+    def __str__(self):
+        return f"Evidência de {self.uploaded_by.username} em Disputa #{self.dispute_id}"
+
+class ReturnRequest(models.Model):
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='return_request', verbose_name="Pedido")
+    reason_category = models.CharField(max_length=100, verbose_name="Motivo")
+    description = models.TextField(verbose_name="Descrição")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Solicitada em")
+
+    class Meta:
+        verbose_name = "Solicitação de devolução"
+        verbose_name_plural = "Solicitações de devolução"
+
+    def __str__(self):
+        return f"Devolução do pedido #{self.order_id}"
+
+class ReturnRequestImage(models.Model):
+    return_request = models.ForeignKey(ReturnRequest, on_delete=models.CASCADE, related_name='images', verbose_name="Solicitação")
+    image = models.ImageField(upload_to='returns/', verbose_name="Imagem")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Enviada em")
+
+    class Meta:
+        verbose_name = "Imagem de solicitação de devolução"
+        verbose_name_plural = "Imagens de solicitação de devolução"
+        ordering = ('created_at',)
+
+    def __str__(self):
+        return f"Imagem da devolução do pedido #{self.return_request.order_id}"

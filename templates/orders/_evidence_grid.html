@@ -1,0 +1,7 @@
+<div class="image-grid evidence-grid">
+    {% for ev in evidences %}
+        <a href="{{ ev.image.url }}" target="_blank" rel="noopener" class="image-thumb" title="Abrir imagem em tamanho original">
+            <img src="{{ ev.image.url }}" alt="Imagem anexada como evidência" loading="lazy">
+        </a>
+    {% endfor %}
+</div>

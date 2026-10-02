@@ -1,21 +1,31 @@
 {% extends 'base.html' %}
 
-{% block title %}{% if contesting %}Contestar decisão{% else %}Abrir disputa{% endif %} — MegaGame{% endblock %}
+{% block title %}{{ heading }} — MegaGame{% endblock %}
 
 {% block content %}
 <div class="narrow">
     <div class="page-head">
         <div>
-            <h1 class="page-title">{% if contesting %}Contestar decisão{% else %}Abrir disputa{% endif %}</h1>
+            <h1 class="page-title">{{ heading }}</h1>
             <p class="page-sub">{{ order.product.title }} — {{ order.variant.name }}</p>
         </div>
     </div>
 
+    {% if return_request %}
+        <div class="card">
+            <div class="card-head">
+                <h2 class="card-title">Solicitação de devolução do comprador</h2>
+            </div>
+            {% include 'orders/_return_request_summary.html' with rr=return_request %}
+        </div>
+    {% endif %}
+
     <div class="card">
         <div class="alert alert-info mb-6">
             A equipe da MegaGame vai analisar o caso e responder pela própria página da disputa.
+            Fotos do produto, da embalagem ou de conversas ajudam a acelerar a análise — você também poderá enviar mais imagens depois, pelo chat da disputa.
         </div>
-        <form method="post" id="dispute-form" novalidate>
+        <form method="post" id="dispute-form" enctype="multipart/form-data" novalidate>
             {% csrf_token %}
             {% for field in form %}
                 <div class="form-group">
@@ -24,9 +34,10 @@
                     {{ field.errors }}
                 </div>
             {% endfor %}
+            {% include 'orders/_evidence_input.html' %}
             <div class="form-footer-actions">
                 <button type="button" class="btn btn-primary" onclick="document.getElementById('confirm-dialog').showModal()">
-                    {% if contesting %}Enviar contestação{% else %}Abrir disputa{% endif %}
+                    {{ submit_label }}
                 </button>
             </div>
         </form>

@@ -34,6 +34,17 @@
             </div>
         </div>
 
+        {% if order.status == 'RETURN_REQUESTED' %}
+            <div class="alert alert-warning order-card-notice">
+                O comprador solicitou a devolução deste pedido. Responda até <strong>{{ order.dispute_opens_at|date:"d/m/Y" }} às {{ order.dispute_opens_at|date:"H:i" }}</strong>; após esse prazo, ele poderá levar o caso à equipe da MegaGame por meio de uma disputa.
+            </div>
+            {% if order.return_request %}
+                <div class="return-summary order-card-notice">
+                    {% include 'orders/_return_request_summary.html' with rr=order.return_request %}
+                </div>
+            {% endif %}
+        {% endif %}
+
         <div class="order-card-actions">{% spaceless %}
             {% if order.status == 'PAID' or order.status == 'CONFIRMED' or order.status == 'PREPARING' %}
                 <a href="{% url 'cancel_order_seller' order.pk %}" class="btn btn-ghost btn-sm">Cancelar pedido</a>
@@ -59,7 +70,7 @@
                 <a href="{% url 'confirm_delivery_seller' order.pk %}" class="btn btn-primary btn-sm">Confirmar entrega</a>
             {% endif %}
             {% if order.status == 'RETURN_REQUESTED' %}
-                <a href="{% url 'open_dispute' order.pk %}" class="btn btn-ghost btn-sm">Abrir disputa</a>
+                <a href="{% url 'open_dispute' order.pk %}" class="btn btn-ghost btn-sm">Contestar devolução</a>
                 <a href="{% url 'accept_no_return' order.pk %}" class="btn btn-outline btn-sm">Reembolsar sem devolução física</a>
                 <a href="{% url 'accept_return' order.pk %}" class="btn btn-primary btn-sm">Aceitar devolução</a>
             {% endif %}

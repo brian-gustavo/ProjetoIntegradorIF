@@ -1,0 +1,9 @@
+<p class="field-label">Motivo da devolução</p>
+<p class="strong mb-3">{{ rr.reason_category }}</p>
+<p class="pd-description">{{ rr.description }}</p>
+{% if rr.images.all %}
+    <div class="mt-4">
+        {% include 'orders/_evidence_grid.html' with evidences=rr.images.all %}
+    </div>
+{% endif %}
+<p class="help mt-2">Solicitada em {{ rr.created_at|date:"d/m/Y" }} às {{ rr.created_at|date:"H:i" }}</p>

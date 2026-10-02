@@ -30,6 +30,16 @@
             </div>
         </div>
 
+        {% if order.status == 'RETURN_REQUESTED' %}
+            <div class="alert {% if order.can_open_dispute %}alert-warning{% else %}alert-info{% endif %} order-card-notice">
+                {% if order.can_open_dispute %}
+                    O prazo de resposta do vendedor terminou. Se o problema ainda não foi resolvido, abra uma disputa até <strong>{{ order.dispute_closes_at|date:"d/m/Y" }} às {{ order.dispute_closes_at|date:"H:i" }}</strong> para que a equipe da MegaGame analise o caso. Depois disso, a solicitação de devolução é encerrada e o pedido é concluído.
+                {% else %}
+                    Solicitação de devolução enviada. O vendedor tem até <strong>{{ order.dispute_opens_at|date:"d/m/Y" }} às {{ order.dispute_opens_at|date:"H:i" }}</strong> para responder. Se o problema não for resolvido até lá, você poderá abrir uma disputa até {{ order.dispute_closes_at|date:"d/m/Y" }} às {{ order.dispute_closes_at|date:"H:i" }}.
+                {% endif %}
+            </div>
+        {% endif %}
+
         {% with t=order.tracking %}
         {% if t %}
             <details class="tracking">
@@ -71,7 +81,11 @@
                 <a href="{% url 'request_return' order.pk %}" class="btn btn-outline btn-sm">Solicitar devolução</a>
             {% endif %}
             {% if order.status == 'RETURN_REQUESTED' %}
-                <a href="{% url 'open_dispute' order.pk %}" class="btn btn-outline btn-sm">Abrir disputa</a>
+                {% if order.can_open_dispute %}
+                    <a href="{% url 'open_dispute' order.pk %}" class="btn btn-outline btn-sm">Abrir disputa</a>
+                {% else %}
+                    <button type="button" class="btn btn-outline btn-sm" disabled>Abrir disputa</button>
+                {% endif %}
             {% endif %}
             {% if order.can_contest %}
                 <a href="{% url 'contest_decision' order.pk %}" class="btn btn-outline btn-sm">Contestar decisão</a>

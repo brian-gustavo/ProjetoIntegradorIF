@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}Solicitar devolução — MegaGame{% endblock %}
+
+{% block content %}
+<div class="narrow">
+    <div class="page-head">
+        <div>
+            <h1 class="page-title">Solicitar devolução</h1>
+            <p class="page-sub">{{ order.product.title }} — {{ order.variant.name }}</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="alert alert-info mb-6">
+            Sua solicitação vai primeiro para o vendedor, que terá até {{ seller_response_days }} dia{{ seller_response_days|pluralize }} para responder.
+            Se o problema não for resolvido nesse prazo, você poderá levar o caso à equipe da MegaGame abrindo uma disputa.
+        </div>
+        <form method="post" enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
+            {% for field in form %}
+                <div class="form-group">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {{ field.errors }}
+                </div>
+            {% endfor %}
+            {% include 'orders/_evidence_input.html' %}
+            <div class="form-footer-actions">
+                <a href="{% url 'my_orders' %}" class="btn btn-outline">Voltar</a>
+                <button type="submit" class="btn btn-primary">Enviar solicitação</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

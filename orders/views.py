@@ -1,6 +1,7 @@
 import json, math, requests
 from datetime import timedelta, date
 from decimal import Decimal
+from django import forms
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -12,8 +13,8 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
-from .forms import DisputeForm, DisputeMessageForm, DisputeResolutionForm, PlatformConfigForm
-from .models import Order, Cart, CartItem, generate_tracking_code, PlatformConfig, Commission, Dispute, DisputeMessage
+from .forms import DisputeForm, DisputeMessageForm, DisputeResolutionForm, PlatformConfigForm, ReturnRequestForm
+from .models import Order, Cart, CartItem, generate_tracking_code, PlatformConfig, Commission, Dispute, DisputeMessage, DisputeEvidence, ReturnRequestImage
 from .reports import build_admin_report_pdf
 from .tracking import simulate_tracking
 from accounts.models import MercadoPagoAccount
@@ -119,8 +120,9 @@ def my_orders(request):
     from accounts.models import SellerReview
     from catalog.models import ProductReview
 
+    _close_expired_return_requests()
     orders = Order.objects.filter(buyer=request.user).select_related(
-        'product__seller__profile', 'buyer__profile'
+        'product__seller__profile', 'buyer__profile', 'return_request'
     ).order_by('-created_at')
 
     reviewed_sellers = set(
@@ -154,6 +156,10 @@ def my_orders(request):
             order.status in ('DELIVERED', 'RETURN_WINDOW')
             and timezone.now() - order.updated_at <= return_window
         )
+        if order.status == 'RETURN_REQUESTED':
+            order.dispute_opens_at = _dispute_opens_at(order, config)
+            order.dispute_closes_at = _dispute_closes_at(order, config)
+            order.can_open_dispute = timezone.now() >= order.dispute_opens_at
         order.tracking = simulate_tracking(order)
 
     return render(request, 'orders/my_orders.html', {'orders': orders})
@@ -223,15 +229,39 @@ def _finalize_delivery(order):
 def request_return(request, order_id):
     order = get_object_or_404(Order, pk=order_id, buyer=request.user)
 
-    if order.status in ('DELIVERED', 'RETURN_WINDOW'):
-        if timezone.now() - order.updated_at > timedelta(days=PlatformConfig.load().return_window_days):
-            messages.error(request, 'O prazo para solicitar devolução deste pedido já passou.')
-            return redirect('my_orders')
-        order.status = 'RETURN_REQUESTED'
-        order.save()
-        messages.success(request, 'Solicitação de devolução enviada ao vendedor')
+    if order.status not in ('DELIVERED', 'RETURN_WINDOW') or hasattr(order, 'return_request'):
+        return redirect('my_orders')
 
-    return redirect('my_orders')
+    config = PlatformConfig.load()
+    if timezone.now() - order.updated_at > timedelta(days=config.return_window_days):
+        messages.error(request, 'O prazo para solicitar devolução deste pedido já passou.')
+        return redirect('my_orders')
+
+    image_error = None
+    if request.method == 'POST':
+        form = ReturnRequestForm(request.POST)
+        images = request.FILES.getlist('images')
+        image_error = _validate_evidence(images)
+        if form.is_valid() and not image_error:
+            return_request = form.save(commit=False)
+            return_request.order = order
+            return_request.save()
+            for image in images:
+                ReturnRequestImage.objects.create(return_request=return_request, image=image)
+            order.status = 'RETURN_REQUESTED'
+            order.save()
+            messages.success(request, 'Solicitação de devolução enviada ao vendedor')
+            return redirect('my_orders')
+    else:
+        form = ReturnRequestForm()
+
+    return render(request, 'orders/request_return.html', {
+        'order': order,
+        'form': form,
+        'seller_response_days': config.seller_response_days,
+        'image_error': image_error,
+        'evidence_max_files': EVIDENCE_MAX_FILES,
+    })
 
 @login_required
 def accept_return(request, order_id):
@@ -288,7 +318,17 @@ def complete_order(request, order_id):
 
 @login_required
 def seller_orders(request):
-    orders = Order.objects.filter(product__seller=request.user).order_by('-created_at')
+    _close_expired_return_requests()
+    orders = Order.objects.filter(product__seller=request.user).select_related(
+        'return_request'
+    ).prefetch_related('return_request__images').order_by('-created_at')
+
+    config = PlatformConfig.load()
+    for order in orders:
+        if order.status == 'RETURN_REQUESTED':
+            order.dispute_opens_at = _dispute_opens_at(order, config)
+            order.dispute_closes_at = _dispute_closes_at(order, config)
+
     return render(request, 'orders/seller_orders.html', {'orders': orders})
 
 @login_required
@@ -345,7 +385,8 @@ def cancel_order_seller(request, order_id):
 
 @login_required
 def seller_dashboard(request):
-    orders = Order.objects.filter(product__seller=request.user)
+    _close_expired_return_requests()
+    orders =Order.objects.filter(product__seller=request.user)
     delivered_orders = orders.filter(status__in=['DELIVERED', 'RETURN_WINDOW', 'COMPLETED'])
 
     total_vendas = delivered_orders.aggregate(total=Sum('quantity'))['total'] or 0
@@ -587,6 +628,7 @@ def _compradores(commissions, inicio, primeiras_compras):
     }
 
 def _build_report_data(periodo):
+    _close_expired_return_requests()
     total_vendas = Order.objects.filter(
         status__in=['DELIVERED', 'RETURN_WINDOW', 'COMPLETED']
     ).aggregate(total=Sum('quantity'))['total'] or 0
@@ -743,6 +785,49 @@ def update_cart_item(request, item_id):
 
     return redirect('cart_detail')
 
+EVIDENCE_MAX_FILES = 5
+EVIDENCE_MAX_SIZE = 10 * 1024 * 1024
+
+def _return_requested_at(order):
+    return order.return_request.created_at if hasattr(order, 'return_request') else order.updated_at
+
+def _dispute_opens_at(order, config):
+    return _return_requested_at(order) + timedelta(days=config.seller_response_days)
+
+def _dispute_closes_at(order, config):
+    return _dispute_opens_at(order, config) + timedelta(days=config.escalation_window_days)
+
+def _close_expired_return_requests():
+    config = PlatformConfig.load()
+    now = timezone.now()
+    cutoff = now - timedelta(days=config.seller_response_days + config.escalation_window_days)
+    Order.objects.filter(status='RETURN_REQUESTED').filter(
+        Q(return_request__created_at__lte=cutoff) | Q(return_request__isnull=True, updated_at__lte=cutoff)
+    ).update(status='COMPLETED', updated_at=now)
+
+def _validate_evidence(files):
+    if len(files) > EVIDENCE_MAX_FILES:
+        return f'Envie no máximo {EVIDENCE_MAX_FILES} imagens por vez'
+
+    grandes = [f.name for f in files if f.size > EVIDENCE_MAX_SIZE]
+    if grandes:
+        return f'As seguintes imagens excedem o limite de 10MB: {", ".join(grandes)}'
+
+    invalidas = []
+    for f in files:
+        try:
+            forms.ImageField().clean(f)
+        except forms.ValidationError:
+            invalidas.append(f.name)
+    if invalidas:
+        return f'Os seguintes arquivos não são imagens válidas: {", ".join(invalidas)}'
+
+    return None
+
+def _save_evidence(dispute, user, files, message=None):
+    for f in files:
+        DisputeEvidence.objects.create(dispute=dispute, message=message, uploaded_by=user, image=f)
+
 @login_required
 def open_dispute(request, order_id):
     order = get_object_or_404(Order, pk=order_id)
@@ -750,24 +835,55 @@ def open_dispute(request, order_id):
     if request.user != order.buyer and request.user != order.product.seller:
         return redirect('home')
 
+    is_seller = request.user == order.product.seller
+    _close_expired_return_requests()
+    order.refresh_from_db()
+
     if order.status != 'RETURN_REQUESTED' or hasattr(order, 'dispute'):
+        if order.status == 'COMPLETED' and not is_seller:
+            messages.error(request, 'O prazo para abrir disputa sobre esta devolução terminou e o pedido foi concluído.')
         return redirect('my_orders')
 
+    if not is_seller:
+        opens_at = _dispute_opens_at(order, PlatformConfig.load())
+        if timezone.now() < opens_at:
+            messages.error(
+                request,
+                f'O vendedor tem até {timezone.localtime(opens_at):%d/%m/%Y às %H:%M} para responder à solicitação de devolução. '
+                'Se o problema não for resolvido até lá, você poderá abrir uma disputa.'
+            )
+            return redirect('my_orders')
+
+    image_error = None
     if request.method == 'POST':
         form = DisputeForm(request.POST)
-        if form.is_valid():
+        images = request.FILES.getlist('images')
+        image_error = _validate_evidence(images)
+        if form.is_valid() and not image_error:
             dispute = form.save(commit=False)
             dispute.order = order
             dispute.opened_by = request.user
             dispute.save()
+            _save_evidence(dispute, request.user, images)
             order.status = 'DISPUTE_OPEN'
             order.save()
-            messages.success(request, 'Disputa aberta. A equipe do MegaGame vai analisar o caso.')
+            if is_seller:
+                messages.success(request, 'Contestação registrada. A equipe do MegaGame vai analisar o caso.')
+            else:
+                messages.success(request, 'Disputa aberta. A equipe do MegaGame vai analisar o caso.')
             return redirect('dispute_detail', dispute_id=dispute.pk)
     else:
         form = DisputeForm()
 
-    return render(request, 'orders/open_dispute.html', {'order': order, 'form': form})
+    return render(request, 'orders/open_dispute.html', {
+        'order': order,
+        'form': form,
+        'heading': 'Contestar devolução' if is_seller else 'Abrir disputa',
+        'submit_label': 'Enviar contestação' if is_seller else 'Abrir disputa',
+        'return_request': getattr(order, 'return_request', None),
+        'image_error': image_error,
+        'evidence_max_files': EVIDENCE_MAX_FILES,
+    })
 
 @login_required
 def contest_decision(request, order_id):
@@ -780,13 +896,17 @@ def contest_decision(request, order_id):
         messages.error(request, 'O prazo para contestar essa decisão já passou.')
         return redirect('my_orders')
 
+    image_error = None
     if request.method == 'POST':
         form = DisputeForm(request.POST)
-        if form.is_valid():
+        images = request.FILES.getlist('images')
+        image_error = _validate_evidence(images)
+        if form.is_valid() and not image_error:
             dispute = form.save(commit=False)
             dispute.order = order
             dispute.opened_by = request.user
             dispute.save()
+            _save_evidence(dispute, request.user, images)
             order.status = 'DISPUTE_OPEN'
             order.save()
             messages.success(request, 'Contestação registrada. A equipe do MegaGame vai analisar o caso.')
@@ -794,7 +914,14 @@ def contest_decision(request, order_id):
     else:
         form = DisputeForm()
 
-    return render(request, 'orders/open_dispute.html', {'order': order, 'form': form, 'contesting': True})
+    return render(request, 'orders/open_dispute.html', {
+        'order': order,
+        'form': form,
+        'heading': 'Contestar decisão',
+        'submit_label': 'Enviar contestação',
+        'image_error': image_error,
+        'evidence_max_files': EVIDENCE_MAX_FILES,
+    })
 
 @login_required
 def dispute_detail(request, dispute_id):
@@ -805,13 +932,17 @@ def dispute_detail(request, dispute_id):
     if not is_participant and not request.user.is_staff:
         return redirect('home')
 
+    image_error = None
     if request.method == 'POST' and 'send_message' in request.POST:
-        message_form = DisputeMessageForm(request.POST)
-        if message_form.is_valid():
+        images = request.FILES.getlist('images')
+        image_error = _validate_evidence(images)
+        message_form = DisputeMessageForm(request.POST, has_images=bool(images))
+        if message_form.is_valid() and not image_error:
             msg = message_form.save(commit=False)
             msg.dispute = dispute
             msg.author = request.user
             msg.save()
+            _save_evidence(dispute, request.user, images, message=msg)
             return redirect('dispute_detail', dispute_id=dispute.pk)
     else:
         message_form = DisputeMessageForm()
@@ -821,8 +952,13 @@ def dispute_detail(request, dispute_id):
     return render(request, 'orders/dispute_detail.html', {
         'dispute': dispute,
         'order': order,
+        'initial_evidences': dispute.evidences.filter(message__isnull=True),
+        'return_request': getattr(order, 'return_request', None),
+        'thread': dispute.messages.select_related('author').prefetch_related('images'),
         'message_form': message_form,
         'resolution_form': resolution_form,
+        'image_error': image_error,
+        'evidence_max_files': EVIDENCE_MAX_FILES,
     })
 
 @login_required

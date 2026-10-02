@@ -23,7 +23,20 @@
             <p class="strong mb-3">{{ dispute.reason_category }}</p>
         {% endif %}
         <p class="pd-description">{{ dispute.reason }}</p>
+        {% if initial_evidences %}
+            <p class="field-label mt-4">Evidências</p>
+            {% include 'orders/_evidence_grid.html' with evidences=initial_evidences %}
+        {% endif %}
     </div>
+
+    {% if return_request %}
+        <div class="card">
+            <div class="card-head">
+                <h2 class="card-title">Solicitação de devolução</h2>
+            </div>
+            {% include 'orders/_return_request_summary.html' with rr=return_request %}
+        </div>
+    {% endif %}
 
     {% if dispute.status != 'OPEN' %}
         <div class="card resolution">
@@ -55,26 +68,30 @@
             <h2 class="card-title">Mensagens</h2>
         </div>
         <div class="thread">
-            {% for msg in dispute.messages.all %}
+            {% for msg in thread %}
                 <div class="msg{% if msg.author.is_staff %} msg-staff{% endif %}">
                     <div class="msg-head">
                         <strong>{{ msg.author.username }}{% if msg.author.is_staff %} · Equipe MegaGame{% endif %}</strong>
                         <time>{{ msg.created_at|date:"d/m/Y H:i" }}</time>
                     </div>
-                    <p>{{ msg.message }}</p>
+                    {% if msg.message %}<p>{{ msg.message }}</p>{% endif %}
+                    {% if msg.images.all %}
+                        {% include 'orders/_evidence_grid.html' with evidences=msg.images.all %}
+                    {% endif %}
                 </div>
             {% empty %}
                 <p class="muted text-sm">Nenhuma mensagem ainda</p>
             {% endfor %}
         </div>
 
-        <form method="post" class="mt-6">
+        <form method="post" class="mt-6" enctype="multipart/form-data">
             {% csrf_token %}
             <div class="form-group">
                 <label for="{{ message_form.message.id_for_label }}">{{ message_form.message.label }}</label>
                 {{ message_form.message }}
                 {{ message_form.message.errors }}
             </div>
+            {% include 'orders/_evidence_input.html' %}
             <button type="submit" name="send_message" class="btn btn-primary">Enviar mensagem</button>
         </form>
     </div>

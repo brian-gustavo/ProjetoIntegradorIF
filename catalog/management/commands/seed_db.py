@@ -9,7 +9,7 @@ from django.utils import timezone
 
 from accounts.models import SellerReview
 from catalog.models import Category, Product, ProductVariant, ProductReview
-from orders.models import Order, Cart, CartItem, PlatformConfig, Commission, Dispute, DisputeMessage, generate_tracking_code
+from orders.models import Order, Cart, CartItem, PlatformConfig, Commission, Dispute, DisputeMessage, ReturnRequest, generate_tracking_code
 
 CATEGORIES = [
     ('Consoles', 'consoles'),
@@ -140,12 +140,39 @@ DISPUTE_CHANCES = {
     'CANCELLED_NO_RETURN': ('RESOLVED_BUYER_REFUND', 0.35),
     'COMPLETED': ('RESOLVED_SELLER', 0.03),
 }
-BUYER_DISPUTE_REASONS = [
-    ('Produto com defeito', 'O produto chegou com defeito e o vendedor não aceitou a devolução.'),
-    ('Produto diferente do anunciado', 'O item recebido é diferente do que estava no anúncio.'),
-    ('Produto incompleto', 'O produto veio incompleto, faltando acessórios descritos no anúncio.'),
-    ('Key ou código digital inválido', 'A key digital já tinha sido resgatada quando tentei ativar.'),
-    ('Outro', 'O vendedor recusou a devolução sem justificativa.'),
+RETURN_FLOW_STATUSES = {'RETURN_REQUESTED', 'DISPUTE_OPEN', 'RETURN_ACCEPTED', 'RETURNED', 'CANCELLED_NO_RETURN'}
+RETURN_REASONS = {
+    'Produto com defeito': [
+        'O produto apresentou defeito logo nos primeiros dias de uso.',
+        'O item liga, mas para de funcionar depois de alguns minutos.',
+    ],
+    'Produto diferente do anunciado': [
+        'Recebi uma edição diferente da que estava no anúncio.',
+        'O estado de conservação não corresponde às fotos do anúncio.',
+    ],
+    'Produto incompleto': [
+        'Faltaram acessórios que estavam listados no anúncio.',
+        'A caixa veio sem o manual e sem um dos itens do kit.',
+    ],
+    'Key ou código digital inválido': [
+        'A key informa que já foi resgatada em outra conta.',
+        'O código não é aceito pela loja da plataforma.',
+    ],
+    'Produto chegou danificado': [
+        'A embalagem chegou amassada e o item tem marcas de impacto.',
+        'O produto chegou com partes quebradas por causa do transporte.',
+    ],
+    'Desisti da compra': [
+        'Comprei por engano e gostaria de devolver o item ainda lacrado.',
+    ],
+    'Outro': [
+        'O produto não atendeu ao que eu esperava e gostaria de devolvê-lo.',
+    ],
+}
+BUYER_ESCALATION_TEXTS = [
+    'O vendedor não respondeu à solicitação de devolução dentro do prazo.',
+    'Tentei resolver diretamente com o vendedor, mas ele não deu retorno.',
+    'O vendedor visualizou a solicitação, mas não aceitou nem recusou a devolução.',
 ]
 SELLER_DISPUTE_REASONS = [
     ('Produto devolvido com avarias', 'O comprador quer devolver o produto com avarias que não existiam no envio.'),
@@ -167,7 +194,7 @@ CATEGORY_WEIGHTS = [14, 30, 14, 12, 8, 8, 6, 4, 4]
 STATUS_BY_AGE = [
     (2, [('PENDING', 30), ('PAID', 30), ('CONFIRMED', 15), ('PREPARING', 10), ('CANCELLED', 15)]),
     (7, [('PAID', 5), ('CONFIRMED', 10), ('PREPARING', 20), ('SHIPPED', 35), ('READY_PICKUP', 10), ('CANCELLED', 20)]),
-    (20, [('SHIPPED', 15), ('READY_PICKUP', 5), ('DELIVERED', 35), ('RETURN_WINDOW', 15), ('RETURN_REQUESTED', 5), ('CANCELLED', 10), ('COMPLETED', 15)]),
+    (20, [('SHIPPED', 15), ('READY_PICKUP', 5), ('DELIVERED', 35), ('RETURN_WINDOW', 15), ('RETURN_REQUESTED', 12), ('CANCELLED', 10), ('COMPLETED', 15)]),
     (60, [('DELIVERED', 10), ('RETURN_WINDOW', 10), ('RETURN_REQUESTED', 4), ('RETURN_ACCEPTED', 4), ('CANCELLED_NO_RETURN', 4), ('RETURNED', 6), ('COMPLETED', 55), ('CANCELLED', 7)]),
     (None, [('COMPLETED', 78), ('RETURNED', 8), ('CANCELLED', 8), ('CANCELLED_NO_RETURN', 6)]),
 ]
@@ -332,6 +359,53 @@ class Command(BaseCommand):
         updated_at = min(now, delivered_at + timedelta(hours=random.randint(0, 240)))
         return updated_at, delivered_at
 
+    def _dispute_time(self, requested_at, buyer_opened):
+        earliest = requested_at + (self._response_window if buyer_opened else timedelta(hours=2))
+        latest = min(self._now, requested_at + self._response_window + self._escalation_window)
+        return random_between(earliest, latest) if earliest <= latest else None
+
+    def _return_flow(self, status, outcome, delivered_at):
+        requested_at = random_between(delivered_at, min(self._now, delivered_at + self._return_window))
+        dispute_at, buyer_opened = None, None
+
+        if outcome:
+            buyer_opened = outcome == 'RESOLVED_BUYER_REFUND' or random.random() < 0.7
+            dispute_at = self._dispute_time(requested_at, buyer_opened)
+            if dispute_at is None and buyer_opened:
+                buyer_opened = False
+                dispute_at = self._dispute_time(requested_at, False)
+            if dispute_at is None:
+                outcome, buyer_opened = None, None
+                if status == 'DISPUTE_OPEN':
+                    status = 'RETURN_REQUESTED'
+
+        if outcome == 'OPEN':
+            updated_at = dispute_at
+        elif outcome:
+            updated_at = min(self._now, dispute_at + timedelta(hours=random.randint(12, 240)))
+        elif status == 'RETURN_REQUESTED':
+            expires_at = requested_at + self._response_window + self._escalation_window
+            if expires_at <= self._now:
+                status, updated_at = 'COMPLETED', expires_at
+            else:
+                updated_at = requested_at
+        else:
+            updated_at = min(self._now, random_between(requested_at, requested_at + self._response_window))
+            if status == 'RETURNED':
+                updated_at = min(self._now, updated_at + timedelta(days=random.randint(3, 10)))
+
+        category = random.choice(list(RETURN_REASONS))
+        return {
+            'status': status,
+            'outcome': outcome,
+            'updated_at': updated_at,
+            'requested_at': requested_at,
+            'dispute_at': dispute_at,
+            'buyer_opened': buyer_opened,
+            'reason_category': category,
+            'description': random.choice(RETURN_REASONS[category]),
+        }
+
     def _seed_orders(self, products, buyers, count):
         published = [p for p in products if p.published and p.seed_variants]
         if not published:
@@ -339,11 +413,17 @@ class Command(BaseCommand):
 
         self.stdout.write('Gerando pedidos...')
         commission_rate = PlatformConfig.get_commission_rate()
+        config = PlatformConfig.load()
+        self._return_window = timedelta(days=config.return_window_days)
+        self._response_window = timedelta(days=config.seller_response_days)
+        self._escalation_window = timedelta(days=config.escalation_window_days)
+        self._dispute_categories = set(config.dispute_reason_list())
         product_weights = [p.seed_weight for p in published]
         buyer_weights = [random.lognormvariate(0, 1.2) for _ in buyers]
 
         drafts = []
         dispute_drafts = []
+        return_drafts = []
         touched_variants = {}
         attempts = 0
 
@@ -379,6 +459,11 @@ class Command(BaseCommand):
             total_price = (variant.price * quantity).quantize(Decimal('0.01'))
             updated_at, delivered_at = self._order_timeline(status, created_at)
 
+            flow = None
+            if status in RETURN_FLOW_STATUSES or dispute_outcome:
+                flow = self._return_flow(status, dispute_outcome, delivered_at)
+                status, dispute_outcome, updated_at = flow['status'], flow['outcome'], flow['updated_at']
+
             has_tracking = not pickup and status in TRACKING_ELIGIBLE_STATUSES
             order = Order(
                 buyer=buyer,
@@ -396,8 +481,10 @@ class Command(BaseCommand):
                 touched_variants[variant.pk] = variant
 
             drafts.append((order, created_at, updated_at, delivered_at))
+            if flow:
+                return_drafts.append((order, flow))
             if dispute_outcome:
-                dispute_drafts.append((order, dispute_outcome, delivered_at, updated_at))
+                dispute_drafts.append((order, dispute_outcome, updated_at, flow))
 
         orders = [d[0] for d in drafts]
         Order.objects.bulk_create(orders, batch_size=500)
@@ -406,6 +493,7 @@ class Command(BaseCommand):
             order.updated_at = updated_at
         Order.objects.bulk_update(orders, ['created_at', 'updated_at'], batch_size=500)
 
+        self._seed_return_requests(return_drafts)
         self._seed_disputes(dispute_drafts)
 
         commissions = []
@@ -439,6 +527,20 @@ class Command(BaseCommand):
 
         ProductVariant.objects.bulk_update(list(touched_variants.values()), ['quantity'], batch_size=500)
 
+    def _seed_return_requests(self, return_drafts):
+        if not return_drafts:
+            return
+
+        self.stdout.write('Gerando solicitações de devolução...')
+        requests = [
+            ReturnRequest(order=order, reason_category=flow['reason_category'], description=flow['description'])
+            for order, flow in return_drafts
+        ]
+        ReturnRequest.objects.bulk_create(requests, batch_size=500)
+        for request, (_, flow) in zip(requests, return_drafts):
+            request.created_at = flow['requested_at']
+        ReturnRequest.objects.bulk_update(requests, ['created_at'], batch_size=500)
+
     def _seed_disputes(self, dispute_drafts):
         if not dispute_drafts:
             return
@@ -447,20 +549,18 @@ class Command(BaseCommand):
         staff = User.objects.filter(is_staff=True).first()
         disputes, messages = [], []
 
-        for order, outcome, delivered_at, updated_at in dispute_drafts:
+        for order, outcome, updated_at, flow in dispute_drafts:
             seller = order.product.seller
-            if outcome == 'RESOLVED_BUYER_REFUND' or random.random() < 0.7:
+            if flow['buyer_opened']:
                 opened_by, other = order.buyer, seller
-                category, reason = random.choice(BUYER_DISPUTE_REASONS)
+                category = flow['reason_category'] if flow['reason_category'] in self._dispute_categories else 'Outro'
+                reason = random.choice(BUYER_ESCALATION_TEXTS)
             else:
                 opened_by, other = seller, order.buyer
                 category, reason = random.choice(SELLER_DISPUTE_REASONS)
 
-            if outcome == 'OPEN':
-                created_at, resolved_at = updated_at, None
-            else:
-                resolved_at = updated_at
-                created_at = random_between(delivered_at, resolved_at - timedelta(hours=12))
+            created_at = flow['dispute_at']
+            resolved_at = None if outcome == 'OPEN' else updated_at
 
             dispute = Dispute(
                 order=order,
