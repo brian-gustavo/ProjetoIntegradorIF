@@ -12,6 +12,7 @@ from .forms import ProductForm, ProductVariantFormSet, ProductReviewForm
 from .models import Category, Product, ProductImage, ProductVariant, ProductReview
 from .templatetags.catalog_extras import brl
 from accounts.models import SellerReview
+from coupons.services import store_coupons
 from orders.models import Order, PlatformConfig
 
 RATING_OPTIONS = [
@@ -289,6 +290,7 @@ def product_detail(request, product_id):
         'already_reviewed_product': already_reviewed_product,
         'can_review_seller': can_review_seller,
         'already_reviewed_seller': already_reviewed_seller,
+        'store_coupons': store_coupons(product.seller),
     })
 
 def category_detail(request, slug):

@@ -47,6 +47,9 @@
             <span>Total</span>
             <span class="price">R$ {{ total|brl }}</span>
         </div>
+        {% if cupons_disponiveis %}
+            <p class="coupon-hint-cart">{% include 'coupons/_ticket_icon.html' %} {{ cupons_disponiveis }} cupo{{ cupons_disponiveis|pluralize:"m,ns" }} disponíve{{ cupons_disponiveis|pluralize:"l,is" }} para aplicar na próxima etapa</p>
+        {% endif %}
         <form method="get" action="{% url 'checkout' %}">
             <button type="submit" class="btn btn-primary btn-lg btn-block">Finalizar pedido</button>
         </form>

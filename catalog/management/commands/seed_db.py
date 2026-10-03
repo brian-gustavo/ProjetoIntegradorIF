@@ -1,6 +1,6 @@
 import random
 from datetime import timedelta
-from decimal import Decimal
+from decimal import Decimal, ROUND_DOWN
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
@@ -9,7 +9,8 @@ from django.utils import timezone
 
 from accounts.models import SellerReview
 from catalog.models import Category, Product, ProductVariant, ProductReview
-from orders.models import Order, Cart, CartItem, PlatformConfig, Commission, Dispute, DisputeMessage, ReturnRequest, generate_tracking_code
+from coupons.models import Coupon, CouponRedemption
+from orders.models import Order, Cart, CartItem, PlatformConfig, Commission, Dispute, DisputeMessage, ReturnRequest, commission_for, generate_tracking_code
 
 CATEGORIES = [
     ('Consoles', 'consoles'),
@@ -210,6 +211,26 @@ def random_between(start, end):
         return start
     return start + (end - start) * random.random()
 
+PLATFORM_COUPONS = [
+    {'code': 'BEMVINDO', 'kind': 'PERCENT', 'value': 10, 'max_discount': 30, 'first_purchase_only': True},
+    {'code': 'MEGA5', 'kind': 'PERCENT', 'value': 5, 'max_discount': 25, 'min_order_value': 100},
+    {'code': 'MEGA15', 'kind': 'FIXED', 'value': 15, 'min_order_value': 150},
+    {'code': 'CONSOLES10', 'kind': 'PERCENT', 'value': 10, 'max_discount': 100, 'category': 'consoles'},
+    {'code': 'KEYS8', 'kind': 'PERCENT', 'value': 8, 'category': 'keys', 'usage_limit': 300},
+    {'code': 'VIP20', 'kind': 'FIXED', 'value': 20, 'min_order_value': 200, 'is_public': False},
+    {'code': 'BLACKFRIDAY', 'kind': 'PERCENT', 'value': 10, 'max_discount': 50, 'starts_days_ago': 330, 'ends_days_ago': 300},
+]
+
+SELLER_COUPON_TEMPLATES = [
+    {'kind': 'PERCENT', 'value': 5},
+    {'kind': 'PERCENT', 'value': 10, 'max_discount': 40, 'min_order_value': 100},
+    {'kind': 'PERCENT', 'value': 15, 'max_discount': 30, 'min_order_value': 150, 'usage_limit': 50},
+    {'kind': 'FIXED', 'value': 10, 'min_order_value': 80},
+    {'kind': 'FIXED', 'value': 25, 'min_order_value': 200},
+    {'kind': 'PERCENT', 'value': 10, 'max_discount': 20, 'first_purchase_only': True},
+]
+COUPON_USE_CHANCE = 0.25
+
 class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('--sellers', type=int, default=25)
@@ -236,6 +257,7 @@ class Command(BaseCommand):
             sellers = self._seed_users('vendedor', options['sellers'], sellers_latest)
             buyers = self._seed_users('comprador', options['buyers'], buyers_latest)
             products = self._seed_products(categories, sellers, options['products'])
+            self._seed_coupons(categories, sellers)
             self._seed_orders(products, buyers, options['orders'])
             self._seed_carts(products, buyers)
 
@@ -348,6 +370,109 @@ class Command(BaseCommand):
         ProductVariant.objects.bulk_create(variants, batch_size=500)
 
         return products
+
+    def _seed_coupons(self, categories, sellers):
+        self.stdout.write('Gerando cupons...')
+        por_slug = {c.slug: c for c in categories}
+        self._coupons = []
+        self._coupon_uses = []
+        self._coupon_counts = {}
+
+        for modelo in PLATFORM_COUPONS:
+            dados = dict(modelo)
+            code = dados.pop('code')
+            starts = self._now - timedelta(days=dados.pop('starts_days_ago')) if 'starts_days_ago' in dados else self._span_start
+            ends = self._now - timedelta(days=dados.pop('ends_days_ago')) if 'ends_days_ago' in dados else self._now + timedelta(days=random.randint(15, 90))
+            category = por_slug.get(dados.pop('category', None))
+            coupon, _ = Coupon.objects.update_or_create(code=code, defaults={
+                **self._coupon_values(dados), 'seller': None, 'category': category,
+                'starts_at': starts, 'ends_at': ends, 'active': True,
+            })
+            self._coupons.append(coupon)
+
+        for seller in random.sample(sellers, k=len(sellers) // 2):
+            for modelo in random.sample(SELLER_COUPON_TEMPLATES, k=random.randint(1, 2)):
+                dados = dict(modelo)
+                if dados.get('first_purchase_only'):
+                    sufixo = 'NOVO'
+                else:
+                    sufixo = f"{dados['value']}{'OFF' if dados['kind'] == 'PERCENT' else 'REAIS'}"
+
+                sorteio = random.random()
+                if sorteio < 0.1:
+                    ends = self._now - timedelta(days=random.randint(5, 40))
+                elif sorteio < 0.4:
+                    ends = self._now + timedelta(days=random.randint(10, 60))
+                else:
+                    ends = None
+
+                coupon, _ = Coupon.objects.update_or_create(code=f'{seller.username.upper()}{sufixo}', defaults={
+                    **self._coupon_values(dados), 'seller': seller,
+                    'starts_at': random_between(seller.date_joined, self._now - timedelta(days=60)),
+                    'ends_at': ends, 'active': random.random() > 0.1,
+                })
+                self._coupons.append(coupon)
+
+    def _coupon_values(self, dados):
+        return {
+            'kind': dados['kind'],
+            'value': Decimal(str(dados['value'])),
+            'max_discount': Decimal(str(dados['max_discount'])) if dados.get('max_discount') else None,
+            'min_order_value': Decimal(str(dados.get('min_order_value', 0))),
+            'first_purchase_only': dados.get('first_purchase_only', False),
+            'is_public': dados.get('is_public', True),
+            'usage_limit': dados.get('usage_limit'),
+        }
+
+    def _coupon_fits(self, coupon, product, base, created_at):
+        return (
+            not coupon.first_purchase_only
+            and coupon.starts_at <= created_at
+            and (coupon.ends_at is None or created_at < coupon.ends_at)
+            and (coupon.category_id is None or coupon.category_id == product.category_id)
+            and base >= coupon.min_order_value
+            and (coupon.usage_limit is None or self._coupon_counts.get(coupon.pk, 0) < coupon.usage_limit)
+        )
+
+    def _maybe_use_coupons(self, order, created_at, commission_rate):
+        if random.random() >= COUPON_USE_CHANCE:
+            return
+
+        da_loja = [
+            c for c in self._coupons
+            if c.seller_id == order.product.seller_id and self._coupon_fits(c, order.product, order.total_price, created_at)
+        ]
+        if da_loja and random.random() < 0.6:
+            coupon = random.choice(da_loja)
+            order.seller_coupon_discount = coupon.discount_for(order.total_price)
+            self._coupon_uses.append((order, coupon, 'seller_coupon', created_at))
+            self._coupon_counts[coupon.pk] = self._coupon_counts.get(coupon.pk, 0) + 1
+
+        base = order.sale_amount
+        da_plataforma = [c for c in self._coupons if c.is_platform and self._coupon_fits(c, order.product, base, created_at)]
+        if da_plataforma and random.random() < 0.6:
+            coupon = random.choice(da_plataforma)
+            teto = (base * commission_rate / Decimal('100')).quantize(Decimal('0.01'), rounding=ROUND_DOWN)
+            order.platform_coupon_discount = min(coupon.discount_for(base), teto)
+            self._coupon_uses.append((order, coupon, 'platform_coupon', created_at))
+            self._coupon_counts[coupon.pk] = self._coupon_counts.get(coupon.pk, 0) + 1
+
+    def _seed_coupon_redemptions(self):
+        if not self._coupon_uses:
+            return
+
+        redemptions = [
+            CouponRedemption(coupon=coupon, user=order.buyer, discount=getattr(order, f'{campo}_discount'))
+            for order, coupon, campo, _ in self._coupon_uses
+        ]
+        CouponRedemption.objects.bulk_create(redemptions, batch_size=500)
+        for redemption, (order, _, campo, created_at) in zip(redemptions, self._coupon_uses):
+            redemption.created_at = created_at
+            setattr(order, campo, redemption)
+        CouponRedemption.objects.bulk_update(redemptions, ['created_at'], batch_size=500)
+
+        orders = list({order.pk: order for order, _, _, _ in self._coupon_uses}.values())
+        Order.objects.bulk_update(orders, ['seller_coupon', 'platform_coupon'], batch_size=500)
 
     def _order_timeline(self, status, created_at):
         now = self._now
@@ -475,6 +600,7 @@ class Command(BaseCommand):
                 pickup=pickup,
                 tracking_code=generate_tracking_code() if has_tracking else '',
             )
+            self._maybe_use_coupons(order, created_at, commission_rate)
 
             if status in STOCK_DECREMENTED_STATUSES:
                 variant.quantity = max(variant.quantity - quantity, 0)
@@ -493,20 +619,14 @@ class Command(BaseCommand):
             order.updated_at = updated_at
         Order.objects.bulk_update(orders, ['created_at', 'updated_at'], batch_size=500)
 
+        self._seed_coupon_redemptions()
         self._seed_return_requests(return_drafts)
         self._seed_disputes(dispute_drafts)
 
         commissions = []
         for order, _, _, delivered_at in drafts:
             if order.status in HAS_COMMISSION_STATUSES:
-                commission_amount = (order.total_price * commission_rate / Decimal('100')).quantize(Decimal('0.01'))
-                commission = Commission(
-                    order=order,
-                    rate=commission_rate,
-                    gross_amount=order.total_price,
-                    commission_amount=commission_amount,
-                    net_amount=order.total_price - commission_amount,
-                )
+                commission = Commission(order=order, **commission_for(order, commission_rate))
                 commissions.append((commission, delivered_at))
         Commission.objects.bulk_create([c for c, _ in commissions], batch_size=500)
         for commission, delivered_at in commissions:

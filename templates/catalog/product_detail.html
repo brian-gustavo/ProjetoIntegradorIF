@@ -84,6 +84,22 @@
                 {% if product.accepts_pickup %}<span class="tag tag-success">Aceita retirada em mãos</span>{% endif %}
             </div>
 
+            {% if store_coupons %}
+                <div class="store-coupons">
+                    <p class="field-label">Cupons da loja</p>
+                    <div class="coupon-chips">
+                        {% for cupom in store_coupons %}
+                            <span class="coupon-chip" title="{{ cupom.code }} · {{ cupom.conditions|join:' · ' }}">
+                                {{ cupom.headline }}
+                                {% if cupom.min_order_value %}<small>acima de R$ {{ cupom.min_order_value|brl }}</small>{% endif %}
+                                {% if cupom.category_id %}<small>em {{ cupom.category.name }}</small>{% endif %}
+                            </span>
+                        {% endfor %}
+                    </div>
+                    <p class="help">Aplicados automaticamente ao finalizar a compra, se o carrinho atender às condições.</p>
+                </div>
+            {% endif %}
+
             <p class="field-label">Variações disponíveis</p>
             <ul class="variant-list">
                 {% for variant in variants %}

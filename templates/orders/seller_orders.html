@@ -31,6 +31,12 @@
             <div class="order-card-side">
                 {% include 'orders/_status_badge.html' %}
                 <span class="order-card-price price">R$ {{ order.total_price|brl }}</span>
+                {% if order.seller_coupon_discount %}
+                    <div class="order-discounts">
+                        <span>−R$ {{ order.seller_coupon_discount|brl }} cupom {{ order.seller_coupon.coupon.code|default:"da loja" }}</span>
+                        <span class="strong">Valor da venda: R$ {{ order.sale_amount|brl }}</span>
+                    </div>
+                {% endif %}
             </div>
         </div>
 

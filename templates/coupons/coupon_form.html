@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if coupon %}Editar cupom{% else %}Novo cupom{% endif %} — MegaGame{% endblock %}
+
+{% block content %}
+<div class="narrow">
+    <div class="page-head">
+        <div>
+            <h1 class="page-title">{% if coupon %}Editar cupom {{ coupon.code }}{% else %}Novo cupom{% endif %}</h1>
+            <p class="page-sub">{% if is_platform %}Cupom MegaGame, válido em todas as lojas{% else %}Cupom válido apenas nos seus anúncios{% endif %}</p>
+        </div>
+        <div class="page-actions">
+            <a href="{% url 'manage_coupons' %}" class="btn btn-ghost btn-sm">← Voltar aos cupons</a>
+        </div>
+    </div>
+
+    {% if used %}
+        <div class="alert alert-info mb-3">Este cupom já foi usado. As alterações valem apenas para os próximos usos; os pedidos já feitos mantêm o desconto original.</div>
+    {% endif %}
+
+    <form method="post" class="card" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="alert alert-danger mb-3">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+
+        <h2 class="form-section">Desconto</h2>
+        {% include 'coupons/_field.html' with field=form.code %}
+        {% include 'coupons/_field.html' with field=form.kind %}
+        {% include 'coupons/_field.html' with field=form.value %}
+        {% include 'coupons/_field.html' with field=form.max_discount %}
+
+        <h2 class="form-section">Regras de uso</h2>
+        {% include 'coupons/_field.html' with field=form.min_order_value %}
+        {% include 'coupons/_field.html' with field=form.category %}
+        {% include 'coupons/_field.html' with field=form.per_user_limit %}
+        {% include 'coupons/_field.html' with field=form.first_purchase_only %}
+
+        <h2 class="form-section">Validade e quantidade</h2>
+        {% include 'coupons/_field.html' with field=form.starts_at %}
+        {% include 'coupons/_field.html' with field=form.ends_at %}
+        {% include 'coupons/_field.html' with field=form.usage_limit %}
+
+        <h2 class="form-section">Divulgação</h2>
+        {% include 'coupons/_field.html' with field=form.is_public %}
+
+        <div class="form-footer-actions">
+            <a href="{% url 'manage_coupons' %}" class="btn btn-outline">Cancelar</a>
+            <button type="submit" class="btn btn-primary">{% if coupon %}Salvar alterações{% else %}Criar cupom{% endif %}</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+    const maxDiscount = document.querySelector('[data-field="max_discount"]');
+    const syncKind = () => {
+        const marcado = document.querySelector('input[name="kind"]:checked');
+        maxDiscount.hidden = !marcado || marcado.value !== 'PERCENT';
+    };
+    document.querySelectorAll('input[name="kind"]').forEach(radio => radio.addEventListener('change', syncKind));
+    syncKind();
+</script>
+{% endblock %}

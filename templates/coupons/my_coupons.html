@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% load catalog_extras %}
+
+{% block title %}Meus cupons — MegaGame{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Meus cupons</h1>
+        <p class="page-sub">Os melhores cupons disponíveis são aplicados automaticamente na finalização da compra</p>
+    </div>
+</div>
+
+<form method="post" class="card mb-6">
+    {% csrf_token %}
+    <label class="field-label" for="code">Adicionar cupom</label>
+    <div class="coupon-code">
+        <input class="input" type="text" name="code" id="code" maxlength="30" placeholder="Digite o código do cupom" autocomplete="off" required>
+        <button type="submit" class="btn btn-primary">Adicionar</button>
+    </div>
+    <p class="help">Cupons recebidos por código ficam guardados aqui e aparecem no checkout sempre que puderem ser usados.</p>
+</form>
+
+<h2 class="section-title">Cupons MegaGame</h2>
+{% if plataforma %}
+    <div class="coupon-grid">
+        {% for cupom in plataforma %}
+            {% include 'coupons/_coupon.html' %}
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="empty-state mb-6">
+        <strong>Nenhum cupom MegaGame disponível agora</strong>
+        Fique de olho: novas campanhas aparecem aqui assim que começam.
+    </div>
+{% endif %}
+
+<h2 class="section-title">Cupons de lojas</h2>
+{% if lojas %}
+    <div class="coupon-grid">
+        {% for cupom in lojas %}
+            {% include 'coupons/_coupon.html' with show_origin=True %}
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="empty-state mb-6">
+        <strong>Nenhum cupom de loja disponível agora</strong>
+        Os cupons das lojas também aparecem na página de cada anúncio.
+    </div>
+{% endif %}
+
+<h2 class="section-title">Histórico de uso</h2>
+<div class="table-wrap">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Cupom</th>
+                <th>Origem</th>
+                <th class="num">Desconto</th>
+                <th>Situação</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for uso in historico %}
+                <tr>
+                    <td>{{ uso.created_at|date:"d/m/Y H:i" }}</td>
+                    <td><span class="coupon-code-tag">{{ uso.coupon.code }}</span> <span class="muted">· {{ uso.coupon.headline }}</span></td>
+                    <td class="muted">{{ uso.coupon.origin }}</td>
+                    <td class="num strong text-success">−R$ {{ uso.discount|brl }}</td>
+                    <td>
+                        {% if uso.em_uso %}
+                            <span class="badge badge-paid">Usado</span>
+                        {% else %}
+                            <span class="badge badge-default" title="O pedido foi cancelado e o cupom voltou a ficar disponível enquanto estiver válido">Devolvido</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5" class="empty">Você ainda não usou nenhum cupom</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% include '_pagination.html' with page=historico %}
+{% endblock %}

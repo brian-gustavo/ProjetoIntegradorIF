@@ -7,52 +7,135 @@
 <div class="page-head">
     <div>
         <h1 class="page-title">Finalizar pedido</h1>
-        <p class="page-sub">Escolha como deseja receber cada item</p>
+        <p class="page-sub">Escolha como deseja receber cada item e aplique seus cupons</p>
     </div>
 </div>
 
-<form method="post" id="checkout-form">
+<form method="post" action="{% url 'checkout' %}" id="checkout-form">
     {% csrf_token %}
+    <input type="hidden" name="total_esperado" value="{{ quote.total|stringformat:'s' }}">
     <div class="split-layout">
-        <div class="card">
-            {% for item in items %}
-                <div class="line-item">
-                    <div class="line-item-thumb">
-                        {% with img=item.product.images.all.0 %}
-                            {% if img %}<img src="{{ img.image.url }}" alt="">{% else %}<div class="img-placeholder"></div>{% endif %}
-                        {% endwith %}
+        <div class="checkout-main">
+            {% for loja in quote.lojas %}
+                <section class="card">
+                    <div class="card-head">
+                        <h2 class="card-title">Loja {{ loja.vendedor.username }}</h2>
+                        <span class="text-sm muted">{{ loja.pedidos|length }} ite{{ loja.pedidos|length|pluralize:"m,ns" }} · R$ {{ loja.subtotal|brl }}</span>
                     </div>
-                    <div>
-                        <p class="line-item-title">{{ item.product.title }}</p>
-                        <p class="line-item-sub">{{ item.variant.name }} · {{ item.quantity }} unidade{{ item.quantity|pluralize }}</p>
-                        {% if item.product.accepts_pickup %}
-                            <div class="radio-cards mt-2">
-                                <label class="radio-card">
-                                    <input type="radio" name="pickup_{{ item.pk }}" value="0" checked>
-                                    Transportadora
-                                </label>
-                                <label class="radio-card">
-                                    <input type="radio" name="pickup_{{ item.pk }}" value="1">
-                                    Retirada em mãos
+                    {% for pedido in loja.pedidos %}
+                        {% with item=pedido.cart_item %}
+                        <div class="line-item">
+                            <div class="line-item-thumb">
+                                {% with img=item.product.images.all.0 %}
+                                    {% if img %}<img src="{{ img.image.url }}" alt="">{% else %}<div class="img-placeholder"></div>{% endif %}
+                                {% endwith %}
+                            </div>
+                            <div>
+                                <p class="line-item-title">{{ item.product.title }}</p>
+                                <p class="line-item-sub">{{ item.variant.name }} · {{ item.quantity }} unidade{{ item.quantity|pluralize }}</p>
+                                {% if item.product.accepts_pickup %}
+                                    <div class="radio-cards mt-2">
+                                        <label class="radio-card">
+                                            <input type="radio" name="pickup_{{ item.pk }}" value="0"{% if not pedido.pickup %} checked{% endif %}>
+                                            Transportadora
+                                        </label>
+                                        <label class="radio-card">
+                                            <input type="radio" name="pickup_{{ item.pk }}" value="1"{% if pedido.pickup %} checked{% endif %}>
+                                            Retirada em mãos
+                                        </label>
+                                    </div>
+                                {% else %}
+                                    <input type="hidden" name="pickup_{{ item.pk }}" value="0">
+                                    <p class="line-item-sub">Entrega via transportadora</p>
+                                {% endif %}
+                            </div>
+                            <div class="line-item-side">
+                                <span class="price">R$ {{ pedido.total_price|brl }}</span>
+                            </div>
+                        </div>
+                        {% endwith %}
+                    {% endfor %}
+
+                    {% if loja.opcoes %}
+                        <details class="coupon-picker"{% if codigo.campo == loja.campo or not loja.escolhida and loja.usaveis %} open{% endif %}>
+                            <summary>
+                                <span class="coupon-picker-label">{% include 'coupons/_ticket_icon.html' %} Cupom da loja</span>
+                                <span class="coupon-picker-value">
+                                    {% if loja.escolhida %}
+                                        {{ loja.escolhida.cupom.code }} · −R$ {{ loja.escolhida.desconto|brl }}
+                                    {% elif loja.usaveis %}
+                                        {{ loja.usaveis }} disponíve{{ loja.usaveis|pluralize:"l,is" }}
+                                    {% else %}
+                                        Ver cupons
+                                    {% endif %}
+                                </span>
+                            </summary>
+                            <div class="coupon-options">
+                                {% for opcao in loja.opcoes %}
+                                    {% include 'coupons/_coupon.html' with cupom=opcao.cupom campo=loja.campo escolhida=loja.escolhida %}
+                                {% endfor %}
+                                <label class="coupon-none">
+                                    <input type="radio" name="{{ loja.campo }}" value="" data-recalc{% if not loja.escolhida %} checked{% endif %}>
+                                    Não usar cupom desta loja
                                 </label>
                             </div>
-                        {% else %}
-                            <input type="hidden" name="pickup_{{ item.pk }}" value="0">
-                            <p class="line-item-sub">Entrega via transportadora</p>
-                        {% endif %}
-                    </div>
-                    <div class="line-item-side">
-                        <span class="price">R$ {{ item.subtotal|brl }}</span>
-                    </div>
-                </div>
+                        </details>
+                    {% endif %}
+                </section>
             {% endfor %}
+
+            <section class="card">
+                <div class="card-head">
+                    <h2 class="card-title">Cupons MegaGame</h2>
+                    <a href="{% url 'my_coupons' %}" class="link text-sm">Meus cupons</a>
+                </div>
+                <div class="coupon-code">
+                    <input class="input" type="text" name="codigo" value="{{ codigo.valor|default:'' }}" maxlength="30" placeholder="Tem um código? Digite aqui" aria-label="Código do cupom" autocomplete="off">
+                    <button type="submit" name="action" value="codigo" class="btn btn-outline">Aplicar</button>
+                </div>
+                {% if codigo.erro %}
+                    <p class="coupon-code-feedback text-danger">{{ codigo.erro }}</p>
+                {% elif codigo.sucesso %}
+                    <p class="coupon-code-feedback text-success">{{ codigo.sucesso }}</p>
+                {% endif %}
+
+                {% if quote.plataforma.opcoes %}
+                    <div class="coupon-options">
+                        {% for opcao in quote.plataforma.opcoes %}
+                            {% include 'coupons/_coupon.html' with cupom=opcao.cupom campo='cupom_plataforma' escolhida=quote.plataforma.escolhida %}
+                        {% endfor %}
+                        <label class="coupon-none">
+                            <input type="radio" name="cupom_plataforma" value="" data-recalc{% if not quote.plataforma.escolhida %} checked{% endif %}>
+                            Não usar cupom MegaGame
+                        </label>
+                    </div>
+                {% else %}
+                    <p class="help">Nenhum cupom MegaGame disponível para você no momento.</p>
+                {% endif %}
+                <p class="help">Você pode combinar um cupom MegaGame com um cupom de cada loja e com suas MegaCoins.</p>
+            </section>
         </div>
 
         <aside class="summary card">
             <h2 class="card-title">Resumo do pedido</h2>
+            <dl class="summary-lines">
+                <div class="kv"><dt>Produtos ({{ quote.pedidos|length }})</dt><dd>R$ {{ quote.subtotal|brl }}</dd></div>
+                {% if quote.desconto_lojas %}
+                    <div class="kv"><dt>Cupons das lojas</dt><dd class="discount">−R$ {{ quote.desconto_lojas|brl }}</dd></div>
+                {% endif %}
+                {% if quote.desconto_plataforma %}
+                    <div class="kv"><dt>Cupom {{ quote.plataforma.escolhida.cupom.code }}</dt><dd class="discount">−R$ {{ quote.desconto_plataforma|brl }}</dd></div>
+                {% endif %}
+                {% if moedas.usaveis %}
+                    <div class="kv" data-coins-row{% if not use_coins %} hidden{% endif %}><dt>MegaCoins</dt><dd class="discount">−R$ {{ moedas.desconto|brl }}</dd></div>
+                {% endif %}
+            </dl>
             {% if moedas.usaveis %}
                 <label class="coins-option">
-                    <input type="checkbox" name="use_coins" value="1" id="use-coins" checked>
+                    <input type="checkbox" name="use_coins" value="1" id="use-coins"{% if use_coins %} checked{% endif %}
+                           data-total-com="R$ {{ moedas.total_com_moedas|brl }}" data-total-sem="R$ {{ quote.total|brl }}"
+                           data-economia-com="{% if quote.economia_com_moedas %}Você está economizando R$ {{ quote.economia_com_moedas|brl }}{% endif %}"
+                           data-economia-sem="{% if quote.desconto_cupons %}Você está economizando R$ {{ quote.desconto_cupons|brl }}{% endif %}">
                     {% include 'rewards/_coin_icon.html' with size=22 %}
                     <span>
                         Usar <strong>{{ moedas.usaveis|coins }} MegaCoins</strong>
@@ -62,10 +145,11 @@
             {% endif %}
             <div class="summary-total">
                 <span>Total</span>
-                <span class="price" data-total>R$ {% if moedas.usaveis %}{{ moedas.total_com_moedas|brl }}{% else %}{{ total|brl }}{% endif %}</span>
+                <span class="price" data-total>R$ {% if moedas.usaveis and use_coins %}{{ moedas.total_com_moedas|brl }}{% else %}{{ quote.total|brl }}{% endif %}</span>
             </div>
+            <p class="savings" data-savings>{% if moedas.usaveis and use_coins %}{% if quote.economia_com_moedas %}Você está economizando R$ {{ quote.economia_com_moedas|brl }}{% endif %}{% elif quote.desconto_cupons %}Você está economizando R$ {{ quote.desconto_cupons|brl }}{% endif %}</p>
             {% if moedas.cashback_previsto %}
-                <p class="coins-earn">{% include 'rewards/_coin_icon.html' with size=16 %} Você ganha até <strong>{{ moedas.cashback_previsto|coins }} MegaCoins</strong> com esta compra</p>
+                <p class="coins-earn">{% include 'rewards/_coin_icon.html' with size=16 %}<span>Você ganha até <strong>{{ moedas.cashback_previsto|coins }} MegaCoins</strong> com esta compra</span></p>
             {% endif %}
             <button type="button" class="btn btn-primary btn-lg btn-block"
                     onclick="document.getElementById('confirm-dialog').showModal()">
@@ -74,27 +158,61 @@
             <p class="help text-center">Você será levado ao Mercado Pago para concluir o pagamento.</p>
         </aside>
     </div>
-</form>
 
-<dialog id="confirm-dialog" class="modal">
-    <h3 class="modal-title">Confirmar pedido?</h3>
-    <p class="modal-text">Total: <strong data-total>R$ {% if moedas.usaveis %}{{ moedas.total_com_moedas|brl }}{% else %}{{ total|brl }}{% endif %}</strong></p>
-    <div class="modal-actions">
-        <button type="button" class="btn btn-outline" onclick="document.getElementById('confirm-dialog').close()">Cancelar</button>
-        <button type="submit" form="checkout-form" class="btn btn-primary">Confirmar</button>
-    </div>
-</dialog>
+    <dialog id="confirm-dialog" class="modal">
+        <h3 class="modal-title">Confirmar pedido?</h3>
+        <p class="modal-text">Total: <strong data-total>R$ {% if moedas.usaveis and use_coins %}{{ moedas.total_com_moedas|brl }}{% else %}{{ quote.total|brl }}{% endif %}</strong></p>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="document.getElementById('confirm-dialog').close()">Cancelar</button>
+            <button type="submit" name="action" value="confirmar" class="btn btn-primary">Confirmar</button>
+        </div>
+    </dialog>
+</form>
 {% endblock %}
 
 {% block extra_js %}
 {{ block.super }}
-{% if moedas.usaveis %}
 <script>
-    const useCoins = document.getElementById('use-coins');
-    useCoins.addEventListener('change', () => {
-        const texto = useCoins.checked ? 'R$ {{ moedas.total_com_moedas|brl }}' : 'R$ {{ total|brl }}';
-        document.querySelectorAll('[data-total]').forEach(el => el.textContent = texto);
+    const checkoutForm = document.getElementById('checkout-form');
+
+    async function recalcular(acao) {
+        const dados = new FormData(checkoutForm);
+        dados.set('action', acao);
+        checkoutForm.classList.add('is-loading');
+        try {
+            const resposta = await fetch(checkoutForm.action, { method: 'POST', body: dados });
+            const pagina = new DOMParser().parseFromString(await resposta.text(), 'text/html');
+            const novo = pagina.getElementById('checkout-form');
+            if (!novo) throw new Error();
+            checkoutForm.innerHTML = novo.innerHTML;
+            checkoutForm.classList.remove('is-loading');
+        } catch {
+            const fallback = document.createElement('input');
+            fallback.type = 'hidden';
+            fallback.name = 'action';
+            fallback.value = acao;
+            checkoutForm.appendChild(fallback);
+            checkoutForm.submit();
+        }
+    }
+
+    checkoutForm.addEventListener('change', (e) => {
+        if (e.target.matches('[data-recalc]')) {
+            recalcular('recalcular');
+        } else if (e.target.id === 'use-coins') {
+            const usar = e.target.checked;
+            const total = usar ? e.target.dataset.totalCom : e.target.dataset.totalSem;
+            checkoutForm.querySelectorAll('[data-total]').forEach(el => el.textContent = total);
+            checkoutForm.querySelector('[data-savings]').textContent = usar ? e.target.dataset.economiaCom : e.target.dataset.economiaSem;
+            checkoutForm.querySelector('[data-coins-row]').hidden = !usar;
+        }
+    });
+
+    checkoutForm.addEventListener('submit', (e) => {
+        if (e.submitter && e.submitter.value === 'codigo') {
+            e.preventDefault();
+            recalcular('codigo');
+        }
     });
 </script>
-{% endif %}
 {% endblock %}

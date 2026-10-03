@@ -5,7 +5,8 @@ from django import forms
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Min, Q, Sum
+from django.db import transaction
+from django.db.models import Count, F, Min, Q, Sum
 from django.db.models.functions import TruncDate, TruncMonth
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
@@ -14,13 +15,15 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
 from .forms import DisputeForm, DisputeMessageForm, DisputeResolutionForm, PlatformConfigForm, ReturnRequestForm
-from .models import Order, Cart, CartItem, generate_tracking_code, PlatformConfig, Commission, Dispute, DisputeMessage, DisputeEvidence, ReturnRequestImage
+from .models import Order, Cart, CartItem, generate_tracking_code, PlatformConfig, Commission, Dispute, DisputeMessage, DisputeEvidence, ReturnRequestImage, commission_for
 from .reports import build_admin_report_pdf
 from .tracking import simulate_tracking
 from accounts.models import MercadoPagoAccount
 from catalog.models import Product, ProductVariant
+from coupons.models import Coupon
+from coupons.services import available_coupons, build_quote, parse_choice, redeem_code, save_redemptions, selected_ids, valid_now
 from rewards.models import CoinTransaction
-from rewards.services import annotate_orders, apply_redemption, checkout_preview, coins_to_brl, sync_wallet
+from rewards.services import annotate_orders, apply_redemption, coins_to_brl, sync_wallet
 
 @login_required
 def add_to_cart(request, product_id):
@@ -69,7 +72,8 @@ def cart_detail(request):
     cart, _ = Cart.objects.get_or_create(user=request.user)
     items = cart.items.select_related('product', 'variant').all()
     total = sum(item.subtotal for item in items)
-    return render(request, 'orders/cart.html', {'cart': cart, 'items': items, 'total': total})
+    cupons = len(available_coupons(request.user, {item.product.seller_id for item in items})) if items else 0
+    return render(request, 'orders/cart.html', {'cart': cart, 'items': items, 'total': total, 'cupons_disponiveis': cupons})
 
 @login_required
 def remove_from_cart(request, item_id):
@@ -77,10 +81,62 @@ def remove_from_cart(request, item_id):
     item.delete()
     return redirect('cart_detail')
 
+def _checkout_choices(request):
+    if request.method != 'POST':
+        return {}
+    return {
+        chave: parse_choice(valor)
+        for chave, valor in request.POST.items()
+        if chave == 'cupom_plataforma' or chave.startswith('cupom_loja_')
+    }
+
+def _apply_code(request, items, escolhas):
+    codigo = {'valor': request.POST.get('codigo', ''), 'erro': None, 'sucesso': None, 'cupom': None, 'campo': None}
+    cupom, erro = redeem_code(request.user, codigo['valor'])
+    if cupom and cupom.is_platform:
+        codigo['campo'] = 'cupom_plataforma'
+    elif cupom and any(item.product.seller_id == cupom.seller_id for item in items):
+        codigo['campo'] = f'cupom_loja_{cupom.seller_id}'
+    elif cupom:
+        erro = f'Este cupom é da loja {cupom.seller.username}, que não está no seu carrinho. Ele foi guardado em Meus cupons.'
+
+    if erro:
+        codigo['erro'] = erro
+    else:
+        codigo['cupom'] = cupom
+        escolhas[codigo['campo']] = cupom.pk
+    return codigo
+
+def _code_feedback(codigo, quote):
+    if not codigo or not codigo['cupom']:
+        return
+    cupom = codigo['cupom']
+    if selected_ids(quote).get(codigo['campo']) == cupom.pk:
+        codigo['sucesso'] = f'Cupom {cupom.code} aplicado'
+        codigo['valor'] = ''
+        return
+
+    if cupom.is_platform:
+        opcoes = quote['plataforma']['opcoes']
+    else:
+        opcoes = next(loja['opcoes'] for loja in quote['lojas'] if loja['campo'] == codigo['campo'])
+    opcao = next((o for o in opcoes if o['cupom'].pk == cupom.pk), None)
+    motivo = opcao['motivo'] if opcao and opcao['motivo'] else 'ele não gera desconto nos itens do seu carrinho'
+    codigo['erro'] = f'O cupom {cupom.code} foi guardado, mas não pode ser usado agora: {motivo[0].lower()}{motivo[1:]}'
+
+def _expected_total_matches(request, quote):
+    esperado = request.POST.get('total_esperado')
+    if esperado is None:
+        return True
+    try:
+        return Decimal(esperado) == quote['total']
+    except ArithmeticError:
+        return False
+
 @login_required
 def checkout(request):
     cart = get_object_or_404(Cart, user=request.user)
-    items = cart.items.select_related('product', 'variant').all()
+    items = list(cart.items.select_related('product__seller', 'product__category', 'variant').prefetch_related('product__images'))
 
     if not items:
         return redirect('cart_detail')
@@ -91,35 +147,39 @@ def checkout(request):
             messages.error(request, f'"{item.product.title} — {item.variant.name}" não tem estoque suficiente')
         return redirect('cart_detail')
 
-    if request.method == 'POST':
-        new_orders = []
-        for item in items:
-            pickup = request.POST.get(f'pickup_{item.pk}') == '1'
-            if pickup and not item.product.accepts_pickup:
-                pickup = False
-            order = Order.objects.create(
-                buyer=request.user,
-                product=item.product,
-                variant=item.variant,
-                quantity=item.quantity,
-                total_price=item.subtotal,
-                pickup=pickup,
-            )
-            new_orders.append(order)
-        if request.POST.get('use_coins') == '1':
-            apply_redemption(request.user, new_orders)
-        cart.items.all().delete()
-        request.session['mp_pending_orders'] = [o.pk for o in new_orders]
-        return redirect('mp_pay_next')
+    escolhas = _checkout_choices(request)
+    pickups = {item.pk: request.POST.get(f'pickup_{item.pk}') == '1' for item in items}
+    acao = request.POST.get('action', 'confirmar') if request.method == 'POST' else None
+    codigo = _apply_code(request, items, escolhas) if acao == 'codigo' else None
 
-    pickup_items = [item for item in items if item.product.accepts_pickup]
-    total = sum(item.subtotal for item in items)
+    if acao == 'confirmar':
+        with transaction.atomic():
+            list(Coupon.objects.select_for_update().filter(pk__in=[v for v in escolhas.values() if isinstance(v, int)]))
+            quote = build_quote(request.user, items, escolhas, pickups)
+            aplicados = selected_ids(quote)
+            perdidos = [chave for chave, valor in escolhas.items() if isinstance(valor, int) and aplicados.get(chave) != valor]
+
+            if not perdidos and _expected_total_matches(request, quote):
+                save_redemptions(request.user, quote)
+                for pedido in quote['pedidos']:
+                    pedido.save()
+                if request.POST.get('use_coins') == '1':
+                    apply_redemption(request.user, quote['pedidos'])
+                cart.items.all().delete()
+                request.session['mp_pending_orders'] = [p.pk for p in quote['pedidos']]
+                return redirect('mp_pay_next')
+
+        messages.warning(request, 'Os descontos do seu pedido mudaram. Confira os valores atualizados antes de confirmar.')
+    else:
+        quote = build_quote(request.user, items, escolhas, pickups)
+
+    _code_feedback(codigo, quote)
     sync_wallet(request.user)
     return render(request, 'orders/checkout.html', {
-        'items': items,
-        'total': total,
-        'pickup_items': pickup_items,
-        'moedas': checkout_preview(request.user, total, [item.subtotal for item in items]),
+        'quote': quote,
+        'moedas': quote['moedas'],
+        'use_coins': request.method != 'POST' or request.POST.get('use_coins') == '1',
+        'codigo': codigo,
     })
 
 @login_required
@@ -129,7 +189,7 @@ def my_orders(request):
 
     _close_expired_return_requests()
     orders = Order.objects.filter(buyer=request.user).select_related(
-        'product__seller__profile', 'buyer__profile', 'return_request'
+        'product__seller__profile', 'buyer__profile', 'return_request', 'seller_coupon__coupon', 'platform_coupon__coupon'
     ).order_by('-created_at')
 
     reviewed_sellers = set(
@@ -217,19 +277,9 @@ def _finalize_delivery(order):
     variant.quantity -= order.quantity
     variant.save()
 
-    rate = PlatformConfig.get_commission_rate()
-    gross = order.total_price
-    commission_amount = (gross * rate / Decimal('100')).quantize(Decimal('0.01'))
-    net = gross - commission_amount
-
     Commission.objects.get_or_create(
         order=order,
-        defaults={
-            'rate': rate,
-            'gross_amount': gross,
-            'commission_amount': commission_amount,
-            'net_amount': net,
-        }
+        defaults=commission_for(order, PlatformConfig.get_commission_rate()),
     )
 
     order.status = 'DELIVERED'
@@ -330,7 +380,7 @@ def complete_order(request, order_id):
 def seller_orders(request):
     _close_expired_return_requests()
     orders = Order.objects.filter(product__seller=request.user).select_related(
-        'return_request'
+        'return_request', 'seller_coupon__coupon'
     ).prefetch_related('return_request__images').order_by('-created_at')
 
     config = PlatformConfig.load()
@@ -402,8 +452,10 @@ def seller_dashboard(request):
     total_vendas = delivered_orders.aggregate(total=Sum('quantity'))['total'] or 0
 
     total_bruto = delivered_orders.aggregate(
-        total=Sum('total_price')
+        total=Sum(F('total_price') - F('seller_coupon_discount'))
     )['total'] or Decimal('0')
+
+    total_cupons = delivered_orders.aggregate(total=Sum('seller_coupon_discount'))['total'] or Decimal('0')
 
     total_comissao = Commission.objects.filter(
         order__product__seller=request.user
@@ -426,6 +478,7 @@ def seller_dashboard(request):
         'total_bruto': total_bruto,
         'total_comissao': total_comissao,
         'total_liquido': total_liquido,
+        'total_cupons': total_cupons,
         'pendentes': pendentes,
         'produto_mais_vendido': produto_mais_vendido,
         'mp_connected': hasattr(request.user, 'mp_account'),
@@ -643,10 +696,13 @@ def _programa_moedas(periodo, commissions_periodo, commissions_anterior, comissa
     def descontos(qs):
         return qs.aggregate(total=Sum('order__coins_discount'))['total'] or Decimal('0')
 
+    def custeado_pela_plataforma(qs):
+        return qs.aggregate(total=Sum(F('order__coins_discount') + F('order__platform_coupon_discount')))['total'] or Decimal('0')
+
     desconto_atual = descontos(commissions_periodo)
     desconto_anterior = descontos(commissions_anterior)
-    liquida_atual = comissao_periodo - desconto_atual
-    liquida_anterior = comissao_anterior - desconto_anterior
+    liquida_atual = comissao_periodo - custeado_pela_plataforma(commissions_periodo)
+    liquida_anterior = comissao_anterior - custeado_pela_plataforma(commissions_anterior)
     pedidos_com_moedas = commissions_periodo.filter(order__coins_used__gt=0).count()
 
     movimentos = CoinTransaction.objects.filter(
@@ -688,6 +744,51 @@ def _programa_moedas(periodo, commissions_periodo, commissions_anterior, comissa
         'resgatadas_liquidas_valor': coins_to_brl(resgatadas - devolvidas),
         'em_circulacao': em_circulacao,
         'em_circulacao_valor': coins_to_brl(em_circulacao),
+    }
+
+def _programa_cupons(commissions_periodo, commissions_anterior, comissao_periodo, pedidos_periodo, limite):
+    def somar(qs, campo):
+        return qs.aggregate(total=Sum(f'order__{campo}'))['total'] or Decimal('0')
+
+    plataforma = somar(commissions_periodo, 'platform_coupon_discount')
+    lojas = somar(commissions_periodo, 'seller_coupon_discount')
+    com_cupom = commissions_periodo.filter(Q(order__seller_coupon__isnull=False) | Q(order__platform_coupon__isnull=False))
+    pedidos_com_cupom = com_cupom.count()
+    gmv_com_cupom = com_cupom.aggregate(total=Sum('gross_amount'))['total'] or Decimal('0')
+    gmv_total = commissions_periodo.aggregate(total=Sum('gross_amount'))['total'] or Decimal('0')
+
+    ranking = []
+    for prefixo in ('seller_coupon', 'platform_coupon'):
+        for r in (
+            commissions_periodo.filter(**{f'order__{prefixo}__isnull': False})
+            .values(f'order__{prefixo}__coupon__code', f'order__{prefixo}__coupon__seller__username')
+            .annotate(pedidos=Count('id'), desconto=Sum(f'order__{prefixo}_discount'), gmv=Sum('gross_amount'))
+        ):
+            loja = r[f'order__{prefixo}__coupon__seller__username']
+            ranking.append({
+                'codigo': r[f'order__{prefixo}__coupon__code'],
+                'origem': f'Loja {loja}' if loja else 'MegaGame',
+                'plataforma': not loja,
+                'pedidos': r['pedidos'],
+                'desconto': r['desconto'],
+                'gmv': r['gmv'],
+            })
+    ranking.sort(key=lambda r: r['desconto'], reverse=True)
+
+    ativos = list(valid_now(Coupon.objects.all()).values_list('seller_id', flat=True))
+    return {
+        'plataforma': plataforma,
+        'plataforma_variacao': _variacao(plataforma, somar(commissions_anterior, 'platform_coupon_discount')),
+        'lojas': lojas,
+        'lojas_variacao': _variacao(lojas, somar(commissions_anterior, 'seller_coupon_discount')),
+        'pct_comissao': _pct(plataforma, comissao_periodo),
+        'pedidos_com_cupom': pedidos_com_cupom,
+        'pct_pedidos_com_cupom': _pct(pedidos_com_cupom, pedidos_periodo),
+        'gmv_com_cupom': gmv_com_cupom,
+        'pct_gmv_com_cupom': _pct(gmv_com_cupom, gmv_total),
+        'ativos_plataforma': sum(1 for s in ativos if s is None),
+        'ativos_lojas': sum(1 for s in ativos if s is not None),
+        'ranking': ranking[:limite],
     }
 
 def _build_report_data(periodo):
@@ -790,6 +891,9 @@ def _build_report_data(periodo):
         'moedas': _programa_moedas(
             periodo, commissions_periodo, commissions_anterior,
             comissao_periodo, comissao_periodo_anterior, pedidos_periodo,
+        ),
+        'cupons': _programa_cupons(
+            commissions_periodo, commissions_anterior, comissao_periodo, pedidos_periodo, config.ranking_size,
         ),
     }
 
@@ -1059,13 +1163,7 @@ def resolve_dispute(request, dispute_id):
                 dispute.status = 'RESOLVED_SELLER'
                 order.status = 'COMPLETED'
                 if not hasattr(order, 'commission'):
-                    rate = PlatformConfig.get_commission_rate()
-                    gross = order.total_price
-                    commission_amount = (gross * rate / Decimal('100')).quantize(Decimal('0.01'))
-                    Commission.objects.create(
-                        order=order, rate=rate, gross_amount=gross,
-                        commission_amount=commission_amount, net_amount=gross - commission_amount,
-                    )
+                    Commission.objects.create(order=order, **commission_for(order, PlatformConfig.get_commission_rate()))
 
             dispute.save()
             order.save()
@@ -1120,19 +1218,19 @@ def dispute_list(request):
 
 def _create_mp_preference(seller, seller_orders, mp_account, request):
     rate = PlatformConfig.get_commission_rate()
-    total = sum(o.total_price for o in seller_orders)
+    total = sum(o.sale_amount for o in seller_orders)
     marketplace_fee = (total * rate / Decimal('100')).quantize(Decimal('0.01'))
-    marketplace_fee = max(marketplace_fee - sum(o.coins_discount for o in seller_orders), Decimal('0'))
+    marketplace_fee = max(marketplace_fee - sum(o.platform_discount for o in seller_orders), Decimal('0'))
 
     items = [{
         'title': f'{o.product.title} — {o.variant.name}',
         'quantity': o.quantity,
         'unit_price': float(o.variant.price),
         'currency_id': 'BRL',
-    } if not o.coins_used else {
-        'title': f'{o.product.title} — {o.variant.name} ({o.quantity}×, com desconto em MegaCoins)',
+    } if o.amount_paid == o.total_price else {
+        'title': f'{o.product.title} — {o.variant.name} ({o.quantity}×, com desconto)',
         'quantity': 1,
-        'unit_price': float(o.total_price - o.coins_discount),
+        'unit_price': float(o.amount_paid),
         'currency_id': 'BRL',
     } for o in seller_orders]
 

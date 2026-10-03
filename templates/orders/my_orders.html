@@ -32,7 +32,14 @@
             <div class="order-card-side">
                 {% include 'orders/_status_badge.html' %}
                 <span class="order-card-price price">R$ {{ order.total_price|brl }}</span>
-                {% if order.coins_used %}<span class="text-sm muted">−R$ {{ order.coins_discount|brl }} em MegaCoins</span>{% endif %}
+                {% if order.amount_paid != order.total_price %}
+                    <div class="order-discounts">
+                        {% if order.seller_coupon_discount %}<span>−R$ {{ order.seller_coupon_discount|brl }} cupom {{ order.seller_coupon.coupon.code|default:"da loja" }}</span>{% endif %}
+                        {% if order.platform_coupon_discount %}<span>−R$ {{ order.platform_coupon_discount|brl }} cupom {{ order.platform_coupon.coupon.code|default:"MegaGame" }}</span>{% endif %}
+                        {% if order.coins_used %}<span>−R$ {{ order.coins_discount|brl }} em MegaCoins</span>{% endif %}
+                        <span class="strong">Pago: R$ {{ order.amount_paid|brl }}</span>
+                    </div>
+                {% endif %}
             </div>
         </div>
 

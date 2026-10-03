@@ -1,0 +1,25 @@
+{% load catalog_extras %}
+<{% if campo %}label{% else %}div{% endif %} class="coupon{% if cupom.is_platform %} coupon-platform{% endif %}{% if opcao.motivo %} is-disabled{% endif %}">
+    <span class="coupon-stub">
+        <strong>{{ cupom.headline }}</strong>
+        <span>{% if cupom.is_platform %}MegaGame{% else %}Loja{% endif %}</span>
+    </span>
+    <span class="coupon-body">
+        <span class="coupon-title">
+            <span class="coupon-code-tag">{{ cupom.code }}</span>
+            {% if not cupom.is_platform and show_origin %}<span class="coupon-origin">{{ cupom.origin }}</span>{% endif %}
+        </span>
+        <span class="coupon-conditions">{{ cupom.conditions|join:" · " }}</span>
+        {% if opcao.motivo %}
+            <span class="coupon-reason">{{ opcao.motivo }}</span>
+        {% elif opcao %}
+            <span class="coupon-saving">Economize R$ {{ opcao.desconto|brl }}{% if opcao.limitado %} · valor máximo para este pedido{% endif %}</span>
+        {% endif %}
+        <span class="coupon-validity">{% if cupom.ends_at %}Válido até {{ cupom.ends_at|date:"d/m/Y \à\s H:i" }}{% else %}Sem data de validade{% endif %}</span>
+    </span>
+    {% if campo %}
+        <span class="coupon-side">
+            <input type="radio" name="{{ campo }}" value="{{ cupom.pk }}" data-recalc aria-label="Usar o cupom {{ cupom.code }}"{% if opcao.motivo %} disabled{% endif %}{% if escolhida and escolhida.cupom.pk == cupom.pk %} checked{% endif %}>
+        </span>
+    {% endif %}
+</{% if campo %}label{% else %}div{% endif %}>

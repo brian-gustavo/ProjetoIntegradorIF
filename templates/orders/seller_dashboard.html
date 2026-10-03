@@ -11,6 +11,7 @@
     </div>
     <div class="page-actions">
         <a href="{% url 'my_products' %}" class="btn btn-outline">Meus anúncios</a>
+        <a href="{% url 'manage_coupons' %}" class="btn btn-outline">Cupons da loja</a>
         <a href="{% url 'seller_orders' %}" class="btn btn-primary">Ver pedidos recebidos</a>
     </div>
 </div>
@@ -38,6 +39,7 @@
     <div class="stat stat-hero">
         <p class="stat-label">Total bruto</p>
         <p class="stat-value">R$ {{ total_bruto|brl }}</p>
+        {% if total_cupons %}<p class="stat-sub">após R$ {{ total_cupons|brl }} em cupons da loja</p>{% endif %}
     </div>
     <div class="stat stat-hero">
         <p class="stat-label">Comissão da plataforma</p>

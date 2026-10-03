@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% load catalog_extras %}
+
+{% block title %}{% if user.is_staff %}Cupons MegaGame{% else %}Cupons da loja{% endif %} — MegaGame{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">{% if user.is_staff %}Cupons MegaGame{% else %}Cupons da loja{% endif %}</h1>
+        <p class="page-sub">
+            {% if user.is_staff %}
+                Campanhas da plataforma, válidas em qualquer loja e custeadas pela comissão
+            {% else %}
+                Atraia compradores com descontos válidos apenas nos seus anúncios
+            {% endif %}
+        </p>
+    </div>
+    <div class="page-actions">
+        {% if not user.is_staff %}<a href="{% url 'seller_dashboard' %}" class="btn btn-outline">Painel do vendedor</a>{% endif %}
+        <a href="{% url 'create_coupon' %}" class="btn btn-primary">+ Novo cupom</a>
+    </div>
+</div>
+
+<div class="stat-grid">
+    <div class="stat">
+        <p class="stat-label">Cupons ativos</p>
+        <p class="stat-value">{{ resumo.ativos }}</p>
+    </div>
+    <div class="stat">
+        <p class="stat-label">Usos</p>
+        <p class="stat-value">{{ resumo.usos }}</p>
+        <p class="stat-sub">em {{ resumo.pedidos }} pedido{{ resumo.pedidos|pluralize }} não cancelado{{ resumo.pedidos|pluralize }}</p>
+    </div>
+    <div class="stat">
+        <p class="stat-label">Descontos concedidos</p>
+        <p class="stat-value negative">−R$ {{ resumo.descontos|brl }}</p>
+        <p class="stat-sub">{% if user.is_staff %}abatidos da comissão da plataforma{% else %}abatidos do valor das suas vendas{% endif %}</p>
+    </div>
+    <div class="stat">
+        <p class="stat-label">Vendas com cupom</p>
+        <p class="stat-value positive">R$ {{ resumo.vendas|brl }}</p>
+        <p class="stat-sub">valor dos pedidos antes do desconto</p>
+    </div>
+</div>
+
+<div class="table-wrap">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Cupom</th>
+                <th>Condições</th>
+                <th>Validade</th>
+                <th class="num">Usos</th>
+                <th class="num">Descontos</th>
+                <th>Status</th>
+                <th class="num">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cupom in cupons %}
+                <tr>
+                    <td>
+                        <span class="coupon-code-tag">{{ cupom.code }}</span>
+                        <p class="text-sm strong">{{ cupom.headline }}</p>
+                        {% if not cupom.is_public %}<span class="tag">Privado</span>{% endif %}
+                    </td>
+                    <td class="text-sm muted">{{ cupom.conditions|join:" · " }}</td>
+                    <td class="text-sm">
+                        {{ cupom.starts_at|date:"d/m/Y" }} a {% if cupom.ends_at %}{{ cupom.ends_at|date:"d/m/Y" }}{% else %}—{% endif %}
+                    </td>
+                    <td class="num">{{ cupom.used_total }}{% if cupom.usage_limit %} / {{ cupom.usage_limit }}{% endif %}</td>
+                    <td class="num">R$ {{ cupom.discount_total|brl }}</td>
+                    <td><span class="badge {{ cupom.status_class }}">{{ cupom.status_label }}</span></td>
+                    <td>
+                        <div class="table-actions">
+                            <a href="{% url 'edit_coupon' cupom.pk %}" class="btn btn-outline btn-sm">Editar</a>
+                            <form method="post" action="{% url 'toggle_coupon' cupom.pk %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-ghost btn-sm">{% if cupom.active %}Encerrar{% else %}Reativar{% endif %}</button>
+                            </form>
+                            {% if not cupom.ever_used %}
+                                <form method="post" action="{% url 'delete_coupon' cupom.pk %}" id="delete-coupon-{{ cupom.pk }}">
+                                    {% csrf_token %}
+                                    <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('delete-dialog-{{ cupom.pk }}').showModal()">Excluir</button>
+                                </form>
+                                <dialog id="delete-dialog-{{ cupom.pk }}" class="modal">
+                                    <h3 class="modal-title">Excluir cupom?</h3>
+                                    <p class="modal-text">O cupom <strong>{{ cupom.code }}</strong> será removido permanentemente.</p>
+                                    <div class="modal-actions">
+                                        <button type="button" class="btn btn-outline" onclick="document.getElementById('delete-dialog-{{ cupom.pk }}').close()">Cancelar</button>
+                                        <button type="submit" form="delete-coupon-{{ cupom.pk }}" class="btn btn-danger">Excluir</button>
+                                    </div>
+                                </dialog>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="7" class="empty">
+                        Nenhum cupom criado ainda. <a href="{% url 'create_coupon' %}" class="link">Criar o primeiro cupom</a>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -33,6 +33,7 @@
             {% if user.is_authenticated and user.is_staff %}
                 <a href="{% url 'admin_dashboard' %}" class="{% if rota == 'admin_dashboard' %}active{% endif %}">Painel</a>
                 <a href="{% url 'dispute_list' %}" class="{% if rota == 'dispute_list' or rota == 'dispute_detail' %}active{% endif %}">Disputas</a>
+                <a href="{% url 'manage_coupons' %}" class="{% if rota == 'manage_coupons' or rota == 'create_coupon' or rota == 'edit_coupon' %}active{% endif %}">Cupons</a>
             {% elif user.is_authenticated %}
                 <a href="{% url 'my_orders' %}" class="{% if rota == 'my_orders' %}active{% endif %}">Minhas compras</a>
             {% endif %}
@@ -71,6 +72,7 @@
                             {% if user.is_staff %}
                                 <a href="{% url 'admin_dashboard' %}">Painel administrativo</a>
                                 <a href="{% url 'dispute_list' %}">Disputas</a>
+                                <a href="{% url 'manage_coupons' %}">Cupons</a>
                             {% else %}
                                 <a href="{% url 'my_orders' %}">Minhas compras</a>
                             {% endif %}
@@ -78,10 +80,12 @@
                         </div>
                         {% if not user.is_staff %}
                             <a href="{% url 'wallet' %}">MegaCoins e recompensas</a>
+                            <a href="{% url 'my_coupons' %}">Meus cupons</a>
                             <hr>
                             <p class="user-dropdown-label">Vendas</p>
                             <a href="{% url 'my_products' %}">Meus anúncios</a>
                             <a href="{% url 'seller_orders' %}">Pedidos recebidos</a>
+                            <a href="{% url 'manage_coupons' %}">Cupons da loja</a>
                             <a href="{% url 'seller_dashboard' %}">Painel do vendedor</a>
                             <hr>
                         {% endif %}

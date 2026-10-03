@@ -40,6 +40,10 @@ class Order(models.Model):
     tracking_code = models.CharField(max_length=13, blank=True, verbose_name="Código de rastreio")
     coins_used = models.PositiveIntegerField(default=0, verbose_name="MegaCoins utilizadas")
     coins_discount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), verbose_name="Desconto em MegaCoins")
+    seller_coupon = models.ForeignKey('coupons.CouponRedemption', null=True, blank=True, on_delete=models.SET_NULL, related_name='seller_orders', verbose_name="Cupom da loja")
+    seller_coupon_discount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), verbose_name="Desconto do cupom da loja")
+    platform_coupon = models.ForeignKey('coupons.CouponRedemption', null=True, blank=True, on_delete=models.SET_NULL, related_name='platform_orders', verbose_name="Cupom MegaGame")
+    platform_coupon_discount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), verbose_name="Desconto do cupom MegaGame")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Criado em")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Atualizado em")
 
@@ -49,6 +53,18 @@ class Order(models.Model):
 
     def __str__(self):
         return f"Pedido #{self.pk} — {self.product.title} ({self.variant.name})"
+
+    @property
+    def sale_amount(self):
+        return self.total_price - self.seller_coupon_discount
+
+    @property
+    def platform_discount(self):
+        return self.coins_discount + self.platform_coupon_discount
+
+    @property
+    def amount_paid(self):
+        return self.sale_amount - self.platform_discount
 
 class Cart(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='cart', verbose_name="Usuário")
@@ -202,6 +218,16 @@ class PlatformConfig(models.Model):
     def get_commission_rate(cls):
         config = cls.objects.first()
         return config.commission_rate if config else Decimal('10.00')
+
+def commission_for(order, rate):
+    gross = order.sale_amount
+    commission_amount = (gross * rate / Decimal('100')).quantize(Decimal('0.01'))
+    return {
+        'rate': rate,
+        'gross_amount': gross,
+        'commission_amount': commission_amount,
+        'net_amount': gross - commission_amount,
+    }
 
 class Commission(models.Model):
     order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='commission', verbose_name="Pedido")

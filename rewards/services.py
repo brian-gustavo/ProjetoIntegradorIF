@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 from decimal import Decimal, ROUND_DOWN
 from django.db import transaction
-from django.db.models import Q, Sum
+from django.db.models import F, Q, Sum
 from django.utils import timezone
 
 from orders.models import Order, PlatformConfig
@@ -31,7 +31,10 @@ def level_info(user):
     desde = timezone.now() - timedelta(days=LEVEL_WINDOW_DAYS)
     totais = Order.objects.filter(
         buyer=user, coin_transactions__kind='PURCHASE', coin_transactions__created_at__gte=desde,
-    ).aggregate(bruto=Sum('total_price'), desconto=Sum('coins_discount'))
+    ).aggregate(
+        bruto=Sum('total_price'),
+        desconto=Sum(F('coins_discount') + F('seller_coupon_discount') + F('platform_coupon_discount')),
+    )
     gasto = (totais['bruto'] or Decimal('0')) - (totais['desconto'] or Decimal('0'))
 
     indice = max(i for i, nivel in enumerate(LEVELS) if gasto >= nivel['minimo'])
@@ -63,6 +66,10 @@ def redeem_rate(config):
 def redeemable_cap(valor, config):
     return _to_coins(valor * redeem_rate(config) / Decimal('100'))
 
+def coin_cap(order, config):
+    comissao = (order.sale_amount * config.commission_rate / Decimal('100')).quantize(Decimal('0.01'))
+    return max(0, min(redeemable_cap(order.sale_amount, config), _to_coins(comissao - order.platform_coupon_discount)))
+
 def _cashback_pending_orders(user, config, agora):
     fim_devolucao = agora - timedelta(days=config.return_window_days)
     return Order.objects.filter(buyer=user).filter(
@@ -87,7 +94,7 @@ def sync_wallet(user):
             order=order, kind='PURCHASE',
             defaults={
                 'user': user,
-                'amount': cashback_for(order.total_price - order.coins_discount, config, multiplicador),
+                'amount': cashback_for(order.amount_paid, config, multiplicador),
                 'description': f'Cashback · {order.product.title}',
             },
         )
@@ -106,7 +113,7 @@ def expected_cashback(user):
     config = PlatformConfig.load()
     multiplicador = level_info(user)['atual']['multiplicador']
     pedidos = Order.objects.filter(buyer=user, status__in=EXPECTED_CASHBACK_STATUSES).exclude(coin_transactions__kind='PURCHASE')
-    return sum(cashback_for(o.total_price - o.coins_discount, config, multiplicador) for o in pedidos)
+    return sum(cashback_for(o.amount_paid, config, multiplicador) for o in pedidos)
 
 def annotate_orders(user, orders):
     config = PlatformConfig.load()
@@ -118,12 +125,13 @@ def annotate_orders(user, orders):
         order.coins_earned = creditados.get(order.pk)
         order.coins_expected = None
         if order.coins_earned is None and order.status in EXPECTED_CASHBACK_STATUSES:
-            order.coins_expected = cashback_for(order.total_price - order.coins_discount, config, multiplicador)
+            order.coins_expected = cashback_for(order.amount_paid, config, multiplicador)
 
-def checkout_preview(user, total, subtotais):
+def checkout_preview(user, orders):
     config = PlatformConfig.load()
+    total = sum((o.amount_paid for o in orders), Decimal('0'))
     saldo = balance(user)
-    usaveis = min(saldo, sum(redeemable_cap(s, config) for s in subtotais))
+    usaveis = min(saldo, sum(coin_cap(o, config) for o in orders))
     desconto = coins_to_brl(usaveis)
     multiplicador = level_info(user)['atual']['multiplicador']
     return {
@@ -140,7 +148,7 @@ def apply_redemption(user, orders):
     with transaction.atomic():
         disponivel = balance(user)
         for order in orders:
-            coins = min(disponivel, redeemable_cap(order.total_price, config))
+            coins = min(disponivel, coin_cap(order, config))
             if coins <= 0:
                 continue
             order.coins_used = coins

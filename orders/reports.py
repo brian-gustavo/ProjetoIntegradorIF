@@ -122,7 +122,7 @@ def _secao_visao_geral(d):
     linhas = [
         ['GMV', _reais(d['gmv_atual']), _variacao(d['gmv_variacao'])],
         ['Comissão', _reais(d['comissao_periodo']), _variacao(d['comissao_variacao'])],
-        ['Comissão líquida (após MegaCoins)', _reais(d['moedas']['comissao_liquida']), _variacao(d['moedas']['comissao_liquida_variacao'])],
+        ['Comissão líquida (após MegaCoins e cupons)', _reais(d['moedas']['comissao_liquida']), _variacao(d['moedas']['comissao_liquida_variacao'])],
         ['Pedidos concluídos', str(d['pedidos_periodo']), _variacao(d['pedidos_variacao'])],
         ['Ticket médio', _reais(d['ticket_medio']), _variacao(d['ticket_medio_variacao'])],
     ]
@@ -275,6 +275,34 @@ def _secao_moedas(d):
         ]
     return [KeepTogether(elementos)]
 
+def _secao_cupons(d):
+    c = d['cupons']
+    linhas = [
+        ['Descontos em cupons MegaGame', _reais(c['plataforma']), _variacao(c['plataforma_variacao'], inverso=True)],
+        ['Cupons MegaGame sobre a comissão', _pct(c['pct_comissao']), '—'],
+        ['Descontos em cupons de lojas', _reais(c['lojas']), _variacao(c['lojas_variacao'])],
+        ['Pedidos com cupom', f'{c["pedidos_com_cupom"]} ({_pct(c["pct_pedidos_com_cupom"])})', '—'],
+        ['GMV com cupom', f'{_reais(c["gmv_com_cupom"])} ({_pct(c["pct_gmv_com_cupom"])})', '—'],
+        ['Cupons ativos agora (MegaGame / lojas)', f'{c["ativos_plataforma"]} / {c["ativos_lojas"]}', '—'],
+    ]
+    elementos = [
+        Paragraph('Cupons de desconto', SECAO),
+        Paragraph('Cupons MegaGame são custeados pela comissão da plataforma; cupons de loja são custeados pelo vendedor e reduzem a base da comissão.', NOTA),
+        _tabela(['Indicador', 'Valor', 'Variação'], linhas, [LARGURA_UTIL * 0.45, LARGURA_UTIL * 0.35, LARGURA_UTIL * 0.2], (1, 2)),
+    ]
+    if c['ranking']:
+        ranking = [
+            [Paragraph(escape(r['codigo']), CELULA), Paragraph(escape(r['origem']), CELULA), str(r['pedidos']), _reais(r['desconto']), _reais(r['gmv'])]
+            for r in c['ranking']
+        ]
+        larguras = [0.24, 0.26, 0.14, 0.18, 0.18]
+        elementos += [
+            Spacer(1, 10),
+            _tabela(['Cupons mais usados', 'Origem', 'Pedidos', 'Desconto', 'GMV'], ranking,
+                    [LARGURA_UTIL * l for l in larguras], (2, 3, 4)),
+        ]
+    return [KeepTogether(elementos)]
+
 def build_admin_report_pdf(data, periodo):
     buffer = BytesIO()
     doc = SimpleDocTemplate(
@@ -292,7 +320,7 @@ def build_admin_report_pdf(data, periodo):
             f'Gerado em {agora:%d/%m/%Y às %H:%M}', SUBTITULO,
         ),
     ]
-    for secao in (_secao_visao_geral, _secao_ranking, _secao_categorias, _secao_saude, _secao_compradores, _secao_moedas):
+    for secao in (_secao_visao_geral, _secao_ranking, _secao_categorias, _secao_saude, _secao_compradores, _secao_moedas, _secao_cupons):
         elementos += secao(data)
 
     doc.build(elementos, onFirstPage=_rodape, onLaterPages=_rodape)
