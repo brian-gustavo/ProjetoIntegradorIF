@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load catalog_extras %}
+{% load catalog_extras rewards_extras %}
 
 {% block title %}Minhas compras — MegaGame{% endblock %}
 
@@ -23,10 +23,16 @@
                     <span>Vendedor: <strong>{{ order.product.seller.username }}</strong></span>
                     {% if order.pickup %}<span class="text-success">Retirada em mãos</span>{% endif %}
                 </div>
+                {% if order.coins_earned %}
+                    <span class="coin-tag">{% include 'rewards/_coin_icon.html' with size=14 %} +{{ order.coins_earned|coins }} MegaCoins recebidas</span>
+                {% elif order.coins_expected %}
+                    <span class="coin-tag coin-tag-pending">{% include 'rewards/_coin_icon.html' with size=14 %} +{{ order.coins_expected|coins }} MegaCoins previstas</span>
+                {% endif %}
             </div>
             <div class="order-card-side">
                 {% include 'orders/_status_badge.html' %}
                 <span class="order-card-price price">R$ {{ order.total_price|brl }}</span>
+                {% if order.coins_used %}<span class="text-sm muted">−R$ {{ order.coins_discount|brl }} em MegaCoins</span>{% endif %}
             </div>
         </div>
 

@@ -15,6 +15,7 @@ urlpatterns = [
     path('anuncios/novo/', create_product, name='create_product'),
     path('anuncios/<int:product_id>/', product_detail, name='product_detail'),
     path('', include('orders.urls')),
+    path('', include('rewards.urls')),
     path('categorias/<slug:slug>/', category_detail, name='category_detail'),
     path('categorias/', category_list, name='category_list'),
     path('accounts/profile/', profile_settings, name='profile_settings'),

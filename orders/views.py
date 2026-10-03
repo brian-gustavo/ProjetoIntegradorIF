@@ -19,6 +19,8 @@ from .reports import build_admin_report_pdf
 from .tracking import simulate_tracking
 from accounts.models import MercadoPagoAccount
 from catalog.models import Product, ProductVariant
+from rewards.models import CoinTransaction
+from rewards.services import annotate_orders, apply_redemption, checkout_preview, coins_to_brl, sync_wallet
 
 @login_required
 def add_to_cart(request, product_id):
@@ -104,15 +106,20 @@ def checkout(request):
                 pickup=pickup,
             )
             new_orders.append(order)
+        if request.POST.get('use_coins') == '1':
+            apply_redemption(request.user, new_orders)
         cart.items.all().delete()
         request.session['mp_pending_orders'] = [o.pk for o in new_orders]
         return redirect('mp_pay_next')
 
     pickup_items = [item for item in items if item.product.accepts_pickup]
+    total = sum(item.subtotal for item in items)
+    sync_wallet(request.user)
     return render(request, 'orders/checkout.html', {
         'items': items,
-        'total': sum(item.subtotal for item in items),
+        'total': total,
         'pickup_items': pickup_items,
+        'moedas': checkout_preview(request.user, total, [item.subtotal for item in items]),
     })
 
 @login_required
@@ -161,6 +168,9 @@ def my_orders(request):
             order.dispute_closes_at = _dispute_closes_at(order, config)
             order.can_open_dispute = timezone.now() >= order.dispute_opens_at
         order.tracking = simulate_tracking(order)
+
+    sync_wallet(request.user)
+    annotate_orders(request.user, orders)
 
     return render(request, 'orders/my_orders.html', {'orders': orders})
 
@@ -627,6 +637,59 @@ def _compradores(commissions, inicio, primeiras_compras):
         'pct_gmv_recorrentes': _pct(recorrentes['gmv'], gmv_total),
     }
 
+COIN_EMISSION_KINDS = ('PURCHASE', 'REVIEW', 'CHECKIN', 'ADJUST')
+
+def _programa_moedas(periodo, commissions_periodo, commissions_anterior, comissao_periodo, comissao_anterior, pedidos_periodo):
+    def descontos(qs):
+        return qs.aggregate(total=Sum('order__coins_discount'))['total'] or Decimal('0')
+
+    desconto_atual = descontos(commissions_periodo)
+    desconto_anterior = descontos(commissions_anterior)
+    liquida_atual = comissao_periodo - desconto_atual
+    liquida_anterior = comissao_anterior - desconto_anterior
+    pedidos_com_moedas = commissions_periodo.filter(order__coins_used__gt=0).count()
+
+    movimentos = CoinTransaction.objects.filter(
+        created_at__date__gte=periodo['inicio'], created_at__date__lte=periodo['fim']
+    )
+    nomes = dict(CoinTransaction.KIND_CHOICES)
+    por_origem = list(
+        movimentos.filter(kind__in=COIN_EMISSION_KINDS, amount__gt=0)
+        .values('kind').annotate(moedas=Sum('amount')).order_by('-moedas')
+    )
+    emitidas = sum(o['moedas'] for o in por_origem)
+    origens = [
+        {
+            'origem': nomes[o['kind']],
+            'moedas': o['moedas'],
+            'valor': coins_to_brl(o['moedas']),
+            'participacao': _pct(o['moedas'], emitidas),
+        }
+        for o in por_origem
+    ]
+
+    resgatadas = -(movimentos.filter(kind='REDEEM').aggregate(total=Sum('amount'))['total'] or 0)
+    devolvidas = movimentos.filter(kind='REFUND').aggregate(total=Sum('amount'))['total'] or 0
+    em_circulacao = CoinTransaction.objects.aggregate(total=Sum('amount'))['total'] or 0
+
+    return {
+        'descontos': desconto_atual,
+        'descontos_variacao': _variacao(desconto_atual, desconto_anterior),
+        'descontos_historico': Commission.objects.aggregate(total=Sum('order__coins_discount'))['total'] or Decimal('0'),
+        'comissao_liquida': liquida_atual,
+        'comissao_liquida_variacao': _variacao(liquida_atual, liquida_anterior),
+        'pct_comissao': _pct(desconto_atual, comissao_periodo),
+        'pedidos_com_moedas': pedidos_com_moedas,
+        'pct_pedidos_com_moedas': _pct(pedidos_com_moedas, pedidos_periodo),
+        'emitidas': emitidas,
+        'emitidas_valor': coins_to_brl(emitidas),
+        'origens': origens,
+        'resgatadas_liquidas': resgatadas - devolvidas,
+        'resgatadas_liquidas_valor': coins_to_brl(resgatadas - devolvidas),
+        'em_circulacao': em_circulacao,
+        'em_circulacao_valor': coins_to_brl(em_circulacao),
+    }
+
 def _build_report_data(periodo):
     _close_expired_return_requests()
     total_vendas = Order.objects.filter(
@@ -724,6 +787,10 @@ def _build_report_data(periodo):
         'saude': saude,
         'disputas_abertas_agora': Dispute.objects.filter(status='OPEN').count(),
         'compradores': compradores,
+        'moedas': _programa_moedas(
+            periodo, commissions_periodo, commissions_anterior,
+            comissao_periodo, comissao_periodo_anterior, pedidos_periodo,
+        ),
     }
 
 @login_required
@@ -1055,11 +1122,17 @@ def _create_mp_preference(seller, seller_orders, mp_account, request):
     rate = PlatformConfig.get_commission_rate()
     total = sum(o.total_price for o in seller_orders)
     marketplace_fee = (total * rate / Decimal('100')).quantize(Decimal('0.01'))
+    marketplace_fee = max(marketplace_fee - sum(o.coins_discount for o in seller_orders), Decimal('0'))
 
     items = [{
         'title': f'{o.product.title} — {o.variant.name}',
         'quantity': o.quantity,
         'unit_price': float(o.variant.price),
+        'currency_id': 'BRL',
+    } if not o.coins_used else {
+        'title': f'{o.product.title} — {o.variant.name} ({o.quantity}×, com desconto em MegaCoins)',
+        'quantity': 1,
+        'unit_price': float(o.total_price - o.coins_discount),
         'currency_id': 'BRL',
     } for o in seller_orders]
 

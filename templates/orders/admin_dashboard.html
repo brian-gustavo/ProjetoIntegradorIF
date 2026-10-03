@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load catalog_extras %}
+{% load catalog_extras rewards_extras %}
 
 {% block title %}Painel administrativo — MegaGame{% endblock %}
 
@@ -24,6 +24,7 @@
     <a href="#categorias">Categorias</a>
     <a href="#saude">Saúde operacional</a>
     <a href="#compradores">Compradores</a>
+    <a href="#megacoins">MegaCoins</a>
     <a href="#configuracoes">Configurações</a>
 </nav>
 
@@ -52,6 +53,7 @@
         <div class="stat stat-hero">
             <p class="stat-label">Comissão no período</p>
             <p class="stat-value positive">R$ {{ comissao_periodo|brl }}</p>
+            {% if moedas.descontos %}<p class="stat-sub">R$ {{ moedas.comissao_liquida|brl }} após descontos em MegaCoins</p>{% endif %}
             {% include 'orders/_delta.html' with valor=comissao_variacao %}
         </div>
         <div class="stat stat-hero">
@@ -335,6 +337,77 @@
         </div>
     </div>
     {% endif %}
+    {% endwith %}
+</section>
+
+<section class="dash-section" id="megacoins">
+    <h2 class="section-title">Programa de MegaCoins</h2>
+    <p class="section-note">Os descontos em MegaCoins são custeados pela plataforma e abatidos da comissão; o vendedor recebe o valor integral. 100 moedas = R$ 1,00.</p>
+    {% with m=moedas %}
+    <div class="stat-grid">
+        <div class="stat">
+            <p class="stat-label">Descontos concedidos</p>
+            <p class="stat-value negative">−R$ {{ m.descontos|brl }}</p>
+            <p class="stat-sub">{{ m.pct_comissao|floatformat:1 }}% da comissão do período</p>
+            {% include 'orders/_delta.html' with valor=m.descontos_variacao inverso=True %}
+        </div>
+        <div class="stat">
+            <p class="stat-label">Comissão líquida</p>
+            <p class="stat-value positive">R$ {{ m.comissao_liquida|brl }}</p>
+            <p class="stat-sub">comissão menos descontos em MegaCoins</p>
+            {% include 'orders/_delta.html' with valor=m.comissao_liquida_variacao %}
+        </div>
+        <div class="stat">
+            <p class="stat-label">Pedidos com MegaCoins</p>
+            <p class="stat-value">{{ m.pedidos_com_moedas }}</p>
+            <p class="stat-sub">{{ m.pct_pedidos_com_moedas|floatformat:1 }}% dos pedidos concluídos</p>
+        </div>
+        <div class="stat">
+            <p class="stat-label">Saldo em circulação</p>
+            <p class="stat-value">R$ {{ m.em_circulacao_valor|brl }}</p>
+            <p class="stat-sub">{{ m.em_circulacao|coins }} moedas ainda não usadas · custo futuro potencial</p>
+        </div>
+    </div>
+    <div class="dash-split">
+        <div class="card">
+            <dl>
+                <div class="kv"><dt>Moedas emitidas no período</dt><dd class="strong">{{ m.emitidas|coins }} (R$ {{ m.emitidas_valor|brl }})</dd></div>
+                <div class="kv"><dt>Moedas usadas no período</dt><dd class="strong">{{ m.resgatadas_liquidas|coins }} (R$ {{ m.resgatadas_liquidas_valor|brl }})</dd></div>
+                <div class="kv"><dt>Descontos concedidos (histórico)</dt><dd class="strong">R$ {{ m.descontos_historico|brl }}</dd></div>
+            </dl>
+        </div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Origem das moedas emitidas</th>
+                        <th class="num">Moedas</th>
+                        <th class="num">Equivalente</th>
+                        <th>Participação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for o in m.origens %}
+                        <tr>
+                            <td class="strong">{{ o.origem }}</td>
+                            <td class="num">{{ o.moedas|coins }}</td>
+                            <td class="num">R$ {{ o.valor|brl }}</td>
+                            <td>
+                                <div class="share">
+                                    <div class="share-bar"><div class="share-bar-fill" data-pct="{{ o.participacao|stringformat:'.2f' }}"></div></div>
+                                    <span>{{ o.participacao|floatformat:1 }}%</span>
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="4" class="empty">Nenhuma moeda emitida no período</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
     {% endwith %}
 </section>
 

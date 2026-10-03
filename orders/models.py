@@ -38,6 +38,8 @@ class Order(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING', verbose_name="Status")
     pickup = models.BooleanField(default=False, verbose_name="Retirada em mãos")
     tracking_code = models.CharField(max_length=13, blank=True, verbose_name="Código de rastreio")
+    coins_used = models.PositiveIntegerField(default=0, verbose_name="MegaCoins utilizadas")
+    coins_discount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), verbose_name="Desconto em MegaCoins")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Criado em")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Atualizado em")
 
@@ -153,8 +155,30 @@ class PlatformConfig(models.Model):
         Category,
         blank=True,
         related_name='+',
-        help_text="Cada categoria marcada vira uma prateleira na página inicial. Se nenhuma for marcada, são exibidas as 3 categorias com mais anúncios.",
+        help_text="Cada categoria marcada vira uma prateleira na página inicial; se nenhuma for marcada, são exibidas as 3 categorias com mais anúncios",
         verbose_name="Categorias em destaque na página inicial"
+    )
+    coins_cashback_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal('1.00'),
+        validators=[MinValueValidator(0), MaxValueValidator(20)],
+        help_text="Percentual do valor pago devolvido em MegaCoins (100 moedas = R$ 1,00), antes do multiplicador de nível do comprador",
+        verbose_name="Cashback em MegaCoins (%)"
+    )
+    coins_max_redeem_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal('10.00'),
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Desconto máximo por pedido; nunca ultrapassa a taxa de comissão, já que o desconto é custeado pela plataforma e o vendedor recebe o valor integral",
+        verbose_name="Limite de uso de MegaCoins por pedido (%)"
+    )
+    coins_review_reward = models.PositiveIntegerField(
+        default=20,
+        validators=[MaxValueValidator(1000)],
+        help_text="Concedidas uma única vez por produto ou vendedor avaliado",
+        verbose_name="MegaCoins por avaliação"
     )
 
     class Meta:

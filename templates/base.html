@@ -1,5 +1,5 @@
 <!-- Este arquivo HTML não é uma página por si só, e sim o template que serve de base pras páginas -->
-{% load static %}
+{% load static rewards_extras %}
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -43,6 +43,10 @@
                 <a href="{% if user.is_authenticated %}{% url 'create_product' %}{% else %}{% url 'login' %}{% endif %}" class="btn btn-accent btn-sm">Anunciar</a>
             {% endif %}
             {% if user.is_authenticated and not user.is_staff %}
+                <a href="{% url 'wallet' %}" class="coin-pill{% if rota == 'wallet' %} active{% endif %}" title="Minhas MegaCoins" aria-label="MegaCoins: {{ coin_balance }}">
+                    {% include 'rewards/_coin_icon.html' %}
+                    <span>{{ coin_balance|coins }}</span>
+                </a>
                 <a href="{% url 'cart_detail' %}" class="icon-btn cart-btn" aria-label="Carrinho{% if cart_count %} ({{ cart_count }} ite{{ cart_count|pluralize:'m,ns' }}){% endif %}" title="Carrinho">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
@@ -73,6 +77,8 @@
                             <hr>
                         </div>
                         {% if not user.is_staff %}
+                            <a href="{% url 'wallet' %}">MegaCoins e recompensas</a>
+                            <hr>
                             <p class="user-dropdown-label">Vendas</p>
                             <a href="{% url 'my_products' %}">Meus anúncios</a>
                             <a href="{% url 'seller_orders' %}">Pedidos recebidos</a>

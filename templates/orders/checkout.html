@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load catalog_extras %}
+{% load catalog_extras rewards_extras %}
 
 {% block title %}Finalizar pedido — MegaGame{% endblock %}
 
@@ -50,10 +50,23 @@
 
         <aside class="summary card">
             <h2 class="card-title">Resumo do pedido</h2>
+            {% if moedas.usaveis %}
+                <label class="coins-option">
+                    <input type="checkbox" name="use_coins" value="1" id="use-coins" checked>
+                    {% include 'rewards/_coin_icon.html' with size=22 %}
+                    <span>
+                        Usar <strong>{{ moedas.usaveis|coins }} MegaCoins</strong>
+                        <small>−R$ {{ moedas.desconto|brl }} · saldo de {{ moedas.saldo|coins }} moedas, limite de {{ moedas.taxa_resgate|floatformat:"-2" }}% por pedido</small>
+                    </span>
+                </label>
+            {% endif %}
             <div class="summary-total">
                 <span>Total</span>
-                <span class="price">R$ {{ total|brl }}</span>
+                <span class="price" data-total>R$ {% if moedas.usaveis %}{{ moedas.total_com_moedas|brl }}{% else %}{{ total|brl }}{% endif %}</span>
             </div>
+            {% if moedas.cashback_previsto %}
+                <p class="coins-earn">{% include 'rewards/_coin_icon.html' with size=16 %} Você ganha até <strong>{{ moedas.cashback_previsto|coins }} MegaCoins</strong> com esta compra</p>
+            {% endif %}
             <button type="button" class="btn btn-primary btn-lg btn-block"
                     onclick="document.getElementById('confirm-dialog').showModal()">
                 Confirmar pedido
@@ -65,10 +78,23 @@
 
 <dialog id="confirm-dialog" class="modal">
     <h3 class="modal-title">Confirmar pedido?</h3>
-    <p class="modal-text">Total: <strong>R$ {{ total|brl }}</strong></p>
+    <p class="modal-text">Total: <strong data-total>R$ {% if moedas.usaveis %}{{ moedas.total_com_moedas|brl }}{% else %}{{ total|brl }}{% endif %}</strong></p>
     <div class="modal-actions">
         <button type="button" class="btn btn-outline" onclick="document.getElementById('confirm-dialog').close()">Cancelar</button>
         <button type="submit" form="checkout-form" class="btn btn-primary">Confirmar</button>
     </div>
 </dialog>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+{% if moedas.usaveis %}
+<script>
+    const useCoins = document.getElementById('use-coins');
+    useCoins.addEventListener('change', () => {
+        const texto = useCoins.checked ? 'R$ {{ moedas.total_com_moedas|brl }}' : 'R$ {{ total|brl }}';
+        document.querySelectorAll('[data-total]').forEach(el => el.textContent = texto);
+    });
+</script>
+{% endif %}
 {% endblock %}

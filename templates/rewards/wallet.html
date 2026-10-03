@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% load catalog_extras rewards_extras %}
+
+{% block title %}MegaCoins — MegaGame{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">MegaCoins</h1>
+        <p class="page-sub">Ganhe moedas comprando, avaliando e fazendo check-in, e use como desconto nas próximas compras</p>
+    </div>
+</div>
+
+<div class="stat-grid">
+    <div class="stat stat-hero">
+        <p class="stat-label">Saldo disponível</p>
+        <p class="stat-value coin-value">{% include 'rewards/_coin_icon.html' with size=26 %}{{ saldo|coins }}</p>
+        <p class="stat-sub">equivale a R$ {{ saldo_brl|brl }} em descontos</p>
+    </div>
+    <div class="stat stat-hero">
+        <p class="stat-label">A receber</p>
+        <p class="stat-value">{{ previstas|coins }}</p>
+        <p class="stat-sub">de pedidos em andamento, liberadas ao fim do prazo de devolução</p>
+    </div>
+    <div class="stat stat-hero">
+        <p class="stat-label">Seu nível</p>
+        <p class="stat-value"><span class="level-name level-{{ nivel.indice }}">{{ nivel.atual.nome }}</span></p>
+        <p class="stat-sub">cashback {{ nivel.atual.multiplicador|floatformat:"-2" }}× nas compras</p>
+    </div>
+</div>
+
+<div class="wallet-grid">
+    <section class="card">
+        <div class="card-head">
+            <h2 class="card-title">Check-in diário</h2>
+            {% if checkin.sequencia %}<span class="tag">Sequência de {{ checkin.sequencia }} dia{{ checkin.sequencia|pluralize }}</span>{% endif %}
+        </div>
+        <ol class="checkin-strip">
+            {% for dia in checkin.dias %}
+                <li class="checkin-day{% if dia.feito %} is-done{% endif %}{% if dia.hoje %} is-today{% endif %}">
+                    <span class="checkin-label">Dia {{ dia.numero }}</span>
+                    {% include 'rewards/_coin_icon.html' with size=24 %}
+                    <strong>+{{ dia.moedas }}</strong>
+                </li>
+            {% endfor %}
+        </ol>
+        <form method="post" action="{% url 'coin_checkin' %}" class="checkin-action">
+            {% csrf_token %}
+            {% if checkin.feito_hoje %}
+                <button type="button" class="btn btn-outline btn-block" disabled>Check-in de hoje feito · volte amanhã</button>
+            {% else %}
+                <button type="submit" class="btn btn-accent btn-block">Fazer check-in e ganhar {{ checkin.recompensa }} moedas</button>
+            {% endif %}
+            <p class="help text-center">Faça check-in todos os dias para avançar na sequência. Se pular um dia, ela recomeça.</p>
+        </form>
+    </section>
+
+    <section class="card">
+        <div class="card-head">
+            <h2 class="card-title">Progresso de nível</h2>
+        </div>
+        <ol class="level-steps">
+            {% for n in nivel.niveis %}
+                <li class="{% if forloop.counter0 <= nivel.indice %}is-reached{% endif %}">
+                    <strong>{{ n.nome }}</strong>
+                    <span>{{ n.multiplicador|floatformat:"-2" }}×</span>
+                </li>
+            {% endfor %}
+        </ol>
+        <progress class="level-track" value="{{ nivel.progresso }}" max="100" aria-label="Progresso até o próximo nível"></progress>
+        {% if nivel.proximo %}
+            <p class="help">Faltam <strong class="strong">R$ {{ nivel.faltam|brl }}</strong> em compras concluídas para chegar ao nível {{ nivel.proximo.nome }}.</p>
+        {% else %}
+            <p class="help">Você está no nível máximo. Aproveite o cashback em dobro!</p>
+        {% endif %}
+        <p class="help">O nível considera o valor das compras concluídas nos últimos 12 meses.</p>
+    </section>
+</div>
+
+<h2 class="section-title">Como funciona</h2>
+<div class="how-grid">
+    <div class="card how-card">
+        <strong>Compre</strong>
+        <p>Receba {{ config.coins_cashback_rate|floatformat:"-2" }}% do valor pago de volta em moedas, multiplicado pelo seu nível. As moedas são liberadas quando o pedido é concluído ou o prazo de devolução termina.</p>
+    </div>
+    <div class="card how-card">
+        <strong>Avalie</strong>
+        <p>Ganhe {{ config.coins_review_reward }} moedas na primeira avaliação de cada produto e de cada vendedor.</p>
+    </div>
+    <div class="card how-card">
+        <strong>Faça check-in</strong>
+        <p>Até {{ checkin.total_semana }} moedas a cada 7 dias seguidos de check-in, com bônus no sétimo dia.</p>
+    </div>
+    <div class="card how-card">
+        <strong>Economize</strong>
+        <p>Cada 100 moedas valem R$ 1,00 de desconto no checkout, até {{ taxa_resgate|floatformat:"-2" }}% do valor de cada pedido. Se o pedido for cancelado ou devolvido, as moedas voltam para você.</p>
+    </div>
+</div>
+
+<h2 class="section-title">Histórico</h2>
+<div class="table-wrap">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Descrição</th>
+                <th>Tipo</th>
+                <th class="num">Moedas</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in historico %}
+                <tr>
+                    <td>{{ t.created_at|date:"d/m/Y H:i" }}</td>
+                    <td>{{ t.description }}</td>
+                    <td class="muted">{{ t.get_kind_display }}</td>
+                    <td class="num strong {% if t.amount > 0 %}text-success{% else %}text-danger{% endif %}">{{ t.amount|signed_coins }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="4" class="empty">Nenhuma movimentação ainda. Que tal começar pelo check-in de hoje?</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% include '_pagination.html' with page=historico %}
+{% endblock %}

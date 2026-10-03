@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     'catalog',
     'accounts',
     'orders',
+    'rewards',
 ]
 
 MIDDLEWARE = [
@@ -59,6 +60,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'orders.context_processors.cart_count',
+                'rewards.context_processors.coin_balance',
             ],
         },
     },

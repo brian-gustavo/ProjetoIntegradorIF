@@ -1,3 +1,4 @@
+{% load rewards_extras %}
 <div class="narrow-sm">
     <div class="page-head">
         <div>
@@ -9,6 +10,14 @@
     <div class="card">
         {% if editing %}
             <div class="alert alert-warning mb-6">Uma avaliação só pode ser editada uma vez.</div>
+        {% else %}
+            {% review_reward as recompensa %}
+            {% if recompensa %}
+                <div class="coin-hint mb-6">
+                    {% include 'rewards/_coin_icon.html' with size=20 %}
+                    <span>Ganhe <strong>{{ recompensa|coins }} MegaCoins</strong> ao enviar esta avaliação</span>
+                </div>
+            {% endif %}
         {% endif %}
         <form method="post" id="review-form" novalidate>
             {% csrf_token %}

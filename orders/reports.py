@@ -12,6 +12,7 @@ from reportlab.platypus import KeepTogether, Paragraph, SimpleDocTemplate, Space
 from xml.sax.saxutils import escape
 
 from catalog.templatetags.catalog_extras import brl
+from rewards.templatetags.rewards_extras import coins
 
 VERDE = colors.HexColor('#22c55e')
 PRETO = colors.HexColor('#0a0a0a')
@@ -121,6 +122,7 @@ def _secao_visao_geral(d):
     linhas = [
         ['GMV', _reais(d['gmv_atual']), _variacao(d['gmv_variacao'])],
         ['Comissão', _reais(d['comissao_periodo']), _variacao(d['comissao_variacao'])],
+        ['Comissão líquida (após MegaCoins)', _reais(d['moedas']['comissao_liquida']), _variacao(d['moedas']['comissao_liquida_variacao'])],
         ['Pedidos concluídos', str(d['pedidos_periodo']), _variacao(d['pedidos_variacao'])],
         ['Ticket médio', _reais(d['ticket_medio']), _variacao(d['ticket_medio_variacao'])],
     ]
@@ -247,6 +249,32 @@ def _secao_compradores(d):
                 [LARGURA_UTIL * 0.5, LARGURA_UTIL * 0.3, LARGURA_UTIL * 0.2], (1, 2)),
     ])]
 
+def _secao_moedas(d):
+    m = d['moedas']
+    linhas = [
+        ['Descontos concedidos', _reais(m['descontos']), _variacao(m['descontos_variacao'], inverso=True)],
+        ['Descontos sobre a comissão', _pct(m['pct_comissao']), '—'],
+        ['Comissão líquida', _reais(m['comissao_liquida']), _variacao(m['comissao_liquida_variacao'])],
+        ['Pedidos com MegaCoins', f'{m["pedidos_com_moedas"]} ({_pct(m["pct_pedidos_com_moedas"])})', '—'],
+        ['Moedas emitidas', f'{coins(m["emitidas"])} ({_reais(m["emitidas_valor"])})', '—'],
+        ['Moedas usadas', f'{coins(m["resgatadas_liquidas"])} ({_reais(m["resgatadas_liquidas_valor"])})', '—'],
+        ['Saldo em circulação (agora)', f'{coins(m["em_circulacao"])} ({_reais(m["em_circulacao_valor"])})', '—'],
+        ['Descontos concedidos (histórico)', _reais(m['descontos_historico']), '—'],
+    ]
+    elementos = [
+        Paragraph('Programa de MegaCoins', SECAO),
+        Paragraph('Os descontos em MegaCoins são custeados pela plataforma e abatidos da comissão; o vendedor recebe o valor integral. 100 moedas = R$ 1,00.', NOTA),
+        _tabela(['Indicador', 'Valor', 'Variação'], linhas, [LARGURA_UTIL * 0.45, LARGURA_UTIL * 0.35, LARGURA_UTIL * 0.2], (1, 2)),
+    ]
+    if m['origens']:
+        origens = [[o['origem'], coins(o['moedas']), _reais(o['valor']), _pct(o['participacao'])] for o in m['origens']]
+        elementos += [
+            Spacer(1, 10),
+            _tabela(['Origem das moedas emitidas', 'Moedas', 'Equivalente', 'Particip.'], origens,
+                    [LARGURA_UTIL * 0.4, LARGURA_UTIL * 0.2, LARGURA_UTIL * 0.2, LARGURA_UTIL * 0.2], (1, 2, 3)),
+        ]
+    return [KeepTogether(elementos)]
+
 def build_admin_report_pdf(data, periodo):
     buffer = BytesIO()
     doc = SimpleDocTemplate(
@@ -264,7 +292,7 @@ def build_admin_report_pdf(data, periodo):
             f'Gerado em {agora:%d/%m/%Y às %H:%M}', SUBTITULO,
         ),
     ]
-    for secao in (_secao_visao_geral, _secao_ranking, _secao_categorias, _secao_saude, _secao_compradores):
+    for secao in (_secao_visao_geral, _secao_ranking, _secao_categorias, _secao_saude, _secao_compradores, _secao_moedas):
         elementos += secao(data)
 
     doc.build(elementos, onFirstPage=_rodape, onLaterPages=_rodape)
