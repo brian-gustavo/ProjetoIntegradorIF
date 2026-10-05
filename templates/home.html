@@ -16,14 +16,6 @@
         </div>
     </div>
 {% else %}
-    {% if categorias %}
-        <nav class="category-strip" aria-label="Categorias">
-            {% for cat in categorias %}
-                <a href="{% url 'category_detail' cat.slug %}" class="chip">{{ cat.name }}</a>
-            {% endfor %}
-        </nav>
-    {% endif %}
-
     {% for prateleira in prateleiras %}
         <section class="card shelf" aria-labelledby="shelf-{{ forloop.counter }}">
             <div class="shelf-head">

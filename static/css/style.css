@@ -938,15 +938,6 @@ dialog.modal::backdrop {
     flex: 1;
 }
 
-.category-strip {
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    padding-bottom: 4px;
-    margin-bottom: 28px;
-    scrollbar-width: thin;
-}
-
 .chip {
     display: inline-flex;
     align-items: center;

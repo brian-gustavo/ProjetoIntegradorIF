@@ -214,7 +214,6 @@ def _build_filter_context(request, base_qs):
 
 def home(request):
     close_expired_auctions()
-    categorias = Category.objects.all()
     query = request.GET.get('q', '').strip()
 
     base_qs = _annotate_products(
@@ -223,7 +222,6 @@ def home(request):
 
     if not query:
         return render(request, 'home.html', {
-            'categorias': categorias,
             'prateleiras': _build_shelves(base_qs),
         })
 
@@ -235,7 +233,6 @@ def home(request):
     produtos = paginator.get_page(request.GET.get('page'))
 
     return render(request, 'home.html', {
-        'categorias': categorias,
         'produtos': produtos,
         'query': query,
         'filtros': filtros,
