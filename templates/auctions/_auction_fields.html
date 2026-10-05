@@ -1,0 +1,18 @@
+{% if form.non_field_errors %}<div class="alert alert-danger mb-3">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+{% for field in form %}
+    <div class="form-group">
+        {% if field.name == 'duration_days' %}
+            <p class="field-label">{{ field.label }}</p>
+            <div class="radio-cards">
+                {% for radio in field %}
+                    <label class="radio-card">{{ radio.tag }} {{ radio.choice_label }}</label>
+                {% endfor %}
+            </div>
+        {% else %}
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+        {% endif %}
+        {% if field.help_text %}<p class="help">{{ field.help_text }}</p>{% endif %}
+        {{ field.errors }}
+    </div>
+{% endfor %}

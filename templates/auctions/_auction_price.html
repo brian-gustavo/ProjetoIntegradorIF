@@ -1,0 +1,40 @@
+{% load catalog_extras auction_extras %}
+<div class="auction-price" id="leilao">
+    <p class="price-from">
+        {% if auction.status == 'SOLD' %}
+            {% if auction.bought_now %}Vendido pelo Comprar agora{% else %}Lance vencedor{% endif %}
+        {% elif auction.bid_count %}
+            {% if auction.is_open %}Lance atual{% else %}Último lance{% endif %}
+        {% else %}
+            Lance inicial
+        {% endif %}
+    </p>
+    <p class="buybox-price price">R$ {{ auction.current_price|brl }}</p>
+
+    <p class="auction-meta">
+        <a href="{% url 'bid_history' product.pk %}" class="link">{{ auction.bid_count }} lance{{ auction.bid_count|pluralize }}</a>
+        {% if bidders %}<span>{{ bidders }} participante{{ bidders|pluralize }}</span>{% endif %}
+        {% if auction.has_reserve and auction.status != 'SOLD' %}
+            <span class="{% if auction.reserve_met %}reserve-met{% else %}reserve-pending{% endif %}">Preço de reserva {% if auction.reserve_met %}atingido{% else %}não atingido{% endif %}</span>
+        {% endif %}
+    </p>
+
+    {% if auction.is_open %}
+        <div class="auction-clock{% if auction.ends_at|ends_soon %} is-urgent{% endif %}">
+            <span class="auction-clock-label">Termina em</span>
+            <strong data-countdown="{{ auction.ends_at|date:'c' }}" data-reload-on-end>{{ auction.ends_at|time_left }}</strong>
+            <span class="auction-clock-date">{{ auction.ends_at|date:"l, d/m \à\s H:i" }}</span>
+        </div>
+    {% else %}
+        <div class="auction-ended">
+            <strong>Leilão encerrado</strong>
+            <span>
+                {{ auction.closed_at|date:"d/m/Y \à\s H:i" }}
+                {% if auction.status == 'SOLD' and not is_winner %} · arrematado por {{ auction.winner|masked }}{% endif %}
+                {% if auction.status == 'UNSOLD' %}
+                    · {% if auction.ended_early %}encerrado pelo vendedor{% elif auction.bid_count %}reserva não atingida{% else %}sem lances{% endif %}
+                {% endif %}
+            </span>
+        </div>
+    {% endif %}
+</div>

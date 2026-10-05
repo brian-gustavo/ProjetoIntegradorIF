@@ -1,0 +1,18 @@
+{% load catalog_extras %}
+<div class="alert alert-success auction-status">
+    <strong>Você recebeu uma oferta de segunda chance!</strong>
+    O vendedor oferece este item a você por R$ {{ oferta.price|brl }}, o seu lance máximo. A oferta vale até {{ oferta.expires_at|date:"d/m/Y \à\s H:i" }}.
+</div>
+<div class="offer-actions">
+    <form method="post" action="{% url 'respond_offer' oferta.pk %}" id="decline-offer-{{ oferta.pk }}">
+        {% csrf_token %}
+        <input type="hidden" name="acao" value="recusar">
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <button type="submit" class="btn btn-ghost btn-sm">Recusar</button>
+    </form>
+    <form method="post" action="{% url 'respond_offer' oferta.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="acao" value="aceitar">
+        <button type="submit" class="btn btn-primary btn-sm">Aceitar e pagar R$ {{ oferta.price|brl }}</button>
+    </form>
+</div>

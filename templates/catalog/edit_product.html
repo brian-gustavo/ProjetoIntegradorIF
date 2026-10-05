@@ -63,23 +63,33 @@
             <p class="muted text-sm">Limite de 5 imagens atingido.</p>
         {% endif %}
 
-        <h2 class="form-section">Variações</h2>
-        {{ variant_formset.management_form }}
-        {% if variant_formset.non_form_errors %}
-            <ul class="errorlist mb-3">
-                {% for error in variant_formset.non_form_errors %}
-                    <li>{{ error }}</li>
+        {% if auction %}
+            <h2 class="form-section">Leilão</h2>
+            {% if auction_form.locked %}
+                <div class="alert alert-info mb-3">
+                    {% if auction.status == 'ACTIVE' %}Este leilão já recebeu lances, então as condições de venda não podem mais ser alteradas.{% else %}Este leilão já foi encerrado.{% endif %}
+                </div>
+            {% endif %}
+            {% include 'auctions/_auction_fields.html' with form=auction_form %}
+        {% else %}
+            <h2 class="form-section">Variações</h2>
+            {{ variant_formset.management_form }}
+            {% if variant_formset.non_form_errors %}
+                <ul class="errorlist mb-3">
+                    {% for error in variant_formset.non_form_errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+
+            <div id="variant-list">
+                {% for form in variant_formset %}
+                    {% include 'catalog/_variant_form.html' %}
                 {% endfor %}
-            </ul>
+            </div>
+
+            <button type="button" onclick="addVariant()" class="btn btn-outline btn-block">+ Adicionar variação</button>
         {% endif %}
-
-        <div id="variant-list">
-            {% for form in variant_formset %}
-                {% include 'catalog/_variant_form.html' %}
-            {% endfor %}
-        </div>
-
-        <button type="button" onclick="addVariant()" class="btn btn-outline btn-block">+ Adicionar variação</button>
 
         <div class="form-footer-actions">
             <a href="{% url 'my_products' %}" class="btn btn-ghost">Cancelar</a>

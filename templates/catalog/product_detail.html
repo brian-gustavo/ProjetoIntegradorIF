@@ -72,18 +72,25 @@
                 <span class="rating">{{ product_rating }} <span class="muted">({{ reviews|length }})</span></span>
             {% endif %}
 
-            {% with menor=variants|dictsort:"price"|first %}
-                {% if menor %}
-                    <p class="price-from">{% if variants|length > 1 %}a partir de{% else %}preço{% endif %}</p>
-                    <p class="buybox-price price">R$ {{ menor.price|brl }}</p>
-                {% endif %}
-            {% endwith %}
+            {% if auction %}
+                {% include 'auctions/_auction_price.html' %}
+            {% else %}
+                {% with menor=variants|dictsort:"price"|first %}
+                    {% if menor %}
+                        <p class="price-from">{% if variants|length > 1 %}a partir de{% else %}preço{% endif %}</p>
+                        <p class="buybox-price price">R$ {{ menor.price|brl }}</p>
+                    {% endif %}
+                {% endwith %}
+            {% endif %}
 
             <div class="buybox-tags">
                 <span class="tag">📍 {{ product.seller.profile.city }}, {{ product.seller.profile.uf }}</span>
                 {% if product.accepts_pickup %}<span class="tag tag-success">Aceita retirada em mãos</span>{% endif %}
             </div>
 
+            {% if auction %}
+                {% include 'auctions/_auction_actions.html' %}
+            {% else %}
             {% if store_coupons %}
                 <div class="store-coupons">
                     <p class="field-label">Cupons da loja</p>
@@ -117,6 +124,7 @@
                 <a href="{% url 'login' %}" class="btn btn-primary btn-lg btn-block">Entre para comprar</a>
             {% elif user == product.seller %}
                 <a href="{% url 'edit_product' product.pk %}" class="btn btn-outline btn-block">Editar anúncio</a>
+            {% endif %}
             {% endif %}
 
             {% if can_review_product %}
@@ -160,4 +168,5 @@
         });
     });
 </script>
+{% if auction %}{% include 'auctions/_auction_js.html' %}{% endif %}
 {% endblock %}

@@ -1,0 +1,49 @@
+{% load catalog_extras %}
+<div class="card">
+    {% for oferta in ofertas %}
+        {% with prod=oferta.auction.product %}
+        <div class="line-item">
+            <a href="{% url 'product_detail' prod.pk %}" class="line-item-thumb">
+                {% with img=prod.images.all.0 %}
+                    {% if img %}<img src="{{ img.image.url }}" alt="">{% else %}<div class="img-placeholder"></div>{% endif %}
+                {% endwith %}
+            </a>
+            <div>
+                <p class="line-item-title"><a href="{% url 'product_detail' prod.pk %}">{{ prod.title }}</a></p>
+                <p class="line-item-sub">Oferta recebida em {{ oferta.created_at|date:"d/m/Y" }}</p>
+                <div class="bid-row-status">
+                    {% if oferta.is_pending %}
+                        <span class="badge badge-pending">Aguardando sua resposta</span>
+                        <span class="muted text-sm">até {{ oferta.expires_at|date:"d/m \à\s H:i" }}</span>
+                    {% elif oferta.status == 'PENDING' or oferta.status == 'EXPIRED' %}
+                        <span class="badge badge-default">Expirada</span>
+                    {% else %}
+                        <span class="badge {% if oferta.status == 'ACCEPTED' %}badge-paid{% else %}badge-default{% endif %}">{{ oferta.get_status_display }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="line-item-side">
+                <span class="muted text-sm">valor da oferta</span>
+                <span class="price">R$ {{ oferta.price|brl }}</span>
+                {% if oferta.is_pending %}
+                    <div class="offer-actions">
+                        <form method="post" action="{% url 'respond_offer' oferta.pk %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="acao" value="recusar">
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <button type="submit" class="btn btn-ghost btn-sm">Recusar</button>
+                        </form>
+                        <form method="post" action="{% url 'respond_offer' oferta.pk %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="acao" value="aceitar">
+                            <button type="submit" class="btn btn-primary btn-sm">Aceitar</button>
+                        </form>
+                    </div>
+                {% elif oferta.status == 'ACCEPTED' and oferta.order.status == 'PENDING' %}
+                    <a href="{% url 'resume_payment' oferta.order_id %}" class="btn btn-primary btn-sm">Pagar agora</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endwith %}
+    {% endfor %}
+</div>

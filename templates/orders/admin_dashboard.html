@@ -26,6 +26,7 @@
     <a href="#compradores">Compradores</a>
     <a href="#megacoins">MegaCoins</a>
     <a href="#cupons">Cupons</a>
+    <a href="#leiloes">Leilões</a>
     <a href="#configuracoes">Configurações</a>
 </nav>
 
@@ -471,6 +472,78 @@
                     {% empty %}
                         <tr>
                             <td colspan="5" class="empty">Nenhum pedido concluído com cupom no período</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endwith %}
+</section>
+
+<section class="dash-section" id="leiloes">
+    <h2 class="section-title">Leilões</h2>
+    <p class="section-note">Desfechos consideram os leilões encerrados no período; o GMV considera os pedidos de leilão concluídos no período, como nas demais seções.</p>
+    {% with l=leiloes %}
+    <div class="stat-grid">
+        <div class="stat">
+            <p class="stat-label">GMV em leilões</p>
+            <p class="stat-value">R$ {{ l.gmv|brl }}</p>
+            <p class="stat-sub">{{ l.pct_gmv|floatformat:1 }}% do GMV do período</p>
+            {% include 'orders/_delta.html' with valor=l.gmv_variacao %}
+        </div>
+        <div class="stat">
+            <p class="stat-label">Taxa de venda</p>
+            <p class="stat-value">{{ l.taxa_venda|floatformat:1 }}%</p>
+            <p class="stat-sub">{{ l.vendidos }} de {{ l.encerrados }} leil{{ l.encerrados|pluralize:"ão,ões" }} encerrado{{ l.encerrados|pluralize }}</p>
+            {% include 'orders/_delta.html' with valor=l.taxa_venda_diferenca sufixo=" p.p." %}
+        </div>
+        <div class="stat">
+            <p class="stat-label">Valorização média</p>
+            <p class="stat-value">{% if l.valorizacao_media is None %}—{% else %}+{{ l.valorizacao_media|floatformat:1 }}%{% endif %}</p>
+            <p class="stat-sub">do lance inicial ao preço final, nos vendidos pelo maior lance</p>
+        </div>
+        <div class="stat">
+            <p class="stat-label">Taxa de não pagamento</p>
+            <p class="stat-value{% if l.nao_pagos %} negative{% endif %}">{{ l.taxa_nao_pagamento|floatformat:1 }}%</p>
+            <p class="stat-sub">{{ l.nao_pagos }} de {{ l.pedidos }} pedido{{ l.pedidos|pluralize }} de leilão cancelado{{ l.pedidos|pluralize }}</p>
+        </div>
+    </div>
+    <div class="dash-split">
+        <div class="card">
+            <dl>
+                <div class="kv"><dt>Leilões em andamento agora</dt><dd class="strong">{{ l.ativos_agora }}</dd></div>
+                <div class="kv"><dt>Lances no período</dt><dd class="strong">{{ l.lances }} de {{ l.participantes }} participante{{ l.participantes|pluralize }}</dd></div>
+                <div class="kv"><dt>Média de lances por leilão encerrado</dt><dd class="strong">{% if l.lances_por_leilao is None %}—{% else %}{{ l.lances_por_leilao|floatformat:1 }}{% endif %}</dd></div>
+                <div class="kv"><dt>Lances retirados</dt><dd class="strong">{{ l.retirados }} ({{ l.pct_retirados|floatformat:1 }}% dos lances)</dd></div>
+                <div class="kv"><dt>Ofertas de segunda chance</dt><dd class="strong">{{ l.ofertas }} enviada{{ l.ofertas|pluralize }} · {{ l.ofertas_aceitas }} aceita{{ l.ofertas_aceitas|pluralize }} ({{ l.taxa_aceite|floatformat:0 }}% das respondidas)</dd></div>
+                <div class="kv"><dt>Ofertas aguardando resposta agora</dt><dd class="strong">{{ l.ofertas_pendentes_agora }}</dd></div>
+            </dl>
+        </div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Desfecho dos leilões encerrados</th>
+                        <th class="num">Leilões</th>
+                        <th>Participação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in l.desfechos %}
+                        <tr>
+                            <td class="strong">{{ d.desfecho }}</td>
+                            <td class="num">{{ d.leiloes }}</td>
+                            <td>
+                                <div class="share">
+                                    <div class="share-bar"><div class="share-bar-fill" data-pct="{{ d.participacao|stringformat:'.2f' }}"></div></div>
+                                    <span>{{ d.participacao|floatformat:1 }}%</span>
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="3" class="empty">Nenhum leilão encerrado no período</td>
                         </tr>
                     {% endfor %}
                 </tbody>

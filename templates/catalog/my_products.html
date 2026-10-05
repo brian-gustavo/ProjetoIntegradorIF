@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load catalog_extras %}
+{% load catalog_extras auction_extras %}
 
 {% block title %}Meus anúncios — MegaGame{% endblock %}
 
@@ -18,6 +18,9 @@
 
 <div class="product-grid">
     {% for prod in produtos %}
+        {% if prod.auction %}
+            {% include 'auctions/_seller_card.html' with auction=prod.auction %}
+        {% else %}
         <div class="product-card">
             <a href="{% url 'product_detail' prod.pk %}" class="product-card-media">
                 {% with img=prod.images.all.0 %}
@@ -76,6 +79,7 @@
                 <button type="submit" form="delete-form-{{ prod.pk }}" class="btn btn-danger">Excluir</button>
             </div>
         </dialog>
+        {% endif %}
     {% empty %}
         <div class="empty-state">
             <strong>Você ainda não publicou nenhum anúncio</strong>

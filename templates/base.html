@@ -30,6 +30,7 @@
 
         <nav class="header-nav">
             <a href="{% url 'category_list' %}" class="{% if rota == 'category_list' or rota == 'category_detail' %}active{% endif %}">Categorias</a>
+            <a href="{% url 'auction_list' %}" class="{% if rota == 'auction_list' %}active{% endif %}">Leilões</a>
             {% if user.is_authenticated and user.is_staff %}
                 <a href="{% url 'admin_dashboard' %}" class="{% if rota == 'admin_dashboard' %}active{% endif %}">Painel</a>
                 <a href="{% url 'dispute_list' %}" class="{% if rota == 'dispute_list' or rota == 'dispute_detail' %}active{% endif %}">Disputas</a>
@@ -69,6 +70,7 @@
                         </div>
                         <div class="only-narrow">
                             <a href="{% url 'category_list' %}">Categorias</a>
+                            <a href="{% url 'auction_list' %}">Leilões</a>
                             {% if user.is_staff %}
                                 <a href="{% url 'admin_dashboard' %}">Painel administrativo</a>
                                 <a href="{% url 'dispute_list' %}">Disputas</a>
@@ -79,6 +81,7 @@
                             <hr>
                         </div>
                         {% if not user.is_staff %}
+                            <a href="{% url 'my_bids' %}">Meus lances</a>
                             <a href="{% url 'wallet' %}">MegaCoins e recompensas</a>
                             <a href="{% url 'my_coupons' %}">Meus cupons</a>
                             <hr>

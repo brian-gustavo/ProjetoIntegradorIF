@@ -1,4 +1,4 @@
-{% load catalog_extras %}
+{% load catalog_extras auction_extras %}
 <a href="{% url 'product_detail' prod.pk %}" class="product-card">
     <div class="product-card-media">
         {% with img=prod.images.all.0 %}
@@ -8,11 +8,21 @@
                 <div class="img-placeholder" role="img" aria-label="Sem foto"></div>
             {% endif %}
         {% endwith %}
+        {% if prod.auction %}<span class="auction-flag">Leilão</span>{% endif %}
     </div>
     <div class="product-card-body">
         <div class="product-card-title">{{ prod.title }}</div>
-        <div class="price-from">a partir de</div>
-        <div class="product-card-price price">R$ {{ prod.min_price|brl }}</div>
+        {% if prod.auction %}
+            <div class="price-from">{% if prod.auction.bid_count %}lance atual{% else %}lance inicial{% endif %}</div>
+            <div class="product-card-price price">R$ {{ prod.auction.current_price|brl }}</div>
+            <div class="auction-card-meta">
+                <span>{{ prod.auction.bid_count }} lance{{ prod.auction.bid_count|pluralize }}</span>
+                <span class="auction-time{% if prod.auction.ends_at|ends_soon %} is-urgent{% endif %}">{{ prod.auction.ends_at|time_left }}</span>
+            </div>
+        {% else %}
+            <div class="price-from">a partir de</div>
+            <div class="product-card-price price">R$ {{ prod.min_price|brl }}</div>
+        {% endif %}
         <div class="product-card-foot">
             <span class="loc">{{ prod.seller.profile.city }}, {{ prod.seller.profile.uf }}</span>
             {% if prod.avg_rating %}

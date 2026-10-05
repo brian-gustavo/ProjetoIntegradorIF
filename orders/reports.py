@@ -303,6 +303,38 @@ def _secao_cupons(d):
         ]
     return [KeepTogether(elementos)]
 
+def _secao_leiloes(d):
+    l = d['leiloes']
+    valorizacao = '—' if l['valorizacao_media'] is None else '+' + _pct(l['valorizacao_media'])
+    media_lances = '—' if l['lances_por_leilao'] is None else f'{l["lances_por_leilao"]:.1f}'.replace('.', ',')
+    linhas = [
+        ['GMV em leilões', _reais(l['gmv']), _variacao(l['gmv_variacao'])],
+        ['Participação no GMV do período', _pct(l['pct_gmv']), _variacao(l['pct_gmv_diferenca'], ' p.p.')],
+        ['Leilões encerrados', str(l['encerrados']), _variacao(l['encerrados_variacao'])],
+        ['Taxa de venda', f'{_pct(l["taxa_venda"])} ({l["vendidos"]})', _variacao(l['taxa_venda_diferenca'], ' p.p.')],
+        ['Valorização média (vendidos pelo maior lance)', valorizacao, '—'],
+        ['Média de lances por leilão encerrado', media_lances, '—'],
+        ['Lances no período', f'{l["lances"]} ({l["participantes"]} participantes)', '—'],
+        ['Lances retirados', f'{l["retirados"]} ({_pct(l["pct_retirados"])})', '—'],
+        ['Taxa de não pagamento', f'{_pct(l["taxa_nao_pagamento"])} ({l["nao_pagos"]} de {l["pedidos"]})', '—'],
+        ['Ofertas de segunda chance enviadas', str(l['ofertas']), '—'],
+        ['Ofertas aceitas (das respondidas)', f'{l["ofertas_aceitas"]} ({_pct(l["taxa_aceite"], 0)})', '—'],
+        ['Leilões em andamento agora', str(l['ativos_agora']), '—'],
+    ]
+    elementos = [
+        Paragraph('Leilões', SECAO),
+        Paragraph('Desfechos consideram os leilões encerrados no período; o GMV considera os pedidos de leilão concluídos no período.', NOTA),
+        _tabela(['Indicador', 'Valor', 'Variação'], linhas, [LARGURA_UTIL * 0.5, LARGURA_UTIL * 0.3, LARGURA_UTIL * 0.2], (1, 2)),
+    ]
+    if l['desfechos']:
+        desfechos = [[d['desfecho'], str(d['leiloes']), _pct(d['participacao'])] for d in l['desfechos']]
+        elementos += [
+            Spacer(1, 10),
+            _tabela(['Desfecho dos leilões encerrados', 'Leilões', 'Particip.'], desfechos,
+                    [LARGURA_UTIL * 0.6, LARGURA_UTIL * 0.2, LARGURA_UTIL * 0.2], (1, 2)),
+        ]
+    return [KeepTogether(elementos)]
+
 def build_admin_report_pdf(data, periodo):
     buffer = BytesIO()
     doc = SimpleDocTemplate(
@@ -320,7 +352,7 @@ def build_admin_report_pdf(data, periodo):
             f'Gerado em {agora:%d/%m/%Y às %H:%M}', SUBTITULO,
         ),
     ]
-    for secao in (_secao_visao_geral, _secao_ranking, _secao_categorias, _secao_saude, _secao_compradores, _secao_moedas, _secao_cupons):
+    for secao in (_secao_visao_geral, _secao_ranking, _secao_categorias, _secao_saude, _secao_compradores, _secao_moedas, _secao_cupons, _secao_leiloes):
         elementos += secao(data)
 
     doc.build(elementos, onFirstPage=_rodape, onLaterPages=_rodape)

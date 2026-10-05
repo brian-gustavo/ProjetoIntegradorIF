@@ -12,6 +12,8 @@ from .forms import ProductForm, ProductVariantFormSet, ProductReviewForm
 from .models import Category, Product, ProductImage, ProductVariant, ProductReview
 from .templatetags.catalog_extras import brl
 from accounts.models import SellerReview
+from auctions.forms import AuctionForm
+from auctions.services import apply_edit as apply_auction_edit, can_cancel_unpaid, can_relist, can_send_second_chance, close_expired_auctions, close_for_deletion, detail_context as auction_detail_context
 from coupons.services import store_coupons
 from orders.models import Order, PlatformConfig
 
@@ -27,18 +29,24 @@ SORT_OPTIONS = {
     'maior_preco': ('Maior preço', ('-min_price', '-created_at')),
 }
 
-def _apply_sort(request, qs):
+FORMAT_OPTIONS = [
+    ('', 'Todos'),
+    ('leilao', 'Leilão'),
+    ('imediata', 'Compra imediata'),
+]
+
+def _apply_sort(request, qs, options=SORT_OPTIONS, padrao='recentes'):
     ordem = request.GET.get('ordem', '')
-    if ordem not in SORT_OPTIONS:
-        ordem = 'recentes'
-    order_by = SORT_OPTIONS[ordem][1]
+    if ordem not in options:
+        ordem = padrao
+    order_by = options[ordem][1]
 
     params = request.GET.copy()
     params.pop('page', None)
 
     return qs.order_by(*order_by), {
         'atual': ordem,
-        'opcoes': [{'key': key, 'label': opcao[0]} for key, opcao in SORT_OPTIONS.items()],
+        'opcoes': [{'key': key, 'label': opcao[0]} for key, opcao in options.items()],
         'hidden': [
             (key, value)
             for key, values in params.lists()
@@ -77,7 +85,12 @@ def _annotate_products(qs):
         avg_rating=Subquery(rating_subquery),
     ).filter(stock_total__gt=0)
 
-def _apply_filters(qs, preco_min, preco_max, local, avaliacao, profile):
+def _apply_filters(qs, preco_min, preco_max, local, avaliacao, profile, formato=''):
+    if formato == 'leilao':
+        qs = qs.filter(auction__isnull=False)
+    elif formato == 'imediata':
+        qs = qs.filter(auction__isnull=True)
+
     if preco_min is not None:
         qs = qs.filter(min_price__gte=preco_min)
     if preco_max is not None:
@@ -110,12 +123,15 @@ def _build_filter_context(request, base_qs):
     avaliacao = request.GET.get('avaliacao', '')
     if avaliacao not in dict(RATING_OPTIONS):
         avaliacao = ''
+    formato = request.GET.get('formato', '')
+    if formato not in dict(FORMAT_OPTIONS):
+        formato = ''
 
     profile = None
     if request.user.is_authenticated and not request.user.is_staff:
         profile = request.user.profile
 
-    produtos_qs = _apply_filters(base_qs, preco_min, preco_max, local, avaliacao, profile)
+    produtos_qs = _apply_filters(base_qs, preco_min, preco_max, local, avaliacao, profile, formato)
 
     local_options = [('', 'Qualquer lugar'), ('cidade', 'Na sua cidade'), ('estado', 'No seu estado')]
     local_facets = []
@@ -123,7 +139,7 @@ def _build_filter_context(request, base_qs):
         disponivel = key == '' or (profile and (profile.city if key == 'cidade' else profile.uf))
         if not disponivel:
             continue
-        count = _apply_filters(base_qs, preco_min, preco_max, key, avaliacao, profile).count()
+        count = _apply_filters(base_qs, preco_min, preco_max, key, avaliacao, profile, formato).count()
         local_facets.append({
             'label': label, 'count': count,
             'active': local == key, 'url': _facet_url(request, local=key),
@@ -131,11 +147,20 @@ def _build_filter_context(request, base_qs):
 
     rating_facets = []
     for key, label in [('', 'Qualquer nota')] + RATING_OPTIONS:
-        count = _apply_filters(base_qs, preco_min, preco_max, local, key, profile).count()
+        count = _apply_filters(base_qs, preco_min, preco_max, local, key, profile, formato).count()
         rating_facets.append({
             'label': label, 'count': count,
             'active': avaliacao == key, 'url': _facet_url(request, avaliacao=key),
         })
+
+    format_facets = []
+    for key, label in FORMAT_OPTIONS:
+        count = _apply_filters(base_qs, preco_min, preco_max, local, avaliacao, profile, key).count()
+        format_facets.append({
+            'label': label, 'count': count,
+            'active': formato == key, 'url': _facet_url(request, formato=key),
+        })
+    mostrar_formatos = bool(formato) or all(f['count'] for f in format_facets)
 
     chips = []
     if preco_min is not None or preco_max is not None:
@@ -151,6 +176,8 @@ def _build_filter_context(request, base_qs):
             chips.append({'label': facet['label'], 'url': _facet_url(request, local=None)})
     if avaliacao:
         chips.append({'label': f'Nota {dict(RATING_OPTIONS)[avaliacao]}', 'url': _facet_url(request, avaliacao=None)})
+    if formato:
+        chips.append({'label': dict(FORMAT_OPTIONS)[formato], 'url': _facet_url(request, formato=None)})
 
     params = request.GET.copy()
     params.pop('page', None)
@@ -172,6 +199,7 @@ def _build_filter_context(request, base_qs):
         'faixa': faixa,
         'local_facets': local_facets,
         'rating_facets': rating_facets,
+        'format_facets': format_facets if mostrar_formatos else [],
         'chips': chips,
         'filtros_ativos': bool(chips),
         'limpar_url': f'?{urlencode(limpar)}' if limpar else '?',
@@ -179,12 +207,13 @@ def _build_filter_context(request, base_qs):
     }
 
 def home(request):
+    close_expired_auctions()
     categorias = Category.objects.all()
     query = request.GET.get('q', '').strip()
 
     base_qs = _annotate_products(
         Product.objects.filter(published=True, deleted=False)
-    ).select_related('seller__profile').prefetch_related('images', 'variants')
+    ).select_related('seller__profile', 'auction').prefetch_related('images', 'variants')
 
     if not query:
         return render(request, 'home.html', {
@@ -222,6 +251,11 @@ def _build_shelves(base_qs):
 
     prateleiras = [
         {'titulo': 'Mais vendidos', 'produtos': qs.filter(sold__gt=0).order_by('-sold', '-created_at')},
+        {
+            'titulo': 'Leilões terminando em breve',
+            'url': reverse('auction_list'),
+            'produtos': qs.filter(auction__status='ACTIVE').order_by('auction__ends_at'),
+        },
         {'titulo': 'Mais bem avaliados', 'produtos': qs.filter(avg_rating__isnull=False).order_by('-avg_rating', '-review_count', '-created_at')},
         {'titulo': 'Novidades', 'produtos': qs.order_by('-created_at')},
         {'titulo': 'Menores preços', 'produtos': qs.order_by('min_price', '-created_at')},
@@ -245,8 +279,10 @@ def _build_shelves(base_qs):
     return [p for p in prateleiras if p['produtos']]
 
 def product_detail(request, product_id):
+    close_expired_auctions()
     product = get_object_or_404(Product, pk=product_id, deleted=False)
     variants = product.variants.all()
+    auction = getattr(product, 'auction', None)
 
     seller_rating = SellerReview.objects.filter(
         seller=product.seller
@@ -290,15 +326,17 @@ def product_detail(request, product_id):
         'already_reviewed_product': already_reviewed_product,
         'can_review_seller': can_review_seller,
         'already_reviewed_seller': already_reviewed_seller,
-        'store_coupons': store_coupons(product.seller),
+        'store_coupons': [] if auction else store_coupons(product.seller),
+        **(auction_detail_context(auction, request.user) if auction else {}),
     })
 
 def category_detail(request, slug):
+    close_expired_auctions()
     category = get_object_or_404(Category, slug=slug)
 
     base_qs = _annotate_products(
         Product.objects.filter(category=category, published=True, deleted=False)
-    ).select_related('seller__profile').prefetch_related('images', 'variants')
+    ).select_related('seller__profile', 'auction').prefetch_related('images', 'variants')
 
     produtos_qs, filtros = _build_filter_context(request, base_qs)
     produtos_qs, ordenacao = _apply_sort(request, produtos_qs)
@@ -329,17 +367,23 @@ def create_product(request):
             product = product_form.save(commit=False)
             product.seller = request.user
             product.save()
+            if request.POST.get('formato') == 'leilao':
+                return redirect('setup_auction', product_id=product.pk)
             return redirect('manage_variants', product_id=product.pk)
     else:
         product_form = ProductForm()
 
     return render(request, 'catalog/create_product.html', {
         'product_form': product_form,
+        'formato': request.POST.get('formato', 'imediata'),
     })
 
 @login_required
 def manage_variants(request, product_id):
     product = get_object_or_404(Product, pk=product_id, seller=request.user)
+
+    if hasattr(product, 'auction'):
+        return redirect('edit_product', product_id=product.pk)
 
     if request.method == 'POST':
         variant_formset = ProductVariantFormSet(request.POST, instance=product)
@@ -381,15 +425,22 @@ def manage_variants(request, product_id):
     })
 
 def my_products(request):
+    close_expired_auctions()
     qs = Product.objects.filter(seller=request.user, deleted=False).annotate(
         variant_count=Count('variants')
-    ).prefetch_related('images', 'variants').order_by('-created_at')
+    ).select_related('auction__order').prefetch_related('images', 'variants').order_by('-created_at')
 
     produtos_qs = qs.filter(variant_count__gt=0)
     rascunhos = qs.filter(variant_count=0)
 
     paginator = Paginator(produtos_qs, 24)
     produtos = paginator.get_page(request.GET.get('page'))
+    for prod in produtos:
+        auction = getattr(prod, 'auction', None)
+        if auction:
+            auction.can_relist = can_relist(auction)
+            auction.can_cancel_unpaid = can_cancel_unpaid(auction)
+            auction.can_second_chance = auction.status != 'ACTIVE' and can_send_second_chance(auction)
 
     return render(request, 'catalog/my_products.html', {
         'produtos': produtos,
@@ -451,6 +502,10 @@ def review_product(request, product_id):
 def unpublish_product(request, product_id):
     product = get_object_or_404(Product, pk=product_id, seller=request.user)
 
+    if hasattr(product, 'auction'):
+        messages.error(request, 'Leilões não podem ser pausados. Se precisar, encerre o leilão antes do prazo.')
+        return redirect('my_products')
+
     if request.method == 'POST':
         product.published = False
         product.save()
@@ -462,6 +517,9 @@ def unpublish_product(request, product_id):
 @login_required
 def edit_product(request, product_id):
     product = get_object_or_404(Product, pk=product_id, seller=request.user)
+
+    if hasattr(product, 'auction'):
+        return _edit_auction_product(request, product)
 
     if request.method == 'POST':
         product_form = ProductForm(request.POST, instance=product)
@@ -511,9 +569,54 @@ def edit_product(request, product_id):
         'variant_formset': variant_formset,
     })
 
+def _edit_auction_product(request, product):
+    auction = product.auction
+    locked = auction.bid_count > 0 or auction.status != 'ACTIVE'
+    image_error = None
+
+    if request.method == 'POST':
+        product_form = ProductForm(request.POST, instance=product)
+        auction_form = AuctionForm(request.POST, instance=auction, locked=locked)
+
+        if product_form.is_valid() and auction_form.is_valid():
+            images = request.FILES.getlist('images')
+            delete_ids = request.POST.getlist('delete_images')
+            total_images = product.images.count() - len(delete_ids) + len(images)
+            imagens_grandes = [img.name for img in images if img.size > 10 * 1024 * 1024]
+
+            if total_images > 5:
+                image_error = 'Limite de imagens ultrapassado. Insira no máximo 5 e tente novamente.'
+            elif imagens_grandes:
+                image_error = f'As seguintes imagens excedem o limite de 10MB: {", ".join(imagens_grandes)}'
+            else:
+                if delete_ids:
+                    product.images.filter(pk__in=delete_ids).delete()
+                product_form.save()
+                if not locked:
+                    apply_auction_edit(auction_form.save(commit=False))
+                for image in images:
+                    ProductImage.objects.create(product=product, image=image)
+                messages.success(request, 'Anúncio atualizado com sucesso')
+                return redirect('product_detail', product_id=product.pk)
+    else:
+        product_form = ProductForm(instance=product)
+        auction_form = AuctionForm(instance=auction, locked=locked)
+
+    return render(request, 'catalog/edit_product.html', {
+        'product': product,
+        'product_form': product_form,
+        'auction_form': auction_form,
+        'auction': auction,
+        'image_error': image_error,
+    })
+
 @login_required
 def republish_product(request, product_id):
     product = get_object_or_404(Product, pk=product_id, seller=request.user)
+
+    if hasattr(product, 'auction'):
+        messages.error(request, 'Leilões encerrados não podem ser republicados, apenas relistados')
+        return redirect('my_products')
 
     if request.method == 'POST':
         if product.variants.exists() and product.total_stock > 0:
@@ -557,7 +660,11 @@ def delete_product(request, product_id):
     product = get_object_or_404(Product, pk=product_id, seller=request.user)
 
     if request.method == 'POST':
-        if not product.variants.exists():
+        auction = getattr(product, 'auction', None)
+        erro = close_for_deletion(auction) if auction else None
+        if erro:
+            messages.error(request, erro)
+        elif not product.variants.exists():
             product.delete()
             messages.success(request, 'Rascunho excluído')
         else:

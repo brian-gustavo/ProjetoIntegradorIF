@@ -7,7 +7,7 @@
     <div class="page-head">
         <div>
             <h1 class="page-title">Novo anúncio</h1>
-            <p class="steps"><span class="current">1. Informações do produto</span><span>›</span><span>2. Fotos e variações</span></p>
+            <p class="steps"><span class="current">1. Informações do produto</span><span>›</span><span>2. Fotos e condições de venda</span></p>
         </div>
     </div>
 
@@ -26,6 +26,26 @@
             </div>
         {% endfor %}
 
+        <div class="form-group">
+            <p class="field-label">Formato de venda</p>
+            <div class="format-options">
+                <label class="format-option">
+                    <input type="radio" name="formato" value="imediata"{% if formato != 'leilao' %} checked{% endif %}>
+                    <span>
+                        <strong>Preço fixo</strong>
+                        <small>Venda imediata, com variações e estoque. O comprador paga o preço anunciado.</small>
+                    </span>
+                </label>
+                <label class="format-option">
+                    <input type="radio" name="formato" value="leilao"{% if formato == 'leilao' %} checked{% endif %}>
+                    <span>
+                        <strong>Leilão</strong>
+                        <small>Uma unidade, com lance inicial e prazo. Quem der o maior lance até o fim leva o item.</small>
+                    </span>
+                </label>
+            </div>
+        </div>
+
         <div class="form-footer-actions">
             <a href="{% url 'my_products' %}" class="btn btn-ghost">Cancelar</a>
             <button type="button" class="btn btn-primary" onclick="document.getElementById('confirm-dialog').showModal()">Continuar</button>
@@ -35,7 +55,7 @@
 
 <dialog id="confirm-dialog" class="modal">
     <h3 class="modal-title">Continuar?</h3>
-    <p class="modal-text">Na próxima etapa, você adicionará as imagens e variações do produto antes de publicar.</p>
+    <p class="modal-text">Na próxima etapa, você adicionará as imagens e as condições de venda do produto antes de publicar.</p>
     <div class="modal-actions">
         <button type="button" class="btn btn-outline" onclick="document.getElementById('confirm-dialog').close()">Voltar</button>
         <button type="submit" form="product-form" class="btn btn-primary">Continuar</button>

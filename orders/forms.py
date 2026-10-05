@@ -5,7 +5,7 @@ from .models import Dispute, DisputeMessage, PlatformConfig, ReturnRequest
 class PlatformConfigForm(forms.ModelForm):
     class Meta:
         model = PlatformConfig
-        fields = ('commission_rate', 'dispute_window_days', 'return_window_days', 'seller_response_days', 'escalation_window_days', 'ranking_size', 'dispute_reasons', 'return_reasons', 'shelf_size', 'home_categories', 'coins_cashback_rate', 'coins_max_redeem_rate', 'coins_review_reward')
+        fields = ('commission_rate', 'dispute_window_days', 'return_window_days', 'seller_response_days', 'escalation_window_days', 'ranking_size', 'dispute_reasons', 'return_reasons', 'shelf_size', 'home_categories', 'coins_cashback_rate', 'coins_max_redeem_rate', 'coins_review_reward', 'auction_payment_days', 'second_chance_window_days')
         widgets = {
             'dispute_reasons': forms.Textarea(attrs={'rows': 8}),
             'return_reasons': forms.Textarea(attrs={'rows': 7}),

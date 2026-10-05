@@ -19,6 +19,8 @@ from .models import Order, Cart, CartItem, generate_tracking_code, PlatformConfi
 from .reports import build_admin_report_pdf
 from .tracking import simulate_tracking
 from accounts.models import MercadoPagoAccount
+from auctions.models import Auction, Bid, SecondChanceOffer
+from auctions.services import close_expired_auctions
 from catalog.models import Product, ProductVariant
 from coupons.models import Coupon
 from coupons.services import available_coupons, build_quote, parse_choice, redeem_code, save_redemptions, selected_ids, valid_now
@@ -34,6 +36,9 @@ def add_to_cart(request, product_id):
 
     if product.seller == request.user:
         return redirect('home')
+
+    if hasattr(product, 'auction'):
+        return redirect('product_detail', product_id=product.pk)
 
     if request.method == 'POST':
         variant_id = request.POST.get('variant_id')
@@ -188,8 +193,9 @@ def my_orders(request):
     from catalog.models import ProductReview
 
     _close_expired_return_requests()
+    close_expired_auctions()
     orders = Order.objects.filter(buyer=request.user).select_related(
-        'product__seller__profile', 'buyer__profile', 'return_request', 'seller_coupon__coupon', 'platform_coupon__coupon'
+        'product__seller__profile', 'buyer__profile', 'return_request', 'seller_coupon__coupon', 'platform_coupon__coupon', 'auction'
     ).order_by('-created_at')
 
     reviewed_sellers = set(
@@ -379,6 +385,7 @@ def complete_order(request, order_id):
 @login_required
 def seller_orders(request):
     _close_expired_return_requests()
+    close_expired_auctions()
     orders = Order.objects.filter(product__seller=request.user).select_related(
         'return_request', 'seller_coupon__coupon'
     ).prefetch_related('return_request__images').order_by('-created_at')
@@ -791,8 +798,103 @@ def _programa_cupons(commissions_periodo, commissions_anterior, comissao_periodo
         'ranking': ranking[:limite],
     }
 
+AUCTION_OUTCOMES = [
+    ('lance', 'Vendidos pelo maior lance'),
+    ('comprar_agora', 'Vendidos pelo Comprar agora'),
+    ('segunda_chance', 'Vendidos por segunda chance'),
+    ('reserva', 'Sem venda: reserva não atingida'),
+    ('sem_lances', 'Sem venda: nenhum lance'),
+    ('vendedor', 'Sem venda: encerrados pelo vendedor'),
+]
+
+def _auction_outcome(leilao, por_segunda_chance):
+    if leilao.bought_now:
+        return 'comprar_agora'
+    if leilao.order_id and leilao.order_id in por_segunda_chance:
+        return 'segunda_chance'
+    if leilao.status == 'SOLD':
+        return 'lance'
+    if not leilao.bid_count:
+        return 'sem_lances'
+    return 'vendedor' if leilao.ended_early else 'reserva'
+
+def _leiloes_encerrados(inicio, fim):
+    leiloes = list(Auction.objects.filter(closed_at__date__gte=inicio, closed_at__date__lte=fim))
+    por_segunda_chance = set(
+        SecondChanceOffer.objects.filter(status='ACCEPTED', auction__in=leiloes).values_list('order_id', flat=True)
+    )
+    for leilao in leiloes:
+        leilao.desfecho = _auction_outcome(leilao, por_segunda_chance)
+    vendidos = [l for l in leiloes if l.status == 'SOLD']
+    return leiloes, vendidos
+
+def _programa_leiloes(periodo, commissions_periodo, commissions_anterior, gmv_atual, gmv_anterior):
+    inicio, fim = periodo['inicio'], periodo['fim']
+    leiloes, vendidos = _leiloes_encerrados(inicio, fim)
+    leiloes_ant, vendidos_ant = _leiloes_encerrados(periodo['inicio_anterior'], periodo['fim_anterior'])
+
+    def gmv(qs):
+        return qs.filter(order__product__auction__isnull=False).aggregate(total=Sum('gross_amount'))['total'] or Decimal('0')
+
+    gmv_leiloes = gmv(commissions_periodo)
+    gmv_leiloes_ant = gmv(commissions_anterior)
+
+    por_lance = [l for l in vendidos if l.desfecho == 'lance']
+    valorizacoes = [float((l.current_price / l.start_price - 1) * 100) for l in por_lance]
+
+    contagem = {chave: 0 for chave, _ in AUCTION_OUTCOMES}
+    for leilao in leiloes:
+        contagem[leilao.desfecho] += 1
+    desfechos = [
+        {'desfecho': rotulo, 'leiloes': contagem[chave], 'participacao': _pct(contagem[chave], len(leiloes))}
+        for chave, rotulo in AUCTION_OUTCOMES if contagem[chave]
+    ]
+
+    lances = Bid.objects.filter(created_at__date__gte=inicio, created_at__date__lte=fim, is_auto=False)
+    total_lances = lances.count()
+    retirados = Bid.objects.filter(retracted_at__date__gte=inicio, retracted_at__date__lte=fim).count()
+
+    pedidos = Order.objects.filter(
+        product__auction__isnull=False, created_at__date__gte=inicio, created_at__date__lte=fim
+    )
+    total_pedidos = pedidos.count()
+    nao_pagos = pedidos.filter(status='CANCELLED').count()
+
+    ofertas = SecondChanceOffer.objects.filter(created_at__date__gte=inicio, created_at__date__lte=fim)
+    ofertas_respondidas = ofertas.exclude(status='PENDING').count()
+    ofertas_aceitas = ofertas.filter(status='ACCEPTED').count()
+
+    taxa_venda = _pct(len(vendidos), len(leiloes))
+    return {
+        'encerrados': len(leiloes),
+        'encerrados_variacao': _variacao(len(leiloes), len(leiloes_ant)),
+        'vendidos': len(vendidos),
+        'taxa_venda': taxa_venda,
+        'taxa_venda_diferenca': _diferenca_pp(taxa_venda, _pct(len(vendidos_ant), len(leiloes_ant)), len(leiloes_ant)),
+        'gmv': gmv_leiloes,
+        'gmv_variacao': _variacao(gmv_leiloes, gmv_leiloes_ant),
+        'pct_gmv': _pct(gmv_leiloes, gmv_atual),
+        'pct_gmv_diferenca': _diferenca_pp(_pct(gmv_leiloes, gmv_atual), _pct(gmv_leiloes_ant, gmv_anterior), gmv_anterior),
+        'valorizacao_media': sum(valorizacoes) / len(valorizacoes) if valorizacoes else None,
+        'lances_por_leilao': sum(l.bid_count for l in leiloes) / len(leiloes) if leiloes else None,
+        'lances': total_lances,
+        'participantes': lances.values('bidder').distinct().count(),
+        'retirados': retirados,
+        'pct_retirados': _pct(retirados, total_lances),
+        'pedidos': total_pedidos,
+        'nao_pagos': nao_pagos,
+        'taxa_nao_pagamento': _pct(nao_pagos, total_pedidos),
+        'ofertas': ofertas.count(),
+        'ofertas_aceitas': ofertas_aceitas,
+        'taxa_aceite': _pct(ofertas_aceitas, ofertas_respondidas),
+        'desfechos': desfechos,
+        'ativos_agora': Auction.objects.filter(status='ACTIVE').count(),
+        'ofertas_pendentes_agora': SecondChanceOffer.objects.filter(status='PENDING', expires_at__gt=timezone.now()).count(),
+    }
+
 def _build_report_data(periodo):
     _close_expired_return_requests()
+    close_expired_auctions()
     total_vendas = Order.objects.filter(
         status__in=['DELIVERED', 'RETURN_WINDOW', 'COMPLETED']
     ).aggregate(total=Sum('quantity'))['total'] or 0
@@ -895,6 +997,7 @@ def _build_report_data(periodo):
         'cupons': _programa_cupons(
             commissions_periodo, commissions_anterior, comissao_periodo, pedidos_periodo, config.ranking_size,
         ),
+        'leiloes': _programa_leiloes(periodo, commissions_periodo, commissions_anterior, gmv_atual, gmv_anterior),
     }
 
 @login_required

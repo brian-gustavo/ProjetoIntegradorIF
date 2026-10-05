@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% load catalog_extras auction_extras %}
+
+{% block title %}Histórico de lances · {{ product.title }} — MegaGame{% endblock %}
+
+{% block content %}
+<nav class="breadcrumb">
+    <a href="{% url 'home' %}">Início</a>
+    <span><a href="{% url 'product_detail' product.pk %}">{{ product.title }}</a></span>
+    <span>Histórico de lances</span>
+</nav>
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Histórico de lances</h1>
+        <p class="page-sub">{{ product.title }}</p>
+    </div>
+    <div class="page-actions">
+        <a href="{% url 'product_detail' product.pk %}#leilao" class="btn btn-outline">← Voltar ao anúncio</a>
+    </div>
+</div>
+
+<div class="stat-grid">
+    <div class="stat">
+        <p class="stat-label">{% if auction.status == 'SOLD' %}Lance vencedor{% elif auction.bid_count %}Lance atual{% else %}Lance inicial{% endif %}</p>
+        <p class="stat-value">R$ {{ auction.current_price|brl }}</p>
+        {% if auction.has_reserve and auction.status != 'SOLD' %}
+            <p class="stat-sub">Preço de reserva {% if auction.reserve_met %}atingido{% else %}não atingido{% endif %}</p>
+        {% endif %}
+    </div>
+    <div class="stat">
+        <p class="stat-label">Lances</p>
+        <p class="stat-value">{{ auction.bid_count }}</p>
+        <p class="stat-sub">{{ bidders }} participante{{ bidders|pluralize }}</p>
+    </div>
+    <div class="stat">
+        <p class="stat-label">{% if auction.is_open %}Tempo restante{% else %}Encerrado em{% endif %}</p>
+        {% if auction.is_open %}
+            <p class="stat-value auction-time{% if auction.ends_at|ends_soon %} is-urgent{% endif %}"><span data-countdown="{{ auction.ends_at|date:'c' }}">{{ auction.ends_at|time_left }}</span></p>
+            <p class="stat-sub">termina em {{ auction.ends_at|date:"d/m/Y \à\s H:i" }}</p>
+        {% else %}
+            <p class="stat-value stat-value-sm">{{ auction.closed_at|date:"d/m/Y H:i" }}</p>
+            <p class="stat-sub">{% if auction.status == 'SOLD' %}arrematado por {{ auction.winner|masked }}{% else %}sem venda{% endif %}</p>
+        {% endif %}
+    </div>
+    <div class="stat">
+        <p class="stat-label">Duração</p>
+        <p class="stat-value">{{ auction.get_duration_days_display }}</p>
+        <p class="stat-sub">desde {{ auction.starts_at|date:"d/m/Y \à\s H:i" }}</p>
+    </div>
+</div>
+
+<div class="table-wrap">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Participante</th>
+                <th class="num">Valor do lance</th>
+                <th class="num">Data do lance</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for lance in historico %}
+                <tr{% if lance.proprio %} class="row-highlight"{% endif %}>
+                    <td>
+                        <strong>{{ lance.participante }}</strong>
+                        {% if lance.automatico %}<span class="tag">Lance automático</span>{% endif %}
+                    </td>
+                    <td class="num">R$ {{ lance.valor|brl }}</td>
+                    <td class="num">{{ lance.momento|date:"d/m/Y H:i:s" }}</td>
+                </tr>
+            {% endfor %}
+            <tr class="row-muted">
+                <td>Lance inicial</td>
+                <td class="num">R$ {{ auction.start_price|brl }}</td>
+                <td class="num">{{ auction.starts_at|date:"d/m/Y H:i:s" }}</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+<p class="help mt-4">Para proteger a privacidade dos participantes, os nomes de usuário aparecem abreviados. O lance máximo de quem está na frente nunca é exibido: o valor mostrado é o necessário para superar o segundo maior lance.</p>
+
+{% if retirados %}
+    <h2 class="section-title">Lances retirados</h2>
+    <div class="table-wrap">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Participante</th>
+                    <th>Motivo</th>
+                    <th class="num">Lance dado em</th>
+                    <th class="num">Retirado em</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for lance in retirados %}
+                    <tr{% if lance.proprio %} class="row-highlight"{% endif %}>
+                        <td><strong>{{ lance.participante }}</strong></td>
+                        <td class="text-sm">{{ lance.motivo_retirada }}</td>
+                        <td class="num">{{ lance.momento|date:"d/m/Y H:i:s" }}</td>
+                        <td class="num">{{ lance.retirado_em|date:"d/m/Y H:i:s" }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endif %}
+
+<details class="card auction-explainer mt-6">
+    <summary>Incrementos de lance</summary>
+    <p>O lance mínimo é o lance atual somado ao incremento da faixa correspondente:</p>
+    {% include 'auctions/_increments.html' %}
+</details>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+{% include 'auctions/_auction_js.html' %}
+{% endblock %}

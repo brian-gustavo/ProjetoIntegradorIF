@@ -1,0 +1,185 @@
+{% load catalog_extras auction_extras %}
+{% if user.is_authenticated and user == product.seller %}
+    <div class="auction-seller">
+        <p class="field-label">Seu leilão</p>
+        <ul class="auction-facts">
+            <li><span>Lance inicial</span><strong>R$ {{ auction.start_price|brl }}</strong></li>
+            {% if auction.has_reserve %}<li><span>Preço de reserva</span><strong>R$ {{ auction.reserve_price|brl }}</strong></li>{% endif %}
+            {% if auction.buy_now_price %}<li><span>Comprar agora</span><strong>R$ {{ auction.buy_now_price|brl }}{% if auction.is_open and not auction.buy_now_available %} <small class="muted">(indisponível)</small>{% endif %}</strong></li>{% endif %}
+            <li><span>Acompanhando</span><strong>{{ watchers }} pessoa{{ watchers|pluralize }}</strong></li>
+        </ul>
+
+        {% if auction.is_open %}
+            <a href="{% url 'edit_product' product.pk %}" class="btn btn-outline btn-block">{% if auction.bid_count %}Editar anúncio{% else %}Editar anúncio e leilão{% endif %}</a>
+            {% if can_end_early %}
+                <form method="post" action="{% url 'end_auction' product.pk %}" id="end-auction-form">{% csrf_token %}</form>
+                <button type="button" class="btn btn-ghost btn-block" onclick="document.getElementById('end-auction-dialog').showModal()">Encerrar antes do prazo</button>
+                <dialog id="end-auction-dialog" class="modal">
+                    <h3 class="modal-title">Encerrar leilão agora?</h3>
+                    <p class="modal-text">
+                        {% if not auction.bid_count %}
+                            O leilão ainda não tem lances e será encerrado sem venda.
+                        {% elif auction.reserve_met %}
+                            O item será vendido agora para o maior lance atual, por <strong>R$ {{ auction.current_price|brl }}</strong>.
+                        {% else %}
+                            O preço de reserva não foi atingido, então o leilão será encerrado sem venda.
+                        {% endif %}
+                    </p>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-outline" onclick="document.getElementById('end-auction-dialog').close()">Voltar</button>
+                        <button type="submit" form="end-auction-form" class="btn btn-danger">Encerrar leilão</button>
+                    </div>
+                </dialog>
+            {% else %}
+                <p class="help">Leilões com lances não podem ser encerrados nas últimas {{ early_end_hours }} horas.</p>
+            {% endif %}
+        {% else %}
+            {% if auction.status == 'SOLD' and auction.order %}
+                <div class="alert alert-info">
+                    {% if auction.order.status == 'PENDING' %}
+                        Aguardando pagamento do comprador até {{ auction.payment_due_at|date:"d/m/Y \à\s H:i" }}.
+                    {% else %}
+                        Pedido #{{ auction.order.pk }}: {{ auction.order.get_status_display|lower }}.
+                    {% endif %}
+                </div>
+                <a href="{% url 'seller_orders' %}" class="btn btn-outline btn-block">Ver pedidos recebidos</a>
+            {% endif %}
+            {% if can_cancel_unpaid %}
+                <form method="post" action="{% url 'cancel_unpaid' product.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-ghost btn-block">Cancelar venda não paga</button>
+                </form>
+            {% endif %}
+            {% if can_relist %}
+                <form method="post" action="{% url 'relist_auction' product.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary btn-block">Relistar leilão</button>
+                </form>
+            {% elif auction.relisted_as %}
+                <a href="{% url 'product_detail' auction.relisted_as.product_id %}" class="btn btn-outline btn-block">Ver novo leilão</a>
+            {% endif %}
+            {% if can_second_chance %}
+                <a href="{% url 'second_chance' product.pk %}" class="btn btn-outline btn-block">Enviar oferta de segunda chance</a>
+            {% endif %}
+            {% with oferta=second_chance_offers.0 %}
+                {% if oferta %}
+                    <p class="help mt-2">
+                        Última oferta de segunda chance: {{ oferta.bidder.username }}, R$ {{ oferta.price|brl }} · {{ oferta.get_status_display|lower }}.
+                        <a href="{% url 'second_chance' product.pk %}" class="link">Ver ofertas</a>
+                    </p>
+                {% endif %}
+            {% endwith %}
+        {% endif %}
+    </div>
+
+{% elif auction.is_open %}
+    {% if user.is_authenticated and my_max %}
+        {% if is_leader %}
+            <div class="alert alert-success auction-status">
+                <strong>Você é o maior lance.</strong>
+                Seu lance máximo é R$ {{ my_max|brl }}{% if not auction.reserve_met %}, mas o preço de reserva ainda não foi atingido{% endif %}.
+            </div>
+        {% else %}
+            <div class="alert alert-danger auction-status">
+                <strong>Você foi superado.</strong>
+                Seu lance máximo foi R$ {{ my_max|brl }}. Dê um novo lance para voltar à disputa.
+            </div>
+        {% endif %}
+    {% endif %}
+
+    {% if not user.is_authenticated %}
+        <a href="{% url 'login' %}?next={{ request.path|urlencode }}" class="btn btn-primary btn-lg btn-block">Entre para dar um lance</a>
+    {% elif can_bid %}
+        <form method="post" action="{% url 'place_bid' product.pk %}" id="bid-form" class="bid-form" novalidate
+              data-min="{% if is_leader %}{{ my_max|stringformat:'s' }}{% else %}{{ minimum_bid|stringformat:'s' }}{% endif %}"
+              data-leader="{% if is_leader %}1{% endif %}">
+            {% csrf_token %}
+            <label class="field-label" for="bid-amount">{% if is_leader %}Aumentar lance máximo{% else %}Seu lance máximo{% endif %}</label>
+            <div class="bid-input">
+                <span>R$</span>
+                <input type="text" inputmode="decimal" name="amount" id="bid-amount" class="input" autocomplete="off"
+                       placeholder="{% if is_leader %}acima de {{ my_max|brl }}{% else %}{{ minimum_bid|brl }}{% endif %}">
+            </div>
+            <p class="help">
+                {% if is_leader %}Informe um valor maior que R$ {{ my_max|brl }}.{% else %}Insira R$ {{ minimum_bid|brl }} ou mais.{% endif %}
+            </p>
+            <p class="form-error" id="bid-error"></p>
+            {% if suggested %}
+                <div class="bid-suggestions">
+                    {% for valor in suggested %}
+                        <button type="button" class="chip" data-bid="{{ valor|brl }}">R$ {{ valor|brl }}</button>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            <button type="button" class="btn btn-primary btn-lg btn-block" id="bid-submit">{% if is_leader %}Aumentar lance{% else %}Dar lance{% endif %}</button>
+        </form>
+
+        <dialog id="bid-dialog" class="modal">
+            <h3 class="modal-title">Confirmar lance</h3>
+            <p class="modal-text">Seu lance máximo será de <strong id="bid-dialog-amount"></strong>. O sistema vai cobrir os lances dos outros participantes por você, com o menor incremento possível, até esse limite.</p>
+            <p class="modal-text">Ao confirmar, você se compromete a comprar o item se vencer o leilão.</p>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('bid-dialog').close()">Revisar</button>
+                <button type="submit" form="bid-form" class="btn btn-primary">Confirmar lance</button>
+            </div>
+        </dialog>
+
+        {% if auction.buy_now_available %}
+            <div class="or-divider"><span>ou</span></div>
+            <form method="post" action="{% url 'buy_now' product.pk %}" id="buy-now-form">{% csrf_token %}</form>
+            <button type="button" class="btn btn-accent btn-lg btn-block" onclick="document.getElementById('buy-now-dialog').showModal()">Comprar agora por R$ {{ auction.buy_now_price|brl }}</button>
+            <dialog id="buy-now-dialog" class="modal">
+                <h3 class="modal-title">Comprar agora?</h3>
+                <p class="modal-text">O leilão será encerrado e o item será seu por <strong>R$ {{ auction.buy_now_price|brl }}</strong>. Em seguida, você será levado ao pagamento.</p>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" onclick="document.getElementById('buy-now-dialog').close()">Voltar</button>
+                    <button type="submit" form="buy-now-form" class="btn btn-accent">Confirmar compra</button>
+                </div>
+            </dialog>
+        {% endif %}
+    {% endif %}
+
+    {% if user.is_authenticated and not user.is_staff %}
+        <form method="post" action="{% url 'toggle_watch' product.pk %}" class="watch-form">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline btn-block watch-btn{% if watching %} is-watching{% endif %}" aria-pressed="{% if watching %}true{% else %}false{% endif %}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="{% if watching %}currentColor{% else %}none{% endif %}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                {% if watching %}Acompanhando{% else %}Acompanhar{% endif %}
+            </button>
+        </form>
+    {% endif %}
+    {% if watchers %}<p class="muted text-sm text-center mt-2">{{ watchers }} pessoa{{ watchers|pluralize }} acompanhando</p>{% endif %}
+    {% if can_retract %}<p class="text-sm text-center mt-2"><a href="{% url 'retract_bid' product.pk %}" class="link">Retirar lance</a></p>{% endif %}
+
+    <details class="auction-explainer">
+        <summary>Como funcionam os lances</summary>
+        <p>Informe o máximo que você pagaria. O sistema dá lances automáticos por você, só o suficiente para mantê-lo na frente, até esse limite. Se dois participantes oferecerem o mesmo máximo, vence quem deu o lance primeiro.</p>
+        <p>O valor do seu lance máximo fica em sigilo. Lances não podem ser retirados e, se você vencer, terá um pedido aguardando pagamento.</p>
+    </details>
+
+{% elif user.is_authenticated and is_winner and auction.order.status == 'CANCELLED' %}
+    <div class="alert alert-info auction-status">Você arrematou este item, mas a compra foi cancelada.</div>
+
+{% elif user.is_authenticated and is_winner %}
+    <div class="alert alert-success auction-status">
+        <strong>Você arrematou este item!</strong>
+        {% if auction.order.status == 'PENDING' %}
+            Conclua o pagamento até {{ auction.payment_due_at|date:"d/m/Y \à\s H:i" }}.
+        {% endif %}
+    </div>
+    {% if auction.order.status == 'PENDING' %}
+        <a href="{% url 'resume_payment' auction.order.pk %}" class="btn btn-primary btn-lg btn-block">Pagar agora</a>
+    {% else %}
+        <a href="{% url 'my_orders' %}" class="btn btn-outline btn-block">Ver em Minhas compras</a>
+    {% endif %}
+
+{% elif user.is_authenticated and my_offer.is_pending %}
+    {% include 'auctions/_offer_box.html' with oferta=my_offer %}
+
+{% elif user.is_authenticated and my_max %}
+    <div class="alert alert-info auction-status">Você participou deste leilão, mas não foi o maior lance. Seu lance máximo foi R$ {{ my_max|brl }}.</div>
+{% endif %}
+
+{% if not auction.is_open and auction.relisted_as and user != product.seller %}
+    <a href="{% url 'product_detail' auction.relisted_as.product_id %}" class="btn btn-outline btn-block">Este item foi anunciado novamente</a>
+{% endif %}

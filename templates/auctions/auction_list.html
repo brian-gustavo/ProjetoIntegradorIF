@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}Leilões — MegaGame{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Leilões</h1>
+        <p class="page-sub">Dê o seu lance máximo e deixe o sistema disputar por você até esse limite</p>
+    </div>
+    {% if user.is_authenticated and not user.is_staff %}
+        <div class="page-actions">
+            <a href="{% url 'my_bids' %}" class="btn btn-outline">Meus lances</a>
+        </div>
+    {% endif %}
+</div>
+<div class="catalog-layout">
+    {% include 'catalog/_filters_sidebar.html' %}
+    <div>
+        {% include 'catalog/_results.html' with vazio='Nenhum leilão em andamento no momento.' %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% load catalog_extras auction_extras %}
+
+{% block title %}Meus lances — MegaGame{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Meus lances</h1>
+        <p class="page-sub">Acompanhe os leilões em que você deu lances e os que está acompanhando</p>
+    </div>
+    <div class="page-actions">
+        <a href="{% url 'auction_list' %}" class="btn btn-outline">Ver leilões</a>
+    </div>
+</div>
+
+<div class="toolbar">
+    <nav class="segmented" aria-label="Filtrar leilões">
+        {% for item in abas %}
+            <a href="?aba={{ item.chave }}" class="{% if item.chave == aba %}active{% endif %}">{{ item.titulo }} ({{ item.total }})</a>
+        {% endfor %}
+    </nav>
+</div>
+
+{% if aba == 'ofertas' and leiloes %}
+    {% include 'auctions/_offer_list.html' with ofertas=leiloes %}
+{% elif leiloes %}
+<div class="card">
+    {% for leilao in leiloes %}
+        {% with prod=leilao.product %}
+        <div class="line-item">
+            <a href="{% url 'product_detail' prod.pk %}" class="line-item-thumb">
+                {% with img=prod.images.all.0 %}
+                    {% if img %}<img src="{{ img.image.url }}" alt="">{% else %}<div class="img-placeholder"></div>{% endif %}
+                {% endwith %}
+            </a>
+            <div>
+                <p class="line-item-title"><a href="{% url 'product_detail' prod.pk %}">{{ prod.title }}</a></p>
+                <p class="line-item-sub">
+                    {{ leilao.bid_count }} lance{{ leilao.bid_count|pluralize }}
+                    {% if leilao.my_max %} · seu lance máximo: R$ {{ leilao.my_max|brl }}{% endif %}
+                </p>
+                <div class="bid-row-status">
+                    {% if leilao.status == 'ACTIVE' %}
+                        {% if aba == 'acompanhando' and not leilao.my_max %}
+                            <span class="badge badge-default">Sem lances seus</span>
+                        {% elif leilao.is_leader %}
+                            <span class="badge badge-paid">Você é o maior lance</span>
+                            {% if not leilao.reserve_met %}<span class="badge badge-pending">Reserva não atingida</span>{% endif %}
+                        {% else %}
+                            <span class="badge badge-cancelled">Superado</span>
+                        {% endif %}
+                        <span class="auction-time{% if leilao.ends_at|ends_soon %} is-urgent{% endif %}">
+                            <span data-countdown="{{ leilao.ends_at|date:'c' }}">{{ leilao.ends_at|time_left }}</span> restantes
+                        </span>
+                    {% elif leilao.winner_id == user.pk %}
+                        {% if leilao.order.status == 'PENDING' %}
+                            <span class="badge badge-pending">Aguardando seu pagamento</span>
+                            <span class="muted text-sm">até {{ leilao.payment_due_at|date:"d/m \à\s H:i" }}</span>
+                        {% elif leilao.order.status == 'CANCELLED' %}
+                            <span class="badge badge-cancelled">Compra cancelada</span>
+                        {% else %}
+                            <span class="badge badge-paid">Arrematado{% if leilao.bought_now %} pelo Comprar agora{% endif %}</span>
+                        {% endif %}
+                    {% else %}
+                        <span class="badge badge-default">Encerrado em {{ leilao.closed_at|date:"d/m/Y" }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="line-item-side">
+                <span class="muted text-sm">{% if leilao.status == 'SOLD' %}valor final{% elif leilao.bid_count %}lance atual{% else %}lance inicial{% endif %}</span>
+                <span class="price">R$ {{ leilao.current_price|brl }}</span>
+                {% if leilao.status == 'ACTIVE' %}
+                    <a href="{% url 'product_detail' prod.pk %}#leilao" class="btn btn-sm {% if leilao.is_leader %}btn-outline{% else %}btn-primary{% endif %}">
+                        {% if leilao.is_leader %}Aumentar lance{% elif leilao.my_max %}Dar novo lance{% else %}Dar lance{% endif %}
+                    </a>
+                {% elif leilao.winner_id == user.pk and leilao.order.status == 'PENDING' %}
+                    <a href="{% url 'resume_payment' leilao.order.pk %}" class="btn btn-primary btn-sm">Pagar agora</a>
+                {% elif leilao.winner_id == user.pk %}
+                    <a href="{% url 'my_orders' %}" class="btn btn-outline btn-sm">Ver pedido</a>
+                {% endif %}
+                {% if aba == 'acompanhando' %}
+                    <form method="post" action="{% url 'toggle_watch' prod.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                        <button type="submit" class="btn btn-ghost btn-sm">Deixar de acompanhar</button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endwith %}
+    {% endfor %}
+</div>
+{% else %}
+    <div class="empty-state">
+        {% if aba == 'ativos' %}
+            <strong>Você não está participando de nenhum leilão</strong>
+            Encontre um item que você quer e dê o seu lance.
+        {% elif aba == 'vencidos' %}
+            <strong>Você ainda não arrematou nenhum leilão</strong>
+            Os itens que você vencer aparecem aqui, com o prazo para pagamento.
+        {% elif aba == 'perdidos' %}
+            <strong>Nada por aqui</strong>
+            Leilões encerrados em que você não foi o maior lance aparecem aqui.
+        {% elif aba == 'ofertas' %}
+            <strong>Nenhuma oferta de segunda chance</strong>
+            Se um vendedor oferecer a você um item de um leilão que você não venceu, a oferta aparece aqui.
+        {% else %}
+            <strong>Você não está acompanhando nenhum leilão</strong>
+            Use o botão "Acompanhar" na página de um leilão para guardá-lo aqui.
+        {% endif %}
+        <br><a href="{% url 'auction_list' %}" class="btn btn-primary">Ver leilões</a>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+{% include 'auctions/_auction_js.html' %}
+{% endblock %}

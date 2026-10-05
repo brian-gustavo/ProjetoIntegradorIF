@@ -1,19 +1,20 @@
 {% extends 'base.html' %}
+{% load catalog_extras %}
 
-{% block title %}Variações — MegaGame{% endblock %}
+{% block title %}Configurar leilão — MegaGame{% endblock %}
 
 {% block content %}
 <div class="narrow">
     <div class="page-head">
         <div>
-            <h1 class="page-title">Finalizar anúncio</h1>
-            <p class="steps"><span>1. Informações do produto</span><span>›</span><span class="current">2. Fotos e variações</span></p>
+            <h1 class="page-title">Finalizar leilão</h1>
+            <p class="steps"><span>1. Informações do produto</span><span>›</span><span class="current">2. Fotos e leilão</span></p>
         </div>
     </div>
 
-    <form method="post" enctype="multipart/form-data" id="variant-form" class="card" novalidate>
+    <form method="post" enctype="multipart/form-data" id="auction-form" class="card" novalidate>
         {% csrf_token %}
-        <p class="muted text-sm mb-6">Produto: <strong class="strong">{{ product.title }}</strong> · <a href="{% url 'setup_auction' product.pk %}" class="link">Prefere vender em leilão?</a></p>
+        <p class="muted text-sm mb-6">Produto: <strong class="strong">{{ product.title }}</strong> · <a href="{% url 'manage_variants' product.pk %}" class="link">Prefere vender a preço fixo?</a></p>
 
         <h2 class="form-section">Imagens</h2>
         {% if image_error %}
@@ -32,27 +33,19 @@
             <p class="muted text-sm">Limite de 5 imagens atingido.</p>
         {% endif %}
 
-        <h2 class="form-section">Variações</h2>
-        {{ variant_formset.management_form }}
-        {% if variant_formset.non_form_errors %}
-            <ul class="errorlist mb-3">
-                {% for error in variant_formset.non_form_errors %}
-                    <li>{{ error }}</li>
-                {% endfor %}
-            </ul>
-        {% endif %}
+        <h2 class="form-section">Leilão</h2>
+        {% include 'auctions/_auction_fields.html' %}
 
-        <div id="variant-list">
-            {% for form in variant_formset %}
-                {% include 'catalog/_variant_form.html' %}
-            {% endfor %}
-        </div>
-
-        <button type="button" onclick="addVariant()" class="btn btn-outline btn-block">+ Adicionar variação</button>
+        <details class="auction-explainer">
+            <summary>Como funcionam os lances</summary>
+            <p>Os compradores informam o valor máximo que pagariam. O sistema dá lances automáticos por eles, só o necessário para mantê-los na frente, então o lance atual sobe aos poucos, conforme a tabela de incrementos:</p>
+            {% include 'auctions/_increments.html' %}
+            <p>Leilões são vendidos como unidade única e não aceitam cupons ou MegaCoins. O vencedor recebe um pedido aguardando pagamento assim que o leilão termina.</p>
+        </details>
 
         <div class="form-footer-actions">
             <button type="button" class="btn btn-ghost" onclick="document.getElementById('cancel-dialog').showModal()">Cancelar criação</button>
-            <button type="button" class="btn btn-primary" onclick="document.getElementById('confirm-dialog').showModal()">Publicar anúncio</button>
+            <button type="button" class="btn btn-primary" onclick="document.getElementById('confirm-dialog').showModal()">Publicar leilão</button>
         </div>
     </form>
 
@@ -71,11 +64,11 @@
 </dialog>
 
 <dialog id="confirm-dialog" class="modal">
-    <h3 class="modal-title">Publicar anúncio?</h3>
-    <p class="modal-text">Após publicado, o anúncio ficará visível para todos os usuários. Revise todas as informações antes de prosseguir.</p>
+    <h3 class="modal-title">Publicar leilão?</h3>
+    <p class="modal-text">O leilão começa imediatamente e não pode ser pausado. Depois do primeiro lance, o lance inicial, a reserva, o Comprar agora e a duração não podem mais ser alterados.</p>
     <div class="modal-actions">
         <button type="button" class="btn btn-outline" onclick="document.getElementById('confirm-dialog').close()">Revisar</button>
-        <button type="submit" form="variant-form" class="btn btn-primary">Publicar</button>
+        <button type="submit" form="auction-form" class="btn btn-primary">Publicar</button>
     </div>
 </dialog>
 {% endblock %}
@@ -84,10 +77,6 @@
 {{ block.super }}
 {% include 'catalog/_variant_template.html' %}
 <script>
-    if (parseInt(totalForms.value) === 0) {
-        addVariant();
-    }
-
     const imageInput = document.getElementById('images');
     const imageLabel = document.querySelector('label[for="images"]');
 
@@ -103,16 +92,11 @@
             imageErrorEl.textContent = '';
 
             const grandes = files.filter(f => f.size > maxSize).map(f => f.name);
-            if (grandes.length > 0) {
-                imageErrorEl.textContent = `As seguintes imagens excedem o limite de 10MB: ${grandes.join(', ')}`;
-                imageInput.value = '';
-                imageLabel.textContent = `Adicionar imagens (${existingCount}/5, limite individual de 10MB)`;
-                return;
-            }
-
             const total = existingCount + files.length;
-            if (total > 5) {
-                imageErrorEl.textContent = `Limite de imagens ultrapassado. Insira no máximo 5 e tente novamente.`;
+            if (grandes.length > 0 || total > 5) {
+                imageErrorEl.textContent = grandes.length > 0
+                    ? `As seguintes imagens excedem o limite de 10MB: ${grandes.join(', ')}`
+                    : 'Limite de imagens ultrapassado. Insira no máximo 5 e tente novamente.';
                 imageInput.value = '';
                 imageLabel.textContent = `Adicionar imagens (${existingCount}/5, limite individual de 10MB)`;
                 return;

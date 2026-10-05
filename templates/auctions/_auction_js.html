@@ -1,0 +1,81 @@
+<script>
+    (() => {
+        const formatar = (segundos) => {
+            if (segundos <= 0) return 'Encerrado';
+            const d = Math.floor(segundos / 86400);
+            const h = Math.floor(segundos % 86400 / 3600);
+            const m = Math.floor(segundos % 3600 / 60);
+            const s = segundos % 60;
+            if (d) return `${d}d ${h}h`;
+            if (h) return `${h}h ${m}min`;
+            if (m) return `${m}min ${s}s`;
+            return `${s}s`;
+        };
+
+        const relogios = [...document.querySelectorAll('[data-countdown]')].map(el => ({ el, fim: new Date(el.dataset.countdown) }));
+        if (relogios.length) {
+            const tique = () => {
+                relogios.forEach(({ el, fim }) => {
+                    const restante = Math.floor((fim - Date.now()) / 1000);
+                    el.textContent = formatar(restante);
+                    el.closest('.auction-clock, .auction-time')?.classList.toggle('is-urgent', restante < 86400);
+                    if (restante <= 0 && !el.dataset.recarregado && el.dataset.reloadOnEnd !== undefined) {
+                        el.dataset.recarregado = '1';
+                        setTimeout(() => location.reload(), 1500);
+                    }
+                });
+            };
+            tique();
+            setInterval(tique, 1000);
+        }
+
+        const form = document.getElementById('bid-form');
+        if (!form) return;
+
+        const input = document.getElementById('bid-amount');
+        const erro = document.getElementById('bid-error');
+        const minimo = parseFloat(form.dataset.min);
+        const lider = form.dataset.leader === '1';
+        const reais = (valor) => valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        const lerValor = () => {
+            let texto = input.value.replace(/R\$|\s/g, '');
+            if (texto.includes(',')) texto = texto.replace(/\./g, '').replace(',', '.');
+            const valor = Number(texto);
+            return texto && Number.isFinite(valor) ? Math.round(valor * 100) / 100 : null;
+        };
+
+        document.querySelectorAll('[data-bid]').forEach(botao => {
+            botao.addEventListener('click', () => {
+                input.value = botao.dataset.bid;
+                erro.textContent = '';
+                input.focus();
+            });
+        });
+
+        const abrir = () => {
+            const valor = lerValor();
+            if (valor === null || valor <= 0) {
+                erro.textContent = 'Informe um valor de lance válido.';
+            } else if (lider && valor <= minimo) {
+                erro.textContent = `Informe um valor maior que R$ ${reais(minimo)}.`;
+            } else if (!lider && valor < minimo) {
+                erro.textContent = `Informe R$ ${reais(minimo)} ou mais.`;
+            } else {
+                erro.textContent = '';
+                document.getElementById('bid-dialog-amount').textContent = `R$ ${reais(valor)}`;
+                document.getElementById('bid-dialog').showModal();
+                return;
+            }
+            input.focus();
+        };
+
+        document.getElementById('bid-submit').addEventListener('click', abrir);
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                abrir();
+            }
+        });
+    })();
+</script>

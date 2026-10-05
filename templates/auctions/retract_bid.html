@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% load catalog_extras auction_extras %}
+
+{% block title %}Retirar lance — MegaGame{% endblock %}
+
+{% block content %}
+<div class="narrow">
+    <div class="page-head">
+        <div>
+            <h1 class="page-title">Retirar lance</h1>
+            <p class="page-sub">{{ product.title }}</p>
+        </div>
+        <div class="page-actions">
+            <a href="{% url 'product_detail' product.pk %}#leilao" class="btn btn-ghost btn-sm">← Voltar ao anúncio</a>
+        </div>
+    </div>
+
+    <div class="alert alert-warning mb-6">
+        Lances são um compromisso de compra e só podem ser retirados em situações excepcionais. A retirada fica registrada no histórico de lances do leilão.
+    </div>
+
+    <form method="post" id="retract-form" class="card" novalidate>
+        {% csrf_token %}
+        <h2 class="form-section">O que será retirado</h2>
+        {% if todos %}
+            <p class="text-sm mb-3">Como faltam {{ late_hours }} horas ou mais para o fim do leilão, <strong>todos os seus lances</strong> neste item serão retirados:</p>
+        {% else %}
+            <p class="text-sm mb-3">Como faltam menos de {{ late_hours }} horas para o fim do leilão, só é possível retirar <strong>o seu lance mais recente</strong>, dado na última hora. Os lances anteriores continuam valendo.</p>
+        {% endif %}
+        <ul class="auction-facts">
+            {% for lance in lances %}
+                <li><span>{{ lance.created_at|date:"d/m/Y H:i:s" }}</span><strong>R$ {{ lance.amount|brl }}</strong></li>
+            {% endfor %}
+        </ul>
+
+        <h2 class="form-section">Motivo</h2>
+        {% if erro %}<div class="alert alert-danger mb-3">{{ erro }}</div>{% endif %}
+        <div class="form-group">
+            {% for valor, rotulo in motivos %}
+                <div><label><input type="radio" name="motivo" value="{{ valor }}"{% if motivo == valor %} checked{% endif %}> {{ rotulo }}</label></div>
+            {% endfor %}
+            <p class="help">Se você digitou o valor errado (por exemplo, R$ 999,00 em vez de R$ 99,90), dê um novo lance com o valor correto logo depois de retirar.</p>
+        </div>
+
+        <div class="form-footer-actions">
+            <a href="{% url 'product_detail' product.pk %}#leilao" class="btn btn-ghost">Cancelar</a>
+            <button type="button" class="btn btn-danger" onclick="document.getElementById('retract-dialog').showModal()">Retirar lance{{ lances|length|pluralize:"s" }}</button>
+        </div>
+    </form>
+</div>
+
+<dialog id="retract-dialog" class="modal">
+    <h3 class="modal-title">Confirmar retirada?</h3>
+    <p class="modal-text">O lance atual do leilão será recalculado sem {% if lances|length > 1 %}esses lances{% else %}esse lance{% endif %}. Essa ação não pode ser desfeita.</p>
+    <div class="modal-actions">
+        <button type="button" class="btn btn-outline" onclick="document.getElementById('retract-dialog').close()">Voltar</button>
+        <button type="submit" form="retract-form" class="btn btn-danger">Retirar</button>
+    </div>
+</dialog>
+{% endblock %}

@@ -7,6 +7,21 @@
         {% endif %}
     </summary>
 
+    {% if filtros.format_facets %}
+    <div class="filter-section">
+        <p class="filter-heading">Formato</p>
+        <ul class="filter-options">
+            {% for facet in filtros.format_facets %}
+                <li>
+                    <a href="{{ facet.url }}" class="filter-option{% if facet.active %} active{% endif %}">
+                        {{ facet.label }}<span class="count">{{ facet.count }}</span>
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
     <div class="filter-section">
         <p class="filter-heading">Preço</p>
         <form method="get">

@@ -1,0 +1,71 @@
+{% load catalog_extras auction_extras %}
+<div class="product-card">
+    <a href="{% url 'product_detail' prod.pk %}" class="product-card-media">
+        {% with img=prod.images.all.0 %}
+            {% if img %}<img src="{{ img.image.url }}" alt="{{ prod.title }}" loading="lazy">{% else %}<div class="img-placeholder" role="img" aria-label="Sem foto"></div>{% endif %}
+        {% endwith %}
+        {% if auction.status == 'ACTIVE' %}
+            <span class="badge badge-progress">Leilão ativo</span>
+        {% elif auction.status == 'SOLD' and auction.order.status == 'CANCELLED' %}
+            <span class="badge badge-cancelled">Venda cancelada</span>
+        {% elif auction.status == 'SOLD' %}
+            <span class="badge badge-paid">Leilão vendido</span>
+        {% else %}
+            <span class="badge badge-default">Leilão sem venda</span>
+        {% endif %}
+    </a>
+    <div class="product-card-body">
+        <a href="{% url 'product_detail' prod.pk %}" class="product-card-title">{{ prod.title }}</a>
+        <div class="price-from">{% if auction.status == 'SOLD' %}vendido por{% elif auction.bid_count %}lance atual{% else %}lance inicial{% endif %}</div>
+        <div class="product-card-price price">R$ {{ auction.current_price|brl }}</div>
+        <div class="product-card-foot">
+            <span>{{ auction.bid_count }} lance{{ auction.bid_count|pluralize }}</span>
+            {% if auction.status == 'ACTIVE' %}
+                <span class="auction-time{% if auction.ends_at|ends_soon %} is-urgent{% endif %}">{{ auction.ends_at|time_left }}</span>
+            {% elif auction.status == 'SOLD' and auction.order.status == 'PENDING' %}
+                <span>Pagamento até {{ auction.payment_due_at|date:"d/m" }}</span>
+            {% elif auction.relisted_as_id %}
+                <span>Relistado</span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="product-card-actions">
+        {% if auction.status == 'ACTIVE' %}
+            <a href="{% url 'edit_product' prod.pk %}" class="btn btn-outline btn-sm span-2">Editar</a>
+        {% else %}
+            {% if auction.can_cancel_unpaid %}
+                <form method="post" action="{% url 'cancel_unpaid' prod.pk %}" class="span-2">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button type="submit" class="btn btn-outline btn-sm">Cancelar venda não paga</button>
+                </form>
+            {% endif %}
+            {% if auction.can_second_chance %}
+                <a href="{% url 'second_chance' prod.pk %}" class="btn btn-outline btn-sm span-2">Segunda chance</a>
+            {% endif %}
+            {% if auction.can_relist %}
+                <form method="post" action="{% url 'relist_auction' prod.pk %}" class="span-2">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary btn-sm">Relistar</button>
+                </form>
+            {% endif %}
+        {% endif %}
+        {% if auction.status != 'ACTIVE' or not auction.bid_count %}
+            <form method="post" action="{% url 'delete_product' prod.pk %}" id="delete-form-{{ prod.pk }}" class="span-2">
+                {% csrf_token %}
+                <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('delete-dialog-{{ prod.pk }}').showModal()">Excluir</button>
+            </form>
+        {% endif %}
+    </div>
+</div>
+
+{% if auction.status != 'ACTIVE' or not auction.bid_count %}
+<dialog id="delete-dialog-{{ prod.pk }}" class="modal">
+    <h3 class="modal-title">Excluir anúncio?</h3>
+    <p class="modal-text"><strong>{{ prod.title }}</strong> será removido permanentemente da plataforma{% if auction.status == 'ACTIVE' %} e o leilão será encerrado{% endif %}.</p>
+    <div class="modal-actions">
+        <button type="button" class="btn btn-outline" onclick="document.getElementById('delete-dialog-{{ prod.pk }}').close()">Cancelar</button>
+        <button type="submit" form="delete-form-{{ prod.pk }}" class="btn btn-danger">Excluir</button>
+    </div>
+</dialog>
+{% endif %}

@@ -1,0 +1,16 @@
+{% load catalog_extras %}
+<div class="table-wrap">
+    <table class="table increments-table">
+        <thead>
+            <tr><th>Lance atual</th><th class="num">Incremento</th></tr>
+        </thead>
+        <tbody>
+            {% for faixa in increments %}
+                <tr>
+                    <td>{% if faixa.ate %}R$ {{ faixa.de|brl }} a R$ {{ faixa.ate|brl }}{% else %}A partir de R$ {{ faixa.de|brl }}{% endif %}</td>
+                    <td class="num">R$ {{ faixa.incremento|brl }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

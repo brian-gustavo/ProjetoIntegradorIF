@@ -8,6 +8,11 @@ from django.db import transaction
 from django.utils import timezone
 
 from accounts.models import SellerReview
+from auctions.models import Auction, AuctionWatch, Bid
+from auctions.services import (
+    apply_bid, close_auction, increment_for, minimum_bid, publish as publish_auction, respond_second_chance,
+    retract_bids, second_chance_candidates, send_second_chance,
+)
 from catalog.models import Category, Product, ProductVariant, ProductReview
 from coupons.models import Coupon, CouponRedemption
 from orders.models import Order, Cart, CartItem, PlatformConfig, Commission, Dispute, DisputeMessage, ReturnRequest, commission_for, generate_tracking_code
@@ -231,12 +236,16 @@ SELLER_COUPON_TEMPLATES = [
 ]
 COUPON_USE_CHANCE = 0.25
 
+AUCTION_ENDED_SHARE = 0.25
+AUCTION_DURATIONS = [1, 3, 5, 7, 7, 7, 10]
+
 class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('--sellers', type=int, default=25)
         parser.add_argument('--buyers', type=int, default=60)
         parser.add_argument('--products', type=int, default=250)
         parser.add_argument('--orders', type=int, default=400)
+        parser.add_argument('--auctions', type=int, default=30)
         parser.add_argument('--days', type=int, default=365)
         parser.add_argument('--flush', action='store_true')
 
@@ -260,10 +269,11 @@ class Command(BaseCommand):
             self._seed_coupons(categories, sellers)
             self._seed_orders(products, buyers, options['orders'])
             self._seed_carts(products, buyers)
+            auctions = self._seed_auctions(categories, sellers, buyers, options['auctions'])
 
         self.stdout.write(self.style.SUCCESS(
             f"Banco povoado: {len(sellers)} vendedores, {len(buyers)} compradores, "
-            f"{len(products)} produtos."
+            f"{len(products)} produtos, {auctions} leilões."
         ))
 
     def _flush(self):
@@ -760,3 +770,85 @@ class Command(BaseCommand):
                     cart=cart, variant=variant,
                     defaults={'product': product, 'quantity': random.randint(1, min(2, variant.quantity))},
                 )
+
+    def _seed_auctions(self, categories, sellers, buyers, count):
+        if not count or not buyers:
+            return 0
+
+        self.stdout.write('Gerando leilões...')
+        for _ in range(count):
+            category = random.choices(categories, weights=CATEGORY_WEIGHTS)[0]
+            seller = random.choice(sellers)
+            title, _ = self._generate_title(category)
+            duration = random.choice(AUCTION_DURATIONS)
+
+            ended = random.random() < AUCTION_ENDED_SHARE
+            if ended:
+                ends_at = self._now - timedelta(hours=random.randint(1, 72))
+            else:
+                ends_at = self._now + timedelta(minutes=random.randint(20, duration * 24 * 60 - 30))
+            starts_at = ends_at - timedelta(days=duration)
+
+            start = Decimal(random.randrange(10, 300))
+            reserve = buy_now = None
+            if random.random() < 0.3:
+                reserve = (start * Decimal(str(random.uniform(1.5, 3)))).quantize(Decimal('1'))
+            if random.random() < 0.35:
+                base = max(start * Decimal('1.3'), reserve or Decimal('0'))
+                buy_now = (base * Decimal(str(random.uniform(1.2, 1.8)))).quantize(Decimal('1'))
+
+            product = Product.objects.create(
+                category=category,
+                seller=seller,
+                title=title,
+                description=' '.join(random.sample(DESCRIPTION_SENTENCES, 4)),
+                condition=random.choices(['NEW', 'USED'], weights=[3, 7])[0],
+                accepts_pickup=random.random() < 0.3,
+            )
+            Product.objects.filter(pk=product.pk).update(created_at=starts_at, updated_at=starts_at)
+            auction = publish_auction(product, Auction(
+                start_price=start, reserve_price=reserve, buy_now_price=buy_now, duration_days=duration,
+            ), agora=starts_at)
+
+            self._seed_bids(auction, buyers, starts_at, min(ends_at, self._now))
+            if ended:
+                close_auction(auction, agora=ends_at)
+                if auction.order:
+                    Order.objects.filter(pk=auction.order.pk).update(created_at=ends_at, updated_at=ends_at)
+                elif auction.bid_count and random.random() < 0.6:
+                    self._seed_second_chance(auction, seller)
+            else:
+                if auction.bid_count and random.random() < 0.12:
+                    bidder = random.choice([b.bidder for b in auction.bids.filter(is_auto=False)])
+                    retract_bids(auction.pk, bidder, random.choice(Bid.RETRACTION_CHOICES)[0])
+                watchers = random.sample(buyers, k=random.randint(0, min(8, len(buyers))))
+                AuctionWatch.objects.bulk_create(
+                    [AuctionWatch(user=user, auction=auction) for user in watchers], ignore_conflicts=True,
+                )
+
+        return count
+
+    def _seed_second_chance(self, auction, seller):
+        candidatos = second_chance_candidates(auction)
+        if not candidatos:
+            return
+        offer, _ = send_second_chance(auction.pk, seller, candidatos[0]['bidder'].pk, random.choice([1, 3, 5]))
+        if offer and random.random() < 0.5:
+            respond_second_chance(offer.pk, offer.bidder, aceitar=random.random() < 0.7)
+
+    def _seed_bids(self, auction, buyers, inicio, fim):
+        lances = random.choices([0, 1, 2, 3, 5, 8, 12], weights=[15, 10, 15, 20, 20, 12, 8])[0]
+        if not lances:
+            return
+
+        participantes = random.sample(buyers, k=min(len(buyers), random.randint(1, 6)))
+        valor_de_mercado = auction.start_price * Decimal(str(random.uniform(1.2, 3.5)))
+        for momento in sorted(random_between(inicio, fim) for _ in range(lances)):
+            participante = random.choice(participantes)
+            if participante.pk == auction.leader_id:
+                continue
+            minimo = minimum_bid(auction)
+            if minimo > valor_de_mercado:
+                break
+            valor = minimo + increment_for(minimo) * random.randint(0, 12)
+            apply_bid(auction, participante, valor, momento)

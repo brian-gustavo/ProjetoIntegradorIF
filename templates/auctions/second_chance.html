@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% load catalog_extras %}
+
+{% block title %}Oferta de segunda chance — MegaGame{% endblock %}
+
+{% block content %}
+<div class="narrow">
+    <div class="page-head">
+        <div>
+            <h1 class="page-title">Oferta de segunda chance</h1>
+            <p class="page-sub">{{ product.title }}</p>
+        </div>
+        <div class="page-actions">
+            <a href="{% url 'product_detail' product.pk %}" class="btn btn-ghost btn-sm">← Voltar ao anúncio</a>
+        </div>
+    </div>
+
+    <p class="section-note">
+        Se o vencedor não pagou ou o preço de reserva não foi atingido, você pode oferecer o item a outro participante pelo lance máximo que ele deu.
+        Uma oferta por vez, até {{ window_days }} dias após o fim do leilão. Se a oferta for aceita, o participante recebe um pedido aguardando pagamento.
+    </p>
+
+    {% if erro %}
+        <div class="alert alert-info mb-6">{{ erro }}</div>
+    {% elif not candidatos %}
+        <div class="alert alert-info mb-6">Não há outros participantes que possam receber uma oferta de segunda chance.</div>
+    {% else %}
+        <form method="post" id="offer-form" class="card" novalidate>
+            {% csrf_token %}
+            <h2 class="form-section">Participante</h2>
+            <div class="offer-candidates">
+                {% for c in candidatos %}
+                    <label class="format-option">
+                        <input type="radio" name="bidder" value="{{ c.bidder.pk }}"{% if forloop.first %} checked{% endif %}>
+                        <span>
+                            <strong>{{ c.bidder.username }} · R$ {{ c.preco|brl }}</strong>
+                            <small>Lance máximo do participante{% if c.abaixo_da_reserva %}, abaixo do preço de reserva que você tinha definido{% endif %}</small>
+                        </span>
+                    </label>
+                {% endfor %}
+            </div>
+
+            <h2 class="form-section">Validade da oferta</h2>
+            <div class="radio-cards">
+                {% for valor, rotulo in duracoes %}
+                    <label class="radio-card"><input type="radio" name="duration_days" value="{{ valor }}"{% if valor == 3 %} checked{% endif %}> {{ rotulo }}</label>
+                {% endfor %}
+            </div>
+
+            <div class="form-footer-actions">
+                <a href="{% url 'product_detail' product.pk %}" class="btn btn-ghost">Cancelar</a>
+                <button type="submit" class="btn btn-primary">Enviar oferta</button>
+            </div>
+        </form>
+    {% endif %}
+
+    {% if ofertas %}
+        <h2 class="section-title">Ofertas enviadas</h2>
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr><th>Participante</th><th class="num">Valor</th><th>Enviada</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                    {% for o in ofertas %}
+                        <tr>
+                            <td class="strong">{{ o.bidder.username }}</td>
+                            <td class="num">R$ {{ o.price|brl }}</td>
+                            <td class="text-sm">{{ o.created_at|date:"d/m/Y H:i" }}{% if o.status == 'PENDING' %} · vale até {{ o.expires_at|date:"d/m H:i" }}{% endif %}</td>
+                            <td><span class="badge {% if o.status == 'ACCEPTED' %}badge-paid{% elif o.status == 'PENDING' %}badge-pending{% else %}badge-default{% endif %}">{{ o.get_status_display }}</span></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -53,6 +53,12 @@
             </div>
         {% endif %}
 
+        {% if order.status == 'PENDING' and order.auction.payment_due_at %}
+            <div class="alert alert-warning order-card-notice">
+                Você {% if order.auction.bought_now %}comprou este item pelo Comprar agora{% elif order.second_chance_offer %}aceitou uma oferta de segunda chance por este item{% else %}arrematou este item em leilão{% endif %}. Conclua o pagamento até <strong>{{ order.auction.payment_due_at|date:"d/m/Y" }} às {{ order.auction.payment_due_at|date:"H:i" }}</strong>; depois disso, o vendedor pode cancelar a venda.
+            </div>
+        {% endif %}
+
         {% with t=order.tracking %}
         {% if t %}
             <details class="tracking">

@@ -196,6 +196,18 @@ class PlatformConfig(models.Model):
         help_text="Concedidas uma única vez por produto ou vendedor avaliado",
         verbose_name="MegaCoins por avaliação"
     )
+    auction_payment_days = models.PositiveIntegerField(
+        default=4,
+        validators=[MinValueValidator(1), MaxValueValidator(30)],
+        help_text="Encerrado o prazo sem pagamento, o vendedor pode cancelar a venda e relistar o item",
+        verbose_name="Prazo para o vencedor de um leilão pagar (dias)"
+    )
+    second_chance_window_days = models.PositiveIntegerField(
+        default=60,
+        validators=[MinValueValidator(1), MaxValueValidator(365)],
+        help_text="Após o fim de um leilão não vendido ou não pago, o vendedor pode oferecer o item a outro participante dentro desse prazo",
+        verbose_name="Prazo para enviar ofertas de segunda chance (dias)"
+    )
 
     class Meta:
         verbose_name = "Configuração da plataforma"
