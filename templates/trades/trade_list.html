@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block title %}Trocas — MegaGame{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Trocas</h1>
+        <p class="page-sub">Anúncios abertos a propostas de troca: ofereça itens seus, com ou sem volta em dinheiro</p>
+    </div>
+    {% if user.is_authenticated and not user.is_staff %}
+        <div class="page-actions">
+            <a href="{% url 'my_trades' %}" class="btn btn-outline">Minhas trocas</a>
+        </div>
+    {% endif %}
+</div>
+
+<ol class="trade-steps">
+    <li><strong>Proponha</strong><span>Escolha itens que você anunciou e, se precisar, uma volta em dinheiro.</span></li>
+    <li><strong>Negocie</strong><span>O anunciante aceita, recusa ou faz uma contraproposta.</span></li>
+    <li><strong>Envie e receba</strong><span>Fechada a troca, cada lado envia o seu item, com rastreio e devolução como numa compra.</span></li>
+</ol>
+
+<div class="catalog-layout">
+    {% include 'catalog/_filters_sidebar.html' %}
+    <div>
+        {% include 'catalog/_results.html' with vazio='Nenhum anúncio aceitando trocas no momento.' %}
+    </div>
+</div>
+{% endblock %}

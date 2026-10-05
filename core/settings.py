@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'rewards',
     'coupons',
     'auctions',
+    'trades',
 ]
 
 MIDDLEWARE = [
@@ -63,6 +64,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'orders.context_processors.cart_count',
                 'rewards.context_processors.coin_balance',
+                'trades.context_processors.trade_count',
             ],
         },
     },

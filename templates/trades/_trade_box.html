@@ -1,0 +1,32 @@
+{% if user.is_authenticated and user == product.seller %}
+    {% if propostas_recebidas %}
+        <a href="{% url 'my_trades' %}?aba=sua_vez" class="btn btn-outline btn-block trade-btn">
+            {% include 'trades/_swap_icon.html' with size=16 %}
+            {{ propostas_recebidas }} proposta{{ propostas_recebidas|pluralize }} de troca aguardando você
+        </a>
+    {% endif %}
+{% else %}
+    <div class="or-divider"><span>ou</span></div>
+    <div class="trade-pitch">
+        <p class="trade-pitch-title">{% include 'trades/_swap_icon.html' with size=16 %} Troque por itens seus</p>
+        {% if product.trade_preferences %}
+            <p>O anunciante procura: <strong>{{ product.trade_preferences }}</strong></p>
+        {% else %}
+            <p>Ofereça um ou mais itens que você anunciou, com ou sem volta em dinheiro.</p>
+        {% endif %}
+    </div>
+    {% if minha_proposta %}
+        <a href="{% url 'trade_detail' minha_proposta.pk %}" class="btn btn-outline btn-block trade-btn">
+            {% if minha_proposta.awaiting == 'PROPOSER' %}Responder contraproposta{% else %}Ver minha proposta{% endif %}
+        </a>
+        <p class="help text-center">
+            {% if minha_proposta.awaiting == 'PROPOSER' %}O anunciante fez uma contraproposta.{% else %}Aguardando resposta do anunciante.{% endif %}
+        </p>
+    {% elif not user.is_authenticated %}
+        <a href="{% url 'login' %}?next={{ request.path|urlencode }}" class="btn btn-outline btn-block trade-btn">Entre para propor uma troca</a>
+    {% elif pode_propor %}
+        <a href="{% url 'propose_trade' product.pk %}" class="btn btn-outline btn-block trade-btn">
+            {% include 'trades/_swap_icon.html' with size=16 %} Propor troca
+        </a>
+    {% endif %}
+{% endif %}

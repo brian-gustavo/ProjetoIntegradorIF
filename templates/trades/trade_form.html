@@ -1,0 +1,232 @@
+{% extends 'base.html' %}
+{% load catalog_extras %}
+
+{% block title %}{% if proposal %}Contraproposta{% else %}Propor troca{% endif %} — MegaGame{% endblock %}
+
+{% block content %}
+<div class="narrow-xl">
+    <div class="page-head">
+        <div>
+            <h1 class="page-title">{% if proposal %}Fazer contraproposta{% else %}Propor troca{% endif %}</h1>
+            <p class="page-sub">{{ product.title }} · negociação com {{ contraparte.username }}</p>
+        </div>
+        <div class="page-actions">
+            {% if proposal %}
+                <a href="{% url 'trade_detail' proposal.pk %}" class="btn btn-ghost btn-sm">← Voltar à proposta</a>
+            {% else %}
+                <a href="{% url 'product_detail' product.pk %}" class="btn btn-ghost btn-sm">← Voltar ao anúncio</a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if proposal %}
+        <div class="alert alert-info mb-6">
+            <strong>Termos atuais:</strong> {{ termos_atuais }}.
+            {% if itens_indisponiveis %}Alguns desses itens não estão mais disponíveis e foram removidos da seleção.{% endif %}
+        </div>
+    {% endif %}
+
+    {% for erro in form.non_field_errors %}
+        <div class="alert alert-danger mb-6">{{ erro }}</div>
+    {% endfor %}
+
+    {% if not inventario %}
+        <div class="empty-state">
+            {% if sou_proponente %}
+                <strong>Você não tem itens disponíveis para oferecer</strong>
+                Numa troca, você oferece itens que já anunciou no MegaGame (fora de leilões e com estoque). Anuncie o que quer trocar e volte aqui.
+                <br><a href="{% url 'create_product' %}" class="btn btn-primary">Anunciar um item</a>
+            {% else %}
+                <strong>{{ contraparte.username }} não tem mais itens disponíveis</strong>
+                Nenhum anúncio de {{ contraparte.username }} pode entrar na troca agora. Você pode recusar a proposta.
+                <br><a href="{% url 'trade_detail' proposal.pk %}" class="btn btn-outline">Voltar à proposta</a>
+            {% endif %}
+        </div>
+    {% else %}
+    <form method="post" id="trade-form" novalidate data-proponente="{% if sou_proponente %}1{% endif %}" data-max="{{ max_itens }}">
+        {% csrf_token %}
+        <div class="trade-board">
+            <section class="card trade-side">
+                <h2 class="trade-side-title">Você oferece</h2>
+                {% if sou_proponente %}
+                    {% include 'trades/_inventory_picker.html' %}
+                {% else %}
+                    {% include 'trades/_target_panel.html' %}
+                {% endif %}
+            </section>
+
+            <div class="trade-board-swap" aria-hidden="true">{% include 'trades/_swap_icon.html' with size=20 %}</div>
+
+            <section class="card trade-side">
+                <h2 class="trade-side-title">Você recebe</h2>
+                {% if sou_proponente %}
+                    {% include 'trades/_target_panel.html' %}
+                {% else %}
+                    {% include 'trades/_inventory_picker.html' %}
+                {% endif %}
+            </section>
+        </div>
+
+        <div class="trade-terms">
+            <section class="card">
+                <h2 class="form-section">Volta em dinheiro</h2>
+                {% with volta=form.volta.value %}
+                <div class="radio-cards">
+                    <label class="radio-card"><input type="radio" name="volta" value="nenhuma"{% if volta == 'nenhuma' or not volta %} checked{% endif %}> Sem volta</label>
+                    <label class="radio-card"><input type="radio" name="volta" value="eu"{% if volta == 'eu' %} checked{% endif %}> Eu pago a volta</label>
+                    <label class="radio-card"><input type="radio" name="volta" value="outro"{% if volta == 'outro' %} checked{% endif %}> {{ contraparte.username }} paga a volta</label>
+                </div>
+                {% endwith %}
+                <div class="trade-cash" id="trade-cash">
+                    <label class="field-label" for="cash-amount">Valor da volta</label>
+                    <div class="bid-input">
+                        <span>R$</span>
+                        <input type="text" inputmode="decimal" name="cash_amount" id="cash-amount" class="input" autocomplete="off" placeholder="0,00" value="{{ form.cash_amount.value|default:'' }}">
+                    </div>
+                    {% for erro in form.cash_amount.errors %}<p class="form-error">{{ erro }}</p>{% endfor %}
+                </div>
+
+                <h2 class="form-section">Mensagem <span class="muted">(opcional)</span></h2>
+                <textarea name="message" class="input" rows="3" maxlength="500" placeholder="Ex.: o jogo está com a caixa original e o manual">{{ form.message.value|default:'' }}</textarea>
+                {% for erro in form.message.errors %}<p class="form-error">{{ erro }}</p>{% endfor %}
+            </section>
+
+            <aside class="card trade-balance">
+                <p class="field-label">Valor de referência</p>
+                <div class="kv"><span>Você oferece</span><span id="valor-oferece">R$ 0,00</span></div>
+                <div class="kv"><span>Você recebe</span><span id="valor-recebe">R$ 0,00</span></div>
+                <div class="trade-meter" aria-hidden="true"><div class="trade-meter-fill" id="trade-meter"></div></div>
+                <p class="trade-balance-hint" id="balance-hint"></p>
+                <button type="button" class="btn btn-outline btn-sm btn-block" id="balance-fix" hidden>Equilibrar com volta</button>
+                <p class="help">Calculado pelos preços anunciados. A volta é paga pelo Mercado Pago, como numa compra.</p>
+                {% if taxa_total %}
+                    <div class="kv trade-fee"><span>Taxa da troca (sua parte)</span><span>R$ {% if sou_proponente %}{{ taxa_proponente|brl }}{% else %}{{ taxa_anunciante|brl }}{% endif %}</span></div>
+                    <p class="help">A MegaGame cobra R$ {{ taxa_total|brl }} por troca fechada, divididos entre os dois lados e pagos junto com a volta, se houver. Só é cobrada se a troca for aceita.</p>
+                {% endif %}
+                <button type="button" class="btn btn-primary btn-lg btn-block" id="trade-submit">{% if proposal %}Enviar contraproposta{% else %}Enviar proposta{% endif %}</button>
+            </aside>
+        </div>
+    </form>
+
+    <dialog id="trade-dialog" class="modal">
+        <h3 class="modal-title">{% if proposal %}Enviar contraproposta?{% else %}Enviar proposta?{% endif %}</h3>
+        <p class="modal-text" id="trade-dialog-text"></p>
+        <p class="modal-text">Se {{ contraparte.username }} aceitar, a troca é fechada na hora e cada lado recebe um pedido para enviar o seu item.</p>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="document.getElementById('trade-dialog').close()">Revisar</button>
+            <button type="submit" form="trade-form" class="btn btn-primary">Confirmar envio</button>
+        </div>
+    </dialog>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+{% if inventario %}
+<script>
+    (() => {
+        const form = document.getElementById('trade-form');
+        const proponente = form.dataset.proponente === '1';
+        const maximo = parseInt(form.dataset.max, 10);
+        const itens = Array.from(form.querySelectorAll('input[name="items"]'));
+        const variantes = Array.from(form.querySelectorAll('input[name="variant"]'));
+        const alvoFixo = form.querySelector('[data-target-price]');
+        const voltas = Array.from(form.querySelectorAll('input[name="volta"]'));
+        const campoVolta = document.getElementById('cash-amount');
+        const blocoVolta = document.getElementById('trade-cash');
+        const limite = document.getElementById('picker-limit');
+        const botaoEquilibrar = document.getElementById('balance-fix');
+
+        const brl = v => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const centavos = v => Math.round(v * 100);
+
+        const lerValor = texto => {
+            let valor = (texto || '').replace('R$', '').replace(/\s/g, '');
+            if (valor.includes(',')) valor = valor.replace(/\./g, '').replace(',', '.');
+            const numero = parseFloat(valor);
+            return Number.isFinite(numero) && numero > 0 ? numero : 0;
+        };
+
+        const precoAlvo = () => {
+            if (alvoFixo) return parseFloat(alvoFixo.dataset.targetPrice);
+            const marcada = variantes.find(v => v.checked);
+            return marcada ? parseFloat(marcada.dataset.price) : 0;
+        };
+
+        const somaItens = () => itens.filter(i => i.checked).reduce((s, i) => s + parseFloat(i.dataset.price), 0);
+        const tipoVolta = () => (voltas.find(v => v.checked) || {}).value || 'nenhuma';
+
+        const valores = () => {
+            const meus = proponente ? somaItens() : precoAlvo();
+            const deles = proponente ? precoAlvo() : somaItens();
+            const volta = tipoVolta() === 'nenhuma' ? 0 : lerValor(campoVolta.value);
+            return {
+                meus, deles,
+                oferece: meus + (tipoVolta() === 'eu' ? volta : 0),
+                recebe: deles + (tipoVolta() === 'outro' ? volta : 0),
+            };
+        };
+
+        const atualizar = () => {
+            const marcados = itens.filter(i => i.checked).length;
+            itens.forEach(i => {
+                i.disabled = !i.checked && marcados >= maximo;
+                i.closest('.trade-pick').classList.toggle('is-disabled', i.disabled);
+            });
+            limite.textContent = marcados >= maximo ? `Limite de ${maximo} itens atingido.` : '';
+
+            blocoVolta.hidden = tipoVolta() === 'nenhuma';
+
+            const v = valores();
+            document.getElementById('valor-oferece').textContent = `R$ ${brl(v.oferece)}`;
+            document.getElementById('valor-recebe').textContent = `R$ ${brl(v.recebe)}`;
+
+            const total = v.oferece + v.recebe;
+            document.getElementById('trade-meter').style.width = `${total ? v.oferece / total * 100 : 50}%`;
+
+            const diferenca = centavos(v.oferece) - centavos(v.recebe);
+            const dica = document.getElementById('balance-hint');
+            if (!marcados) {
+                dica.textContent = 'Selecione pelo menos um item para comparar os valores.';
+            } else if (diferenca === 0) {
+                dica.textContent = 'Troca equilibrada pelos valores de referência.';
+            } else if (diferenca > 0) {
+                dica.textContent = `Você oferece R$ ${brl(diferenca / 100)} a mais do que recebe.`;
+            } else {
+                dica.textContent = `Você oferece R$ ${brl(-diferenca / 100)} a menos do que recebe.`;
+            }
+            dica.classList.toggle('is-balanced', marcados > 0 && diferenca === 0);
+
+            const base = centavos(v.meus) - centavos(v.deles);
+            botaoEquilibrar.hidden = !marcados || base === 0 || diferenca === 0;
+        };
+
+        botaoEquilibrar.addEventListener('click', () => {
+            const v = valores();
+            const base = centavos(v.meus) - centavos(v.deles);
+            const alvo = voltas.find(r => r.value === (base < 0 ? 'eu' : 'outro'));
+            alvo.checked = true;
+            campoVolta.value = brl(Math.abs(base) / 100);
+            atualizar();
+        });
+
+        form.addEventListener('change', atualizar);
+        campoVolta.addEventListener('input', atualizar);
+        atualizar();
+
+        document.getElementById('trade-submit').addEventListener('click', () => {
+            const v = valores();
+            const marcados = itens.filter(i => i.checked).length;
+            let texto = proponente
+                ? `Você oferece ${marcados} ite${marcados === 1 ? 'm' : 'ns'} (R$ ${brl(v.meus)}) pelo anúncio (R$ ${brl(v.deles)})`
+                : `Você entrega o anúncio (R$ ${brl(v.meus)}) e recebe ${marcados} ite${marcados === 1 ? 'm' : 'ns'} (R$ ${brl(v.deles)})`;
+            const volta = tipoVolta() === 'nenhuma' ? 0 : lerValor(campoVolta.value);
+            if (volta) texto += tipoVolta() === 'eu' ? `, pagando R$ ${brl(volta)} de volta` : `, recebendo R$ ${brl(volta)} de volta`;
+            document.getElementById('trade-dialog-text').textContent = `${texto}.`;
+            document.getElementById('trade-dialog').showModal();
+        });
+    })();
+</script>
+{% endif %}
+{% endblock %}

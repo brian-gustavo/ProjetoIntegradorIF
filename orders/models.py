@@ -44,6 +44,9 @@ class Order(models.Model):
     seller_coupon_discount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), verbose_name="Desconto do cupom da loja")
     platform_coupon = models.ForeignKey('coupons.CouponRedemption', null=True, blank=True, on_delete=models.SET_NULL, related_name='platform_orders', verbose_name="Cupom MegaGame")
     platform_coupon_discount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), verbose_name="Desconto do cupom MegaGame")
+    trade = models.ForeignKey('trades.TradeProposal', null=True, blank=True, on_delete=models.SET_NULL, related_name='orders', verbose_name="Troca")
+    trade_fee = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), verbose_name="Taxa da troca")
+    trade_paid = models.BooleanField(default=False, verbose_name="Parte da troca paga")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Criado em")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Atualizado em")
 
@@ -65,6 +68,10 @@ class Order(models.Model):
     @property
     def amount_paid(self):
         return self.sale_amount - self.platform_discount
+
+    @property
+    def amount_charged(self):
+        return self.amount_paid + self.trade_fee
 
 class Cart(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='cart', verbose_name="Usuário")
@@ -207,6 +214,20 @@ class PlatformConfig(models.Model):
         validators=[MinValueValidator(1), MaxValueValidator(365)],
         help_text="Após o fim de um leilão não vendido ou não pago, o vendedor pode oferecer o item a outro participante dentro desse prazo",
         verbose_name="Prazo para enviar ofertas de segunda chance (dias)"
+    )
+    trade_response_days = models.PositiveIntegerField(
+        default=3,
+        validators=[MinValueValidator(1), MaxValueValidator(14)],
+        help_text="Vale para a proposta inicial e para cada contraproposta; sem resposta nesse prazo, a proposta expira",
+        verbose_name="Prazo para responder uma proposta de troca (dias)"
+    )
+    trade_fee = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('5.00'),
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Cobrada quando a troca é aceita e dividida igualmente entre os dois lados, junto com a volta, se houver. A comissão continua incidindo sobre a volta",
+        verbose_name="Taxa fixa por troca (R$)"
     )
 
     class Meta:

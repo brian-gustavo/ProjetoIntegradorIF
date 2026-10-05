@@ -1,0 +1,37 @@
+{% load catalog_extras %}
+<div class="trade-target">
+    <a href="{% url 'product_detail' product.pk %}" class="trade-pick-thumb trade-target-thumb">
+        {% with img=product.images.all.0 %}
+            {% if img %}<img src="{{ img.image.url }}" alt="">{% else %}<span class="img-placeholder"></span>{% endif %}
+        {% endwith %}
+    </a>
+    <div class="trade-pick-info">
+        <strong><a href="{% url 'product_detail' product.pk %}">{{ product.title }}</a></strong>
+        <small>{{ product.get_condition_display }} · anúncio de {{ product.seller.username }}</small>
+    </div>
+</div>
+
+{% if variantes %}
+    {% with escolhida=form.selected_variant %}
+    {% if variantes|length > 1 %}
+        <p class="field-label">Variação</p>
+    {% endif %}
+    <div class="trade-variants{% if variantes|length == 1 %} is-single{% endif %}">
+        {% for v in variantes %}
+            <label class="trade-variant">
+                <input type="radio" name="variant" value="{{ v.pk }}" data-price="{{ v.price|stringformat:'s' }}"{% if v.pk|stringformat:'s' == escolhida or variantes|length == 1 %} checked{% endif %}>
+                <span>{{ v.name }}</span>
+                <strong class="price">R$ {{ v.price|brl }}</strong>
+            </label>
+        {% endfor %}
+    </div>
+    {% for erro in form.variant.errors %}<p class="form-error">{{ erro }}</p>{% endfor %}
+    {% endwith %}
+{% else %}
+    <div class="trade-variants is-single">
+        <div class="trade-variant" data-target-price="{{ alvo.price|stringformat:'s' }}">
+            <span>{{ alvo.name }}</span>
+            <strong class="price">R$ {{ alvo.price|brl }}</strong>
+        </div>
+    </div>
+{% endif %}

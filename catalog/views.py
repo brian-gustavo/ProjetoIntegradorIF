@@ -16,6 +16,7 @@ from auctions.forms import AuctionForm
 from auctions.services import apply_edit as apply_auction_edit, can_cancel_unpaid, can_relist, can_send_second_chance, close_expired_auctions, close_for_deletion, detail_context as auction_detail_context
 from coupons.services import store_coupons
 from orders.models import Order, PlatformConfig
+from trades.services import product_context as trade_context
 
 RATING_OPTIONS = [
     ('4.0', '4,0 ou mais'),
@@ -33,6 +34,7 @@ FORMAT_OPTIONS = [
     ('', 'Todos'),
     ('leilao', 'Leilão'),
     ('imediata', 'Compra imediata'),
+    ('troca', 'Aceita trocas'),
 ]
 
 def _apply_sort(request, qs, options=SORT_OPTIONS, padrao='recentes'):
@@ -90,6 +92,8 @@ def _apply_filters(qs, preco_min, preco_max, local, avaliacao, profile, formato=
         qs = qs.filter(auction__isnull=False)
     elif formato == 'imediata':
         qs = qs.filter(auction__isnull=True)
+    elif formato == 'troca':
+        qs = qs.filter(auction__isnull=True, accepts_trade=True)
 
     if preco_min is not None:
         qs = qs.filter(min_price__gte=preco_min)
@@ -157,10 +161,12 @@ def _build_filter_context(request, base_qs):
     for key, label in FORMAT_OPTIONS:
         count = _apply_filters(base_qs, preco_min, preco_max, local, avaliacao, profile, key).count()
         format_facets.append({
-            'label': label, 'count': count,
+            'key': key, 'label': label, 'count': count,
             'active': formato == key, 'url': _facet_url(request, formato=key),
         })
-    mostrar_formatos = bool(formato) or all(f['count'] for f in format_facets)
+    format_facets = [f for f in format_facets if f['key'] != 'troca' or f['count'] or f['active']]
+    total_formatos = format_facets[0]['count']
+    mostrar_formatos = bool(formato) or any(0 < f['count'] < total_formatos for f in format_facets[1:])
 
     chips = []
     if preco_min is not None or preco_max is not None:
@@ -256,6 +262,11 @@ def _build_shelves(base_qs):
             'url': reverse('auction_list'),
             'produtos': qs.filter(auction__status='ACTIVE').order_by('auction__ends_at'),
         },
+        {
+            'titulo': 'Aceitam troca',
+            'url': reverse('trade_list'),
+            'produtos': qs.filter(accepts_trade=True, auction__isnull=True).order_by('-created_at'),
+        },
         {'titulo': 'Mais bem avaliados', 'produtos': qs.filter(avg_rating__isnull=False).order_by('-avg_rating', '-review_count', '-created_at')},
         {'titulo': 'Novidades', 'produtos': qs.order_by('-created_at')},
         {'titulo': 'Menores preços', 'produtos': qs.order_by('min_price', '-created_at')},
@@ -328,6 +339,7 @@ def product_detail(request, product_id):
         'already_reviewed_seller': already_reviewed_seller,
         'store_coupons': [] if auction else store_coupons(product.seller),
         **(auction_detail_context(auction, request.user) if auction else {}),
+        **trade_context(product, request.user),
     })
 
 def category_detail(request, slug):
@@ -366,6 +378,8 @@ def create_product(request):
         if product_form.is_valid():
             product = product_form.save(commit=False)
             product.seller = request.user
+            if request.POST.get('formato') == 'leilao':
+                product.accepts_trade, product.trade_preferences = False, ''
             product.save()
             if request.POST.get('formato') == 'leilao':
                 return redirect('setup_auction', product_id=product.pk)
@@ -575,7 +589,7 @@ def _edit_auction_product(request, product):
     image_error = None
 
     if request.method == 'POST':
-        product_form = ProductForm(request.POST, instance=product)
+        product_form = ProductForm(request.POST, instance=product, auction=True)
         auction_form = AuctionForm(request.POST, instance=auction, locked=locked)
 
         if product_form.is_valid() and auction_form.is_valid():
@@ -599,7 +613,7 @@ def _edit_auction_product(request, product):
                 messages.success(request, 'Anúncio atualizado com sucesso')
                 return redirect('product_detail', product_id=product.pk)
     else:
-        product_form = ProductForm(instance=product)
+        product_form = ProductForm(instance=product, auction=True)
         auction_form = AuctionForm(instance=auction, locked=locked)
 
     return render(request, 'catalog/edit_product.html', {

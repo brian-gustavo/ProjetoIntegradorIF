@@ -1,0 +1,19 @@
+<script>
+    (() => {
+        const aceita = document.querySelector('input[name="accepts_trade"]');
+        if (!aceita) return;
+        const grupoAceita = aceita.closest('.form-group');
+        const grupoPreferencias = document.querySelector('[data-field="trade_preferences"]');
+        const formatos = document.querySelectorAll('input[name="formato"]');
+
+        const atualizar = () => {
+            const leilao = Array.from(formatos).some(r => r.checked && r.value === 'leilao');
+            grupoAceita.hidden = leilao;
+            grupoPreferencias.hidden = leilao || !aceita.checked;
+        };
+
+        aceita.addEventListener('change', atualizar);
+        formatos.forEach(r => r.addEventListener('change', atualizar));
+        atualizar();
+    })();
+</script>

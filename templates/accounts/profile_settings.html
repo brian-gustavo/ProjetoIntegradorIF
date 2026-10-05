@@ -21,13 +21,15 @@
                 {{ field.errors }}
             </div>
         {% endfor %}
-        {% for field in profile_detail_form %}
-            <div class="form-group">
-                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                {{ field }}
-                {{ field.errors }}
-            </div>
-        {% endfor %}
+        {% if profile_detail_form %}
+            {% for field in profile_detail_form %}
+                <div class="form-group">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {{ field.errors }}
+                </div>
+            {% endfor %}
+        {% endif %}
         <div class="form-footer-actions">
             <button type="submit" name="save_profile" class="btn btn-primary">Salvar dados</button>
         </div>

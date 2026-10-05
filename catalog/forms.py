@@ -5,9 +5,25 @@ from django.forms import inlineformset_factory
 from .models import Product, ProductVariant, ProductReview
 
 class ProductForm(forms.ModelForm):
+    TRADE_FIELDS = ('accepts_trade', 'trade_preferences')
+
     class Meta:
         model = Product
-        fields = ('title', 'category', 'description', 'condition', 'accepts_pickup')
+        fields = ('title', 'category', 'description', 'condition', 'accepts_pickup', 'accepts_trade', 'trade_preferences')
+        help_texts = {'accepts_trade': 'Interessados podem oferecer itens anunciados por eles, com ou sem volta em dinheiro. Não vale para leilões.'}
+        widgets = {'trade_preferences': forms.TextInput(attrs={'placeholder': 'Ex.: jogos de PS5, controles originais'})}
+
+    def __init__(self, *args, auction=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        if auction:
+            for campo in self.TRADE_FIELDS:
+                del self.fields[campo]
+
+    def clean(self):
+        dados = super().clean()
+        if 'accepts_trade' in self.fields and not dados.get('accepts_trade'):
+            dados['trade_preferences'] = ''
+        return dados
 
 class ProductVariantForm(forms.ModelForm):
     price = forms.DecimalField(

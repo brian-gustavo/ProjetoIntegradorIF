@@ -27,6 +27,7 @@
     <a href="#megacoins">MegaCoins</a>
     <a href="#cupons">Cupons</a>
     <a href="#leiloes">Leilões</a>
+    <a href="#trocas">Trocas</a>
     <a href="#configuracoes">Configurações</a>
 </nav>
 
@@ -544,6 +545,77 @@
                     {% empty %}
                         <tr>
                             <td colspan="3" class="empty">Nenhum leilão encerrado no período</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endwith %}
+</section>
+
+<section class="dash-section" id="trocas">
+    <h2 class="section-title">Trocas</h2>
+    <p class="section-note">Desfechos consideram as negociações encerradas no período. Itens trocados não entram no GMV. A receita vem da taxa fixa por troca (considerada quando paga, nas trocas aceitas no período) e da comissão sobre a volta em dinheiro, quando houver.</p>
+    {% with t=trocas %}
+    <div class="stat-grid">
+        <div class="stat">
+            <p class="stat-label">Propostas enviadas</p>
+            <p class="stat-value">{{ t.propostas }}</p>
+            <p class="stat-sub">{{ t.negociando_agora }} em negociação agora</p>
+            {% include 'orders/_delta.html' with valor=t.propostas_variacao %}
+        </div>
+        <div class="stat">
+            <p class="stat-label">Taxa de aceite</p>
+            <p class="stat-value">{{ t.taxa_aceite|floatformat:1 }}%</p>
+            <p class="stat-sub">{{ t.aceitas }} de {{ t.encerradas }} negociaç{{ t.encerradas|pluralize:"ão,ões" }} encerrada{{ t.encerradas|pluralize }}</p>
+        </div>
+        <div class="stat">
+            <p class="stat-label">Valor de referência trocado</p>
+            <p class="stat-value">R$ {{ t.valor_referencia|brl }}</p>
+            <p class="stat-sub">soma dos preços anunciados nas trocas aceitas</p>
+        </div>
+        <div class="stat">
+            <p class="stat-label">Volta em trocas aceitas</p>
+            <p class="stat-value">R$ {{ t.volta_total|brl }}</p>
+            <p class="stat-sub">{{ t.com_volta }} troca{{ t.com_volta|pluralize }} com volta</p>
+        </div>
+    </div>
+    <div class="dash-split">
+        <div class="card">
+            <dl>
+                <div class="kv"><dt>Anúncios aceitando troca agora</dt><dd class="strong">{{ t.anuncios_agora }}</dd></div>
+                <div class="kv"><dt>Negociações com contraproposta</dt><dd class="strong">{{ t.com_contraproposta|floatformat:1 }}%</dd></div>
+                <div class="kv"><dt>Média de rodadas por negociação</dt><dd class="strong">{% if t.rodadas_media is None %}—{% else %}{{ t.rodadas_media|floatformat:1 }}{% endif %}</dd></div>
+                <div class="kv"><dt>Taxas de troca recebidas</dt><dd class="strong">R$ {{ t.taxas|brl }}</dd></div>
+                <div class="kv"><dt>Volta em pedidos concluídos</dt><dd class="strong">R$ {{ t.volta_concluida|brl }}</dd></div>
+                <div class="kv"><dt>Comissão sobre voltas</dt><dd class="strong">R$ {{ t.comissao|brl }}</dd></div>
+            </dl>
+        </div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Desfecho das negociações encerradas</th>
+                        <th class="num">Propostas</th>
+                        <th>Participação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in t.desfechos %}
+                        <tr>
+                            <td class="strong">{{ d.desfecho }}</td>
+                            <td class="num">{{ d.propostas }}</td>
+                            <td>
+                                <div class="share">
+                                    <div class="share-bar"><div class="share-bar-fill" data-pct="{{ d.participacao|stringformat:'.2f' }}"></div></div>
+                                    <span>{{ d.participacao|floatformat:1 }}%</span>
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="3" class="empty">Nenhuma negociação encerrada no período</td>
                         </tr>
                     {% endfor %}
                 </tbody>

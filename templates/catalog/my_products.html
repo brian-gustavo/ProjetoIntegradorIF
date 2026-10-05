@@ -38,6 +38,7 @@
                 <div class="product-card-price price">R$ {{ prod.base_price|brl }}</div>
                 <div class="product-card-foot">
                     <span>Estoque: {{ prod.total_stock }} un.</span>
+                    {% if prod.accepts_trade %}<span class="trade-note">{% include 'trades/_swap_icon.html' with size=12 %} Aceita troca</span>{% endif %}
                 </div>
             </div>
             <div class="product-card-actions">

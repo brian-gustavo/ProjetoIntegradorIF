@@ -18,6 +18,7 @@ urlpatterns = [
     path('', include('rewards.urls')),
     path('', include('coupons.urls')),
     path('', include('auctions.urls')),
+    path('', include('trades.urls')),
     path('categorias/<slug:slug>/', category_detail, name='category_detail'),
     path('categorias/', category_list, name='category_list'),
     path('accounts/profile/', profile_settings, name='profile_settings'),

@@ -8,7 +8,7 @@
                 <div class="img-placeholder" role="img" aria-label="Sem foto"></div>
             {% endif %}
         {% endwith %}
-        {% if prod.auction %}<span class="auction-flag">Leilão</span>{% endif %}
+        {% if prod.auction %}<span class="auction-flag">Leilão</span>{% elif prod.accepts_trade %}<span class="trade-flag">{% include 'trades/_swap_icon.html' with size=11 %} Aceita troca</span>{% endif %}
     </div>
     <div class="product-card-body">
         <div class="product-card-title">{{ prod.title }}</div>

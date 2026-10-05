@@ -31,6 +31,7 @@
         <nav class="header-nav">
             <a href="{% url 'category_list' %}" class="{% if rota == 'category_list' or rota == 'category_detail' %}active{% endif %}">Categorias</a>
             <a href="{% url 'auction_list' %}" class="{% if rota == 'auction_list' %}active{% endif %}">Leilões</a>
+            <a href="{% url 'trade_list' %}" class="{% if rota == 'trade_list' %}active{% endif %}">Trocas</a>
             {% if user.is_authenticated and user.is_staff %}
                 <a href="{% url 'admin_dashboard' %}" class="{% if rota == 'admin_dashboard' %}active{% endif %}">Painel</a>
                 <a href="{% url 'dispute_list' %}" class="{% if rota == 'dispute_list' or rota == 'dispute_detail' %}active{% endif %}">Disputas</a>
@@ -59,7 +60,7 @@
             {% if user.is_authenticated %}
                 <div class="user-menu" id="userMenu">
                     <button class="user-menu-trigger" id="userMenuTrigger" type="button" aria-haspopup="true" aria-expanded="false">
-                        <span class="user-avatar">{{ user.username|first|upper }}</span>
+                        <span class="user-avatar{% if trade_count %} has-alert{% endif %}">{{ user.username|first|upper }}</span>
                         <span class="user-name">{{ user.username }}</span>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
                     </button>
@@ -71,6 +72,7 @@
                         <div class="only-narrow">
                             <a href="{% url 'category_list' %}">Categorias</a>
                             <a href="{% url 'auction_list' %}">Leilões</a>
+                            <a href="{% url 'trade_list' %}">Trocas</a>
                             {% if user.is_staff %}
                                 <a href="{% url 'admin_dashboard' %}">Painel administrativo</a>
                                 <a href="{% url 'dispute_list' %}">Disputas</a>
@@ -82,6 +84,7 @@
                         </div>
                         {% if not user.is_staff %}
                             <a href="{% url 'my_bids' %}">Meus lances</a>
+                            <a href="{% url 'my_trades' %}" class="menu-with-count">Minhas trocas{% if trade_count %}<span class="menu-count" aria-label="{{ trade_count }} aguardando você">{{ trade_count }}</span>{% endif %}</a>
                             <a href="{% url 'wallet' %}">MegaCoins e recompensas</a>
                             <a href="{% url 'my_coupons' %}">Meus cupons</a>
                             <hr>

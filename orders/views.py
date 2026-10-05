@@ -26,6 +26,7 @@ from coupons.models import Coupon
 from coupons.services import available_coupons, build_quote, parse_choice, redeem_code, save_redemptions, selected_ids, valid_now
 from rewards.models import CoinTransaction
 from rewards.services import annotate_orders, apply_redemption, coins_to_brl, sync_wallet
+from trades.services import awaiting_payment as awaiting_trade_payment, mark_paid as mark_trade_paid, report as trades_report
 
 @login_required
 def add_to_cart(request, product_id):
@@ -247,12 +248,18 @@ def resume_payment(request, order_id):
     if order.status != 'PENDING':
         return redirect('my_orders')
 
+    if order.trade_id and not awaiting_trade_payment(order):
+        return redirect('trade_detail', trade_id=order.trade_id)
+
     request.session['mp_pending_orders'] = [order.pk]
     return redirect('mp_pay_next')
 
 @login_required
 def cancel_order_buyer(request, order_id):
     order = get_object_or_404(Order, pk=order_id, buyer=request.user)
+
+    if order.trade_id:
+        return _redirect_to_trade(request, order)
 
     if order.status in ('PENDING', 'PAID'):
         order.status = 'CANCELLED'
@@ -283,10 +290,11 @@ def _finalize_delivery(order):
     variant.quantity -= order.quantity
     variant.save()
 
-    Commission.objects.get_or_create(
-        order=order,
-        defaults=commission_for(order, PlatformConfig.get_commission_rate()),
-    )
+    if order.total_price:
+        Commission.objects.get_or_create(
+            order=order,
+            defaults=commission_for(order, PlatformConfig.get_commission_rate()),
+        )
 
     order.status = 'DELIVERED'
     order.save()
@@ -444,11 +452,18 @@ def mark_ready_pickup(request, order_id):
 def cancel_order_seller(request, order_id):
     order = get_object_or_404(Order, pk=order_id, product__seller=request.user)
 
+    if order.trade_id:
+        return _redirect_to_trade(request, order)
+
     if order.status in ('PAID', 'CONFIRMED', 'PREPARING'):
         order.status = 'CANCELLED'
         order.save()
 
     return redirect('seller_orders')
+
+def _redirect_to_trade(request, order):
+    messages.info(request, 'Este pedido faz parte de uma troca. Para desfazê-la, cancele a troca inteira por aqui.')
+    return redirect('trade_detail', trade_id=order.trade_id)
 
 @login_required
 def seller_dashboard(request):
@@ -998,6 +1013,7 @@ def _build_report_data(periodo):
             commissions_periodo, commissions_anterior, comissao_periodo, pedidos_periodo, config.ranking_size,
         ),
         'leiloes': _programa_leiloes(periodo, commissions_periodo, commissions_anterior, gmv_atual, gmv_anterior),
+        'trocas': trades_report(periodo),
     }
 
 @login_required
@@ -1265,7 +1281,7 @@ def resolve_dispute(request, dispute_id):
             else:
                 dispute.status = 'RESOLVED_SELLER'
                 order.status = 'COMPLETED'
-                if not hasattr(order, 'commission'):
+                if not hasattr(order, 'commission') and order.total_price:
                     Commission.objects.create(order=order, **commission_for(order, PlatformConfig.get_commission_rate()))
 
             dispute.save()
@@ -1319,13 +1335,27 @@ def dispute_list(request):
 #
 #     return JsonResponse(data, safe=False)
 
+def _trade_charge_label(order):
+    partes = []
+    if order.total_price:
+        partes.append('volta')
+    if order.trade_fee:
+        partes.append('taxa da troca')
+    return ' e '.join(partes).capitalize()
+
 def _create_mp_preference(seller, seller_orders, mp_account, request):
     rate = PlatformConfig.get_commission_rate()
     total = sum(o.sale_amount for o in seller_orders)
     marketplace_fee = (total * rate / Decimal('100')).quantize(Decimal('0.01'))
     marketplace_fee = max(marketplace_fee - sum(o.platform_discount for o in seller_orders), Decimal('0'))
+    marketplace_fee += sum(o.trade_fee for o in seller_orders)
 
     items = [{
+        'title': f'Troca #{o.trade_id} — {_trade_charge_label(o)}',
+        'quantity': 1,
+        'unit_price': float(o.amount_charged),
+        'currency_id': 'BRL',
+    } if o.trade_id else {
         'title': f'{o.product.title} — {o.variant.name}',
         'quantity': o.quantity,
         'unit_price': float(o.variant.price),
@@ -1431,7 +1461,8 @@ def mp_webhook(request):
     payment = response.json()
     if payment.get('status') == 'approved':
         order_ids = payment.get('external_reference', '').split(',')
-        Order.objects.filter(pk__in=order_ids, status='PENDING').update(status='PAID')
+        Order.objects.filter(pk__in=order_ids, status='PENDING', trade__isnull=True).update(status='PAID')
+        mark_trade_paid(order_ids)
 
     return JsonResponse({'status': 'ok'})
 

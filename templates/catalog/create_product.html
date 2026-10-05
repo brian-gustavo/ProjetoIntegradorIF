@@ -14,7 +14,7 @@
     <form method="post" id="product-form" class="card" novalidate>
         {% csrf_token %}
         {% for field in product_form %}
-            <div class="form-group">
+            <div class="form-group" data-field="{{ field.name }}">
                 {% if field.widget_type == 'checkbox' %}
                     <label class="check">{{ field }} {{ field.label }}</label>
                 {% else %}
@@ -61,4 +61,9 @@
         <button type="submit" form="product-form" class="btn btn-primary">Continuar</button>
     </div>
 </dialog>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+{% include 'catalog/_trade_fields_js.html' %}
 {% endblock %}

@@ -29,6 +29,13 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Criado em")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Atualizado em")
     accepts_pickup = models.BooleanField(default=False, verbose_name="Aceita retirada em mãos")
+    accepts_trade = models.BooleanField(default=False, verbose_name="Aceita trocas")
+    trade_preferences = models.CharField(
+        max_length=300,
+        blank=True,
+        help_text="Opcional. Ex.: jogos de PS5, controles originais, etc. Deixe em branco para receber qualquer proposta.",
+        verbose_name="O que você aceita em troca",
+    )
     published = models.BooleanField(default=False, verbose_name="Publicado")
     deleted = models.BooleanField(default=False, verbose_name="Excluído")
 

@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% load catalog_extras %}
+
+{% block title %}Minhas trocas — MegaGame{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Minhas trocas</h1>
+        <p class="page-sub">Propostas que você enviou e recebeu, e o andamento das trocas fechadas</p>
+    </div>
+    <div class="page-actions">
+        <a href="{% url 'trade_list' %}" class="btn btn-outline">Ver anúncios que aceitam troca</a>
+    </div>
+</div>
+
+<div class="toolbar">
+    <nav class="segmented" aria-label="Filtrar trocas">
+        {% for item in abas %}
+            <a href="?aba={{ item.chave }}" class="{% if item.chave == aba %}active{% endif %}">{{ item.titulo }} ({{ item.total }})</a>
+        {% endfor %}
+    </nav>
+</div>
+
+{% if propostas %}
+<div class="card">
+    {% for proposal in propostas %}
+        <a href="{% url 'trade_detail' proposal.pk %}" class="trade-row">
+            <span class="trade-row-thumbs">
+                {% with img=proposal.product.images.all.0 %}
+                    <span class="trade-pick-thumb">{% if img %}<img src="{{ img.image.url }}" alt="">{% else %}<span class="img-placeholder"></span>{% endif %}</span>
+                {% endwith %}
+                <span class="trade-row-swap">{% include 'trades/_swap_icon.html' with size=14 %}</span>
+                {% with item=proposal.items.all.0 %}
+                    {% with img=item.product.images.all.0 %}
+                        <span class="trade-pick-thumb">{% if img %}<img src="{{ img.image.url }}" alt="">{% else %}<span class="img-placeholder"></span>{% endif %}</span>
+                    {% endwith %}
+                {% endwith %}
+            </span>
+            <span class="trade-row-info">
+                <strong>{{ proposal.product.title }}</strong>
+                <small>
+                    {% if proposal.my_side == 'OWNER' %}Proposta de {{ proposal.proposer.username }}{% else %}Anúncio de {{ proposal.owner.username }}{% endif %}
+                    · {{ proposal.items.all|length }} ite{{ proposal.items.all|length|pluralize:"m,ns" }} oferecido{{ proposal.items.all|length|pluralize }}
+                    {% if proposal.cash_amount %} · volta de R$ {{ proposal.cash_amount|brl }} paga por {% if proposal.cash_payer_user == user %}você{% else %}{{ proposal.cash_payer_user.username }}{% endif %}{% endif %}
+                    {% if proposal.rounds > 1 %} · {{ proposal.rounds }} rodadas{% endif %}
+                </small>
+            </span>
+            <span class="trade-row-side">
+                {% include 'trades/_trade_status.html' %}
+                <small class="muted">
+                    {% if proposal.is_open %}até {{ proposal.expires_at|date:"d/m \à\s H:i" }}{% else %}{{ proposal.updated_at|date:"d/m/Y" }}{% endif %}
+                </small>
+            </span>
+        </a>
+    {% endfor %}
+</div>
+{% else %}
+    <div class="empty-state">
+        {% if aba == 'sua_vez' %}
+            <strong>Nenhuma proposta aguardando você</strong>
+            Quando alguém propuser uma troca em um anúncio seu, ou responder a uma proposta sua, ela aparece aqui.
+        {% elif aba == 'aguardando' %}
+            <strong>Nenhuma proposta aguardando resposta</strong>
+            As propostas que você enviar ficam aqui até a outra parte responder.
+        {% elif aba == 'andamento' %}
+            <strong>Nenhuma troca em andamento</strong>
+            Trocas aceitas aparecem aqui enquanto os itens estão a caminho.
+        {% else %}
+            <strong>Nenhuma troca encerrada</strong>
+            Trocas concluídas, recusadas, retiradas e expiradas ficam guardadas aqui.
+        {% endif %}
+        <br><a href="{% url 'trade_list' %}" class="btn btn-primary">Encontrar trocas</a>
+    </div>
+{% endif %}
+{% endblock %}

@@ -5,6 +5,7 @@ from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from django.db.models import F
 from django.utils import timezone
 
 from accounts.models import SellerReview
@@ -16,6 +17,11 @@ from auctions.services import (
 from catalog.models import Category, Product, ProductVariant, ProductReview
 from coupons.models import Coupon, CouponRedemption
 from orders.models import Order, Cart, CartItem, PlatformConfig, Commission, Dispute, DisputeMessage, ReturnRequest, commission_for, generate_tracking_code
+from trades.models import OWNER, PROPOSER, TradeEvent, TradeProposal
+from trades.services import (
+    accept as accept_trade, counter as counter_trade, decline as decline_trade, expire_trades, propose as propose_trade,
+    target_variants, tradeable_variants, withdraw as withdraw_trade,
+)
 
 CATEGORIES = [
     ('Consoles', 'consoles'),
@@ -239,6 +245,18 @@ COUPON_USE_CHANCE = 0.25
 AUCTION_ENDED_SHARE = 0.25
 AUCTION_DURATIONS = [1, 3, 5, 7, 7, 7, 10]
 
+TRADE_LISTING_SHARE = 0.25
+TRADE_PREFERENCES = [
+    'Jogos de PS5 ou Xbox Series', 'Jogos de Switch', 'Controles originais', 'Action figures em bom estado',
+    'Consoles retrô', 'Periféricos para PC', '', '', '',
+]
+TRADE_MESSAGES = [
+    'Os itens estão completos, com caixa e manual.', 'Posso enviar fotos extras se quiser.',
+    'Topa fechar assim?', 'Tenho interesse faz tempo nesse item!', '', '', '',
+]
+DECLINE_MESSAGES = ['Já troquei esse item, foi mal.', 'Prefiro vender por enquanto.', 'Não tenho interesse nesses itens.', '']
+TRADE_OUTCOMES = [('pendente', 25), ('contraproposta', 15), ('aceita', 30), ('recusada', 15), ('expirada', 10), ('retirada', 5)]
+
 class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('--sellers', type=int, default=25)
@@ -246,6 +264,7 @@ class Command(BaseCommand):
         parser.add_argument('--products', type=int, default=250)
         parser.add_argument('--orders', type=int, default=400)
         parser.add_argument('--auctions', type=int, default=30)
+        parser.add_argument('--trades', type=int, default=40)
         parser.add_argument('--days', type=int, default=365)
         parser.add_argument('--flush', action='store_true')
 
@@ -270,10 +289,11 @@ class Command(BaseCommand):
             self._seed_orders(products, buyers, options['orders'])
             self._seed_carts(products, buyers)
             auctions = self._seed_auctions(categories, sellers, buyers, options['auctions'])
+            trades = self._seed_trades(products, sellers, options['trades'])
 
         self.stdout.write(self.style.SUCCESS(
             f"Banco povoado: {len(sellers)} vendedores, {len(buyers)} compradores, "
-            f"{len(products)} produtos, {auctions} leilões."
+            f"{len(products)} produtos, {auctions} leilões, {trades} propostas de troca."
         ))
 
     def _flush(self):
@@ -341,6 +361,7 @@ class Command(BaseCommand):
             seller = random.choices(sellers, weights=seller_weights)[0]
             title, variant_pool = self._generate_title(category)
             is_draft = random.random() < 0.05
+            accepts_trade = not is_draft and random.random() < TRADE_LISTING_SHARE
 
             product = Product(
                 category=category,
@@ -349,6 +370,8 @@ class Command(BaseCommand):
                 description=' '.join(random.sample(DESCRIPTION_SENTENCES, 4)),
                 condition=random.choices(['NEW', 'USED'], weights=[7, 3])[0],
                 accepts_pickup=random.random() < 0.3,
+                accepts_trade=accepts_trade,
+                trade_preferences=random.choice(TRADE_PREFERENCES) if accepts_trade else '',
                 published=not is_draft and random.random() < 0.9,
                 deleted=False,
             )
@@ -852,3 +875,127 @@ class Command(BaseCommand):
                 break
             valor = minimo + increment_for(minimo) * random.randint(0, 12)
             apply_bid(auction, participante, valor, momento)
+
+    def _seed_trades(self, products, sellers, count):
+        alvos = [p for p in products if p.accepts_trade and p.published]
+        if not count or not alvos or len(sellers) < 2:
+            return 0
+
+        self.stdout.write('Gerando propostas de troca...')
+        criadas = 0
+        for _ in range(count * 4):
+            if criadas >= count:
+                break
+            alvo = random.choice(alvos)
+            proponente = random.choice(sellers)
+            variantes = target_variants(alvo)
+            if proponente.pk == alvo.seller_id or not variantes:
+                continue
+            inventario = tradeable_variants(proponente)
+            if not inventario:
+                continue
+
+            variante = random.choice(variantes)
+            itens = random.sample(inventario, k=min(len(inventario), random.choice([1, 1, 1, 2, 2, 3])))
+            volta, pagador = self._trade_cash(variante.price, sum(v.price for v in itens))
+            proposal, erro = propose_trade(
+                alvo.pk, proponente, variante.pk, [v.pk for v in itens], volta, pagador, random.choice(TRADE_MESSAGES),
+            )
+            if erro:
+                continue
+            criadas += 1
+            self._advance_trade(proposal, [v.pk for v in itens])
+
+        expire_trades()
+        return criadas
+
+    def _trade_cash(self, preco_alvo, preco_itens):
+        diferenca = preco_alvo - preco_itens
+        if abs(diferenca) < 10 or random.random() < 0.3:
+            return Decimal('0'), ''
+        volta = (abs(diferenca) * Decimal(str(random.uniform(0.5, 1)))).quantize(Decimal('1'), rounding=ROUND_DOWN)
+        return volta, PROPOSER if diferenca > 0 else OWNER
+
+    def _advance_trade(self, proposal, itens):
+        desfecho = random.choices([d for d, _ in TRADE_OUTCOMES], weights=[w for _, w in TRADE_OUTCOMES])[0]
+        if desfecho in ('pendente', 'contraproposta'):
+            inicio = self._now - timedelta(hours=random.randint(2, 40))
+        else:
+            inicio = self._now - timedelta(days=random.randint(3, 90), hours=random.randint(0, 23))
+
+        if desfecho == 'contraproposta' or (desfecho == 'aceita' and random.random() < 0.4):
+            self._counter_trade(proposal, itens)
+            proposal.refresh_from_db()
+
+        if desfecho == 'aceita':
+            accept_trade(proposal.pk, proposal.awaiting_user)
+        elif desfecho == 'recusada':
+            decline_trade(proposal.pk, proposal.owner, random.choice(DECLINE_MESSAGES))
+        elif desfecho == 'retirada':
+            withdraw_trade(proposal.pk, proposal.proposer)
+
+        self._backdate_trade(proposal.pk, inicio)
+
+    def _counter_trade(self, proposal, itens):
+        if proposal.cash_payer == OWNER:
+            volta = (proposal.cash_amount / 2).quantize(Decimal('1'), rounding=ROUND_DOWN)
+            pagador = OWNER
+        else:
+            volta = min(proposal.cash_amount + random.choice([10, 15, 20, 30]), proposal.variant.price - 1)
+            pagador = PROPOSER
+        counter_trade(
+            proposal.pk, proposal.owner, itens, volta, pagador,
+            random.choice(['Consegue colocar um pouco mais de volta?', 'Fecho se ajustar a volta.', '']),
+        )
+
+    def _backdate_trade(self, pk, inicio):
+        proposal = TradeProposal.objects.get(pk=pk)
+        limite = self._now - timedelta(minutes=5)
+        eventos = list(proposal.events.order_by('created_at', 'pk'))
+        momento = inicio
+        for evento in eventos:
+            evento.created_at = min(momento, limite)
+            momento += timedelta(hours=random.randint(1, 30))
+        TradeEvent.objects.bulk_update(eventos, ['created_at'])
+
+        fim = eventos[-1].created_at
+        campos = {'created_at': inicio, 'expires_at': fim + timedelta(days=PlatformConfig.load().trade_response_days)}
+        if proposal.status != 'PENDING':
+            campos['closed_at'] = fim
+        TradeProposal.objects.filter(pk=pk).update(**campos)
+
+        if proposal.status == 'ACCEPTED':
+            self._progress_trade_orders(list(proposal.orders.all()), fim)
+
+    def _progress_trade_orders(self, pedidos, fechada):
+        dias = (self._now - fechada).days
+        if dias > 20:
+            status = 'COMPLETED'
+        elif dias > 6:
+            status = 'SHIPPED'
+        elif any(p.amount_charged for p in pedidos) and random.random() < 0.5:
+            status = 'PENDING'
+        else:
+            status = 'PAID'
+
+        primeiro_pagante = next((p for p in pedidos if p.amount_charged), None)
+        for pedido in pedidos:
+            pedido.status = status
+            pedido.created_at = fechada
+            pedido.updated_at = fechada + timedelta(days=min(dias, 10))
+            pedido.trade_paid = bool(pedido.amount_charged) and (
+                status != 'PENDING' or (pedido is primeiro_pagante and random.random() < 0.5)
+            )
+            if status == 'SHIPPED':
+                pedido.tracking_code = generate_tracking_code()
+        Order.objects.bulk_update(pedidos, ['status', 'created_at', 'updated_at', 'tracking_code', 'trade_paid'])
+
+        if status != 'COMPLETED':
+            return
+        taxa = PlatformConfig.get_commission_rate()
+        comissoes = [Commission(order=p, **commission_for(p, taxa)) for p in pedidos if p.total_price]
+        Commission.objects.bulk_create(comissoes)
+        for comissao in comissoes:
+            comissao.created_at = fechada + timedelta(days=8)
+        Commission.objects.bulk_update(comissoes, ['created_at'])
+        ProductVariant.objects.filter(pk__in=[p.variant_id for p in pedidos], quantity__gt=0).update(quantity=F('quantity') - 1)

@@ -20,8 +20,9 @@
                 <div class="order-card-meta">
                     <span>{{ order.variant.name }}</span>
                     <span>{{ order.quantity }} unidade{{ order.quantity|pluralize }}</span>
-                    <span>Vendedor: <strong>{{ order.product.seller.username }}</strong></span>
+                    <span>{% if order.trade_id %}Enviado por{% else %}Vendedor{% endif %}: <strong>{{ order.product.seller.username }}</strong></span>
                     {% if order.pickup %}<span class="text-success">Retirada em mãos</span>{% endif %}
+                    {% if order.trade_id %}<a href="{% url 'trade_detail' order.trade_id %}" class="trade-tag">{% include 'trades/_swap_icon.html' %} Troca #{{ order.trade_id }}</a>{% endif %}
                 </div>
                 {% if order.coins_earned %}
                     <span class="coin-tag">{% include 'rewards/_coin_icon.html' with size=14 %} +{{ order.coins_earned|coins }} MegaCoins recebidas</span>
@@ -31,7 +32,13 @@
             </div>
             <div class="order-card-side">
                 {% include 'orders/_status_badge.html' %}
-                <span class="order-card-price price">R$ {{ order.total_price|brl }}</span>
+                {% if order.trade_id and not order.total_price %}
+                    <span class="order-card-price">Troca</span>
+                {% else %}
+                    <span class="order-card-price price">R$ {{ order.total_price|brl }}</span>
+                    {% if order.trade_id %}<span class="muted text-sm">volta da troca</span>{% endif %}
+                {% endif %}
+                {% if order.trade_fee %}<span class="muted text-sm">+ R$ {{ order.trade_fee|brl }} de taxa da troca</span>{% endif %}
                 {% if order.amount_paid != order.total_price %}
                     <div class="order-discounts">
                         {% if order.seller_coupon_discount %}<span>−R$ {{ order.seller_coupon_discount|brl }} cupom {{ order.seller_coupon.coupon.code|default:"da loja" }}</span>{% endif %}
@@ -56,6 +63,18 @@
         {% if order.status == 'PENDING' and order.auction.payment_due_at %}
             <div class="alert alert-warning order-card-notice">
                 Você {% if order.auction.bought_now %}comprou este item pelo Comprar agora{% elif order.second_chance_offer %}aceitou uma oferta de segunda chance por este item{% else %}arrematou este item em leilão{% endif %}. Conclua o pagamento até <strong>{{ order.auction.payment_due_at|date:"d/m/Y" }} às {{ order.auction.payment_due_at|date:"H:i" }}</strong>; depois disso, o vendedor pode cancelar a venda.
+            </div>
+        {% endif %}
+
+        {% if order.status == 'PENDING' and order.trade_id %}
+            <div class="alert {% if order.amount_charged and not order.trade_paid %}alert-warning{% else %}alert-info{% endif %} order-card-notice">
+                {% if order.amount_charged and not order.trade_paid %}
+                    Sua parte da troca é de <strong>R$ {{ order.amount_charged|brl }}</strong>{% if order.total_price and order.trade_fee %} (volta de R$ {{ order.total_price|brl }} + taxa de R$ {{ order.trade_fee|brl }}){% elif order.trade_fee %} de taxa da troca{% else %} de volta{% endif %}. Conclua o pagamento para que os dois lados possam enviar os itens.
+                {% elif order.trade_paid %}
+                    Seu pagamento foi recebido. Os envios são liberados assim que a outra parte pagar a dela.
+                {% else %}
+                    Este item chega a você por troca. Os envios são liberados assim que os pagamentos da troca forem concluídos.
+                {% endif %}
             </div>
         {% endif %}
 
@@ -90,7 +109,9 @@
         {% endwith %}
 
         <div class="order-card-actions">{% spaceless %}
-            {% if order.status == 'PENDING' or order.status == 'PAID' %}
+            {% if order.trade_id %}
+                <a href="{% url 'trade_detail' order.trade_id %}" class="btn btn-ghost btn-sm">Ver troca</a>
+            {% elif order.status == 'PENDING' or order.status == 'PAID' %}
                 <a href="{% url 'cancel_order_buyer' order.pk %}" class="btn btn-ghost btn-sm">Cancelar pedido</a>
             {% endif %}
             {% if order.status == 'PAID' and order.product.accepts_pickup and not order.pickup %}
@@ -121,7 +142,9 @@
             {% if order.status == 'COMPLETED' and not order.product_reviewed %}
                 <a href="{% url 'review_product' order.product.pk %}" class="btn btn-primary btn-sm">Avaliar produto</a>
             {% endif %}
-            {% if order.status == 'PENDING' %}
+            {% if order.status == 'PENDING' and order.trade_id %}
+                {% if order.amount_charged and not order.trade_paid %}<a href="{% url 'resume_payment' order.pk %}" class="btn btn-primary btn-sm">Pagar R$ {{ order.amount_charged|brl }}</a>{% endif %}
+            {% elif order.status == 'PENDING' %}
                 <a href="{% url 'resume_payment' order.pk %}" class="btn btn-primary btn-sm">Retomar pagamento</a>
             {% endif %}
             {% if order.status == 'SHIPPED' or order.status == 'READY_PICKUP' %}

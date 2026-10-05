@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+{% load catalog_extras %}
+
+{% block title %}Troca #{{ proposal.pk }} — MegaGame{% endblock %}
+
+{% block content %}
+<div class="narrow-xl">
+    <div class="page-head">
+        <div>
+            <h1 class="page-title">Troca #{{ proposal.pk }}</h1>
+            <p class="page-sub">
+                {% if proposal.my_side %}Negociação com {{ proposal.counterpart.username }}{% else %}{{ proposal.proposer.username }} e {{ proposal.owner.username }}{% endif %}
+                · iniciada em {{ proposal.created_at|date:"d/m/Y" }}
+            </p>
+        </div>
+        <div class="page-actions">
+            {% include 'trades/_trade_status.html' %}
+            {% if proposal.my_side %}<a href="{% url 'my_trades' %}" class="btn btn-ghost btn-sm">Minhas trocas</a>{% endif %}
+        </div>
+    </div>
+
+    {% if proposal.is_open %}
+        {% if proposal.my_turn %}
+            <div class="alert alert-warning mb-6">
+                <strong>{{ proposal.counterpart.username }} aguarda a sua resposta</strong> até {{ proposal.expires_at|date:"d/m/Y \à\s H:i" }}. Depois disso, a proposta expira.
+            </div>
+        {% else %}
+            <div class="alert alert-info mb-6">
+                Aguardando a resposta de <strong>{{ proposal.awaiting_user.username }}</strong> até {{ proposal.expires_at|date:"d/m/Y \à\s H:i" }}.
+            </div>
+        {% endif %}
+    {% elif proposal.stage %}
+        <div class="alert {% if proposal.stage.chave == 'concluida' %}alert-success{% elif proposal.stage.chave == 'pagamento' %}alert-warning{% else %}alert-info{% endif %} mb-6">
+            <strong>{{ proposal.stage.rotulo }}.</strong>
+            {% if proposal.stage.chave == 'pagamento' %}
+                {% if meu_pagamento %}
+                    Pague a sua parte, de R$ {{ meu_pagamento.amount_charged|brl }}, para liberar os envios.
+                {% endif %}
+                {% for pendente in pagamentos_pendentes %}
+                    {{ pendente.buyer.username }} ainda precisa pagar R$ {{ pendente.amount_charged|brl }}.
+                {% endfor %}
+                {% if not meu_pagamento %}Não envie nada até os pagamentos serem concluídos.{% endif %}
+            {% elif proposal.stage.chave == 'envio' %}
+                Cada lado envia o seu item em <a href="{% url 'seller_orders' %}" class="link">Pedidos recebidos</a> e confirma o recebimento em <a href="{% url 'my_orders' %}" class="link">Minhas compras</a>.
+            {% elif proposal.stage.chave == 'pos_venda' %}
+                Um dos pedidos da troca está em devolução ou disputa; o andamento segue em Minhas compras e Pedidos recebidos.
+            {% else %}
+                Os dois lados receberam os seus itens.
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <div class="trade-board">
+        {% for lado in lados %}
+            <section class="card trade-side">
+                <h2 class="trade-side-title">
+                    {% if lado.user == user %}Você oferece{% else %}{{ lado.user.username }} oferece{% endif %}
+                </h2>
+                <ul class="trade-lines">
+                    {% for item in lado.itens %}
+                        <li class="trade-line{% if item.indisponivel %} is-unavailable{% endif %}">
+                            <a href="{% url 'product_detail' item.product.pk %}" class="trade-pick-thumb">
+                                {% with img=item.product.images.all.0 %}
+                                    {% if img %}<img src="{{ img.image.url }}" alt="">{% else %}<span class="img-placeholder"></span>{% endif %}
+                                {% endwith %}
+                            </a>
+                            <span class="trade-pick-info">
+                                <strong><a href="{% url 'product_detail' item.product.pk %}">{{ item.product.title }}</a></strong>
+                                <small>{{ item.variant.name }} · {{ item.product.get_condition_display }}{% if item.indisponivel %} · <span class="text-danger">indisponível</span>{% endif %}</small>
+                            </span>
+                            <span class="trade-pick-price price">R$ {{ item.variant.price|brl }}</span>
+                        </li>
+                    {% endfor %}
+                    {% if lado.volta %}
+                        <li class="trade-line trade-line-cash">
+                            <span class="trade-cash-icon" aria-hidden="true">R$</span>
+                            <span class="trade-pick-info"><strong>Volta em dinheiro</strong><small>paga pelo Mercado Pago</small></span>
+                            <span class="trade-pick-price price">R$ {{ lado.volta|brl }}</span>
+                        </li>
+                    {% endif %}
+                </ul>
+                <div class="trade-side-total">
+                    <span>Valor de referência</span>
+                    <strong class="price">R$ {{ lado.total|brl }}</strong>
+                </div>
+            </section>
+            {% if forloop.first %}<div class="trade-board-swap" aria-hidden="true">{% include 'trades/_swap_icon.html' with size=20 %}</div>{% endif %}
+        {% endfor %}
+    </div>
+
+    {% if proposal.is_open and proposal.my_side %}
+        <div class="card trade-actions">
+            {% if proposal.my_turn %}
+                <form method="post" action="{% url 'trade_action' proposal.pk %}" id="accept-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="acao" value="aceitar">
+                </form>
+                <button type="button" class="btn btn-primary" onclick="document.getElementById('accept-dialog').showModal()">Aceitar troca</button>
+                <a href="{% url 'counter_trade' proposal.pk %}" class="btn btn-outline">Fazer contraproposta</a>
+                <button type="button" class="btn btn-ghost" onclick="document.getElementById('decline-dialog').showModal()">Recusar</button>
+            {% else %}
+                <p class="muted text-sm">Enquanto {{ proposal.awaiting_user.username }} não responde, você pode retirar a proposta.</p>
+                <form method="post" action="{% url 'trade_action' proposal.pk %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="acao" value="retirar">
+                    <button type="submit" class="btn btn-ghost">Retirar proposta</button>
+                </form>
+            {% endif %}
+        </div>
+
+        {% if proposal.my_turn %}
+            <dialog id="accept-dialog" class="modal">
+                <h3 class="modal-title">Aceitar a troca?</h3>
+                <p class="modal-text">A troca será fechada nos termos acima e cada lado receberá um pedido para enviar o seu item.</p>
+                {% if proposal.cash_amount %}
+                    <p class="modal-text">
+                        {% if proposal.cash_payer_user == user %}Você precisará pagar a volta de <strong>R$ {{ proposal.cash_amount|brl }}</strong> antes dos envios.{% else %}{{ proposal.cash_payer_user.username }} pagará a volta de <strong>R$ {{ proposal.cash_amount|brl }}</strong> antes dos envios.{% endif %}
+                    </p>
+                {% endif %}
+                {% if taxa_total %}
+                    <p class="modal-text">A taxa da troca, de R$ {{ taxa_total|brl }}, é dividida entre os dois lados: <strong>R$ {% if proposal.my_side == 'OWNER' %}{{ taxa_anunciante|brl }}{% else %}{{ taxa_proponente|brl }}{% endif %}</strong> para você.</p>
+                {% endif %}
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" onclick="document.getElementById('accept-dialog').close()">Voltar</button>
+                    <button type="submit" form="accept-form" class="btn btn-primary">Aceitar troca</button>
+                </div>
+            </dialog>
+
+            <dialog id="decline-dialog" class="modal">
+                <h3 class="modal-title">Recusar a proposta?</h3>
+                <form method="post" action="{% url 'trade_action' proposal.pk %}" id="decline-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="acao" value="recusar">
+                    <label class="field-label" for="decline-message">Motivo <span class="muted">(opcional)</span></label>
+                    <textarea name="message" id="decline-message" class="input" rows="3" maxlength="500" placeholder="Ex.: já troquei esse item"></textarea>
+                </form>
+                <p class="modal-text mt-2">A negociação será encerrada. Se mudar de ideia, prefira fazer uma contraproposta.</p>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" onclick="document.getElementById('decline-dialog').close()">Voltar</button>
+                    <button type="submit" form="decline-form" class="btn btn-danger">Recusar</button>
+                </div>
+            </dialog>
+        {% endif %}
+    {% endif %}
+
+    {% if pedidos %}
+        <h2 class="section-title">Envios da troca</h2>
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr><th>Item</th><th>Envio</th><th class="num">Volta</th><th class="num">Taxa</th><th>Status</th><th></th></tr>
+                </thead>
+                <tbody>
+                    {% for pedido in pedidos %}
+                        <tr>
+                            <td class="strong">{{ pedido.product.title }} <span class="muted">· {{ pedido.variant.name }}</span></td>
+                            <td class="text-sm">{{ pedido.product.seller.username }} → {{ pedido.buyer.username }}</td>
+                            <td class="num">{% if pedido.total_price %}R$ {{ pedido.total_price|brl }}{% else %}—{% endif %}</td>
+                            <td class="num">{% if pedido.trade_fee %}R$ {{ pedido.trade_fee|brl }}{% else %}—{% endif %}</td>
+                            <td>
+                                {% include 'orders/_status_badge.html' with order=pedido %}
+                                {% if pedido.status == 'PENDING' and pedido.trade_paid %}<span class="muted text-sm">parte paga</span>{% endif %}
+                            </td>
+                            <td class="table-actions">
+                                {% if pedido.buyer == user and pedido.aguardando_pagamento %}
+                                    <a href="{% url 'resume_payment' pedido.pk %}" class="btn btn-primary btn-sm">Pagar R$ {{ pedido.amount_charged|brl }}</a>
+                                {% elif pedido.buyer == user %}
+                                    <a href="{% url 'my_orders' %}" class="btn btn-ghost btn-sm">Minhas compras</a>
+                                {% elif pedido.product.seller == user %}
+                                    <a href="{% url 'seller_orders' %}" class="btn btn-ghost btn-sm">Pedidos recebidos</a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if pode_cancelar %}
+            <form method="post" action="{% url 'trade_action' proposal.pk %}" id="cancel-form">
+                {% csrf_token %}
+                <input type="hidden" name="acao" value="cancelar">
+            </form>
+            <p class="help mt-2">
+                Enquanto nenhum item tiver sido enviado, qualquer um dos lados pode desfazer a troca.
+                <button type="button" class="link" onclick="document.getElementById('cancel-dialog').showModal()">Cancelar troca</button>
+            </p>
+            <dialog id="cancel-dialog" class="modal">
+                <h3 class="modal-title">Cancelar a troca?</h3>
+                <p class="modal-text">Todos os pedidos ligados a ela serão cancelados{% if proposal.cash_amount %}, inclusive o da volta{% endif %}. Isso não pode ser desfeito.</p>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" onclick="document.getElementById('cancel-dialog').close()">Voltar</button>
+                    <button type="submit" form="cancel-form" class="btn btn-danger">Cancelar troca</button>
+                </div>
+            </dialog>
+        {% endif %}
+    {% endif %}
+
+    <h2 class="section-title">Histórico da negociação</h2>
+    <ol class="trade-history card">
+        {% for evento in eventos reversed %}
+            <li class="trade-event trade-event-{{ evento.kind|lower }}">
+                <div class="trade-event-head">
+                    {% if evento.author %}
+                        <strong>{% if evento.author == user %}Você{% else %}{{ evento.author.username }}{% endif %}</strong>
+                        <span>{{ evento.get_kind_display|lower }}</span>
+                    {% else %}
+                        <strong>{{ evento.get_kind_display }}</strong>
+                    {% endif %}
+                    <time datetime="{{ evento.created_at|date:'c' }}">{{ evento.created_at|date:"d/m/Y H:i" }}</time>
+                </div>
+                {% if evento.summary %}<p class="trade-event-terms">{{ evento.summary }}</p>{% endif %}
+                {% if evento.message %}<blockquote class="trade-event-message">{{ evento.message }}</blockquote>{% endif %}
+            </li>
+        {% endfor %}
+    </ol>
+</div>
+{% endblock %}

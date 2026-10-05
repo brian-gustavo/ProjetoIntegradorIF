@@ -74,7 +74,7 @@ def _cashback_pending_orders(user, config, agora):
     fim_devolucao = agora - timedelta(days=config.return_window_days)
     return Order.objects.filter(buyer=user).filter(
         Q(status='COMPLETED') | Q(status__in=('DELIVERED', 'RETURN_WINDOW'), updated_at__lte=fim_devolucao)
-    ).exclude(coin_transactions__kind='PURCHASE').select_related('product')
+    ).exclude(coin_transactions__kind='PURCHASE').exclude(total_price=0).select_related('product')
 
 def _refund_pending_orders(user, config, agora):
     fim_contestacao = agora - timedelta(days=config.dispute_window_days)

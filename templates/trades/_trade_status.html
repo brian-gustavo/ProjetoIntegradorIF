@@ -1,0 +1,9 @@
+{% if proposal.is_open %}
+    <span class="badge {% if proposal.my_turn %}badge-pending{% else %}badge-progress{% endif %}">{% if proposal.my_turn %}Aguardando você{% elif proposal.my_side %}Aguardando {{ proposal.awaiting_user.username }}{% else %}Em negociação{% endif %}</span>
+{% elif proposal.stage %}
+    <span class="badge {% if proposal.stage.chave == 'concluida' %}badge-paid{% elif proposal.stage.chave == 'pagamento' %}badge-pending{% else %}badge-delivered{% endif %}">{{ proposal.stage.rotulo }}</span>
+{% elif proposal.status == 'PENDING' %}
+    <span class="badge badge-default">Expirada</span>
+{% else %}
+    <span class="badge {% if proposal.status == 'DECLINED' or proposal.status == 'CANCELLED' %}badge-cancelled{% else %}badge-default{% endif %}">{{ proposal.get_status_display }}</span>
+{% endif %}

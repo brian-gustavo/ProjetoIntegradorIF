@@ -23,14 +23,20 @@
                 <div class="order-card-meta">
                     <span>{{ order.variant.name }}</span>
                     <span>{{ order.quantity }} unidade{{ order.quantity|pluralize }}</span>
-                    <span>Comprador: <strong>{{ order.buyer.username }}</strong></span>
+                    <span>{% if order.trade_id %}Enviar para{% else %}Comprador{% endif %}: <strong>{{ order.buyer.username }}</strong></span>
                     {% if order.pickup %}<span class="text-success">Retirada em mãos</span>{% endif %}
                     {% if order.tracking_code %}<span>Rastreio: <strong>{{ order.tracking_code }}</strong></span>{% endif %}
+                    {% if order.trade_id %}<a href="{% url 'trade_detail' order.trade_id %}" class="trade-tag">{% include 'trades/_swap_icon.html' %} Troca #{{ order.trade_id }}</a>{% endif %}
                 </div>
             </div>
             <div class="order-card-side">
                 {% include 'orders/_status_badge.html' %}
-                <span class="order-card-price price">R$ {{ order.total_price|brl }}</span>
+                {% if order.trade_id and not order.total_price %}
+                    <span class="order-card-price">Troca</span>
+                {% else %}
+                    <span class="order-card-price price">R$ {{ order.total_price|brl }}</span>
+                    {% if order.trade_id %}<span class="muted text-sm">volta da troca</span>{% endif %}
+                {% endif %}
                 {% if order.seller_coupon_discount %}
                     <div class="order-discounts">
                         <span>−R$ {{ order.seller_coupon_discount|brl }} cupom {{ order.seller_coupon.coupon.code|default:"da loja" }}</span>
@@ -39,6 +45,12 @@
                 {% endif %}
             </div>
         </div>
+
+        {% if order.status == 'PENDING' and order.trade_id %}
+            <div class="alert alert-info order-card-notice">
+                Item de troca aguardando os pagamentos da troca (volta e/ou taxa). Não envie nada ainda: o pedido muda para "Pago" quando os dois lados pagarem.
+            </div>
+        {% endif %}
 
         {% if order.status == 'RETURN_REQUESTED' %}
             <div class="alert alert-warning order-card-notice">
@@ -52,7 +64,9 @@
         {% endif %}
 
         <div class="order-card-actions">{% spaceless %}
-            {% if order.status == 'PAID' or order.status == 'CONFIRMED' or order.status == 'PREPARING' %}
+            {% if order.trade_id %}
+                <a href="{% url 'trade_detail' order.trade_id %}" class="btn btn-ghost btn-sm">Ver troca</a>
+            {% elif order.status == 'PAID' or order.status == 'CONFIRMED' or order.status == 'PREPARING' %}
                 <a href="{% url 'cancel_order_seller' order.pk %}" class="btn btn-ghost btn-sm">Cancelar pedido</a>
             {% endif %}
             {% if order.status == 'PAID' %}

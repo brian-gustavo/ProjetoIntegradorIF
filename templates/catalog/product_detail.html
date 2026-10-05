@@ -86,6 +86,7 @@
             <div class="buybox-tags">
                 <span class="tag">📍 {{ product.seller.profile.city }}, {{ product.seller.profile.uf }}</span>
                 {% if product.accepts_pickup %}<span class="tag tag-success">Aceita retirada em mãos</span>{% endif %}
+                {% if aceita_troca %}<span class="tag tag-trade">{% include 'trades/_swap_icon.html' with size=12 %} Aceita trocas</span>{% endif %}
             </div>
 
             {% if auction %}
@@ -124,6 +125,9 @@
                 <a href="{% url 'login' %}" class="btn btn-primary btn-lg btn-block">Entre para comprar</a>
             {% elif user == product.seller %}
                 <a href="{% url 'edit_product' product.pk %}" class="btn btn-outline btn-block">Editar anúncio</a>
+            {% endif %}
+            {% if not user.is_staff and aceita_troca or minha_proposta or propostas_recebidas %}
+                {% include 'trades/_trade_box.html' %}
             {% endif %}
             {% endif %}
 

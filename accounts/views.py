@@ -28,18 +28,21 @@ def register(request):
 
 @login_required
 def profile_settings(request):
+    is_staff = request.user.is_staff
     profile_form = ProfileForm(instance=request.user)
-    profile_detail_form = ProfileDetailForm(instance=request.user.profile)
+    profile_detail_form = None if is_staff else ProfileDetailForm(instance=request.user.profile)
     password_form = PasswordChangeForm(user=request.user)
 
     if request.method == 'POST':
         if 'save_profile' in request.POST:
             profile_form = ProfileForm(request.POST, instance=request.user)
-            profile_detail_form = ProfileDetailForm(request.POST, instance=request.user.profile)
+            if not is_staff:
+                profile_detail_form = ProfileDetailForm(request.POST, instance=request.user.profile)
 
-            if profile_form.is_valid() and profile_detail_form.is_valid():
+            if profile_form.is_valid() and (is_staff or profile_detail_form.is_valid()):
                 profile_form.save()
-                profile_detail_form.save()
+                if not is_staff:
+                    profile_detail_form.save()
                 messages.success(request, 'Dados atualizados com sucesso')
                 return redirect('profile_settings')
         elif 'save_password' in request.POST:

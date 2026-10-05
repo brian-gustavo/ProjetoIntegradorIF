@@ -1,0 +1,28 @@
+{% load catalog_extras %}
+{% with selecionados=form.selected_items %}
+<p class="help trade-side-help">
+    {% if sou_proponente %}Escolha até {{ max_itens }} itens dos seus anúncios.{% else %}Escolha até {{ max_itens }} itens entre os anúncios de {{ contraparte.username }}.{% endif %}
+</p>
+<div class="trade-picker" id="trade-picker">
+    {% for v in inventario %}
+        <label class="trade-pick">
+            <input type="checkbox" name="items" value="{{ v.pk }}" data-price="{{ v.price|stringformat:'s' }}"{% if v.pk|stringformat:'s' in selecionados %} checked{% endif %}>
+            <span class="trade-pick-thumb">
+                {% with img=v.product.images.all.0 %}
+                    {% if img %}<img src="{{ img.image.url }}" alt="">{% else %}<span class="img-placeholder"></span>{% endif %}
+                {% endwith %}
+            </span>
+            <span class="trade-pick-info">
+                <strong>{{ v.product.title }}</strong>
+                <small>{{ v.name }} · {{ v.product.get_condition_display }}</small>
+            </span>
+            <span class="trade-pick-price price">R$ {{ v.price|brl }}</span>
+        </label>
+    {% endfor %}
+</div>
+{% for erro in form.items.errors %}<p class="form-error">{{ erro }}</p>{% endfor %}
+<p class="form-error" id="picker-limit"></p>
+{% if sou_proponente %}
+    <p class="help">Não encontrou o item? <a href="{% url 'create_product' %}" class="link">Anuncie-o</a> e volte para esta página.</p>
+{% endif %}
+{% endwith %}

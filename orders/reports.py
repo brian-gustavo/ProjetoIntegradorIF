@@ -335,6 +335,36 @@ def _secao_leiloes(d):
         ]
     return [KeepTogether(elementos)]
 
+def _secao_trocas(d):
+    t = d['trocas']
+    rodadas = '—' if t['rodadas_media'] is None else f'{t["rodadas_media"]:.1f}'.replace('.', ',')
+    linhas = [
+        ['Propostas enviadas', str(t['propostas']), _variacao(t['propostas_variacao'])],
+        ['Taxa de aceite', f'{_pct(t["taxa_aceite"])} ({t["aceitas"]} de {t["encerradas"]})', '—'],
+        ['Negociações com contraproposta', _pct(t['com_contraproposta']), '—'],
+        ['Média de rodadas por negociação', rodadas, '—'],
+        ['Valor de referência trocado', _reais(t['valor_referencia']), '—'],
+        ['Volta em trocas aceitas', f'{_reais(t["volta_total"])} ({t["com_volta"]} trocas)', '—'],
+        ['Taxas de troca recebidas', _reais(t['taxas']), '—'],
+        ['Volta em pedidos concluídos', _reais(t['volta_concluida']), '—'],
+        ['Comissão sobre voltas', _reais(t['comissao']), '—'],
+        ['Anúncios aceitando troca agora', str(t['anuncios_agora']), '—'],
+        ['Negociações em andamento agora', str(t['negociando_agora']), '—'],
+    ]
+    elementos = [
+        Paragraph('Trocas', SECAO),
+        Paragraph('Itens trocados não entram no GMV. A receita vem da taxa fixa por troca e da comissão sobre a volta em dinheiro.', NOTA),
+        _tabela(['Indicador', 'Valor', 'Variação'], linhas, [LARGURA_UTIL * 0.5, LARGURA_UTIL * 0.3, LARGURA_UTIL * 0.2], (1, 2)),
+    ]
+    if t['desfechos']:
+        desfechos = [[d['desfecho'], str(d['propostas']), _pct(d['participacao'])] for d in t['desfechos']]
+        elementos += [
+            Spacer(1, 10),
+            _tabela(['Desfecho das negociações encerradas', 'Propostas', 'Particip.'], desfechos,
+                    [LARGURA_UTIL * 0.6, LARGURA_UTIL * 0.2, LARGURA_UTIL * 0.2], (1, 2)),
+        ]
+    return [KeepTogether(elementos)]
+
 def build_admin_report_pdf(data, periodo):
     buffer = BytesIO()
     doc = SimpleDocTemplate(
@@ -352,7 +382,7 @@ def build_admin_report_pdf(data, periodo):
             f'Gerado em {agora:%d/%m/%Y às %H:%M}', SUBTITULO,
         ),
     ]
-    for secao in (_secao_visao_geral, _secao_ranking, _secao_categorias, _secao_saude, _secao_compradores, _secao_moedas, _secao_cupons, _secao_leiloes):
+    for secao in (_secao_visao_geral, _secao_ranking, _secao_categorias, _secao_saude, _secao_compradores, _secao_moedas, _secao_cupons, _secao_leiloes, _secao_trocas):
         elementos += secao(data)
 
     doc.build(elementos, onFirstPage=_rodape, onLaterPages=_rodape)

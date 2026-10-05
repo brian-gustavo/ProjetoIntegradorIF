@@ -19,7 +19,7 @@
 
         <h2 class="form-section">Informações do produto</h2>
         {% for field in product_form %}
-            <div class="form-group">
+            <div class="form-group" data-field="{{ field.name }}">
                 {% if field.widget_type == 'checkbox' %}
                     <label class="check">{{ field }} {{ field.label }}</label>
                 {% else %}
@@ -111,6 +111,7 @@
 {% block extra_js %}
 {{ block.super }}
 {% include 'catalog/_variant_template.html' %}
+{% include 'catalog/_trade_fields_js.html' %}
 <script>
     const imageInput = document.getElementById('images');
     const imageLabel = document.getElementById('images-label');
