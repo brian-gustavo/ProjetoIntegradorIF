@@ -365,6 +365,42 @@ def _secao_trocas(d):
         ]
     return [KeepTogether(elementos)]
 
+def _secao_gastos(d):
+    g = d['gastos']
+    linhas = [
+        ['Receita líquida', _reais(g['receita']), _variacao(g['receita_variacao'])],
+        ['Gastos no período', _reais(g['total']), _variacao(g['total_variacao'], inverso=True)],
+        ['Resultado do período', _reais(g['resultado']), _variacao(g['resultado_variacao'])],
+        ['Margem sobre a receita líquida', _pct(g['margem']) if g['receita'] else '—', '—'],
+        ['Gastos recorrentes ativos (por mês)', _reais(g['custo_fixo_mensal']), '—'],
+    ]
+    elementos = [KeepTogether([
+        Paragraph('Gastos e resultado', SECAO),
+        Paragraph('Receita líquida é a comissão após MegaCoins e cupons MegaGame, somada às taxas de troca recebidas. Gastos mensais contam uma vez a cada mês em que caem dentro do período.', NOTA),
+        _tabela(['Indicador', 'Valor', 'Variação'], linhas, [LARGURA_UTIL * 0.5, LARGURA_UTIL * 0.3, LARGURA_UTIL * 0.2], (1, 2)),
+    ])]
+    if g['por_categoria']:
+        categorias = [[c['categoria'], str(c['lancamentos']), _reais(c['total']), _pct(c['participacao'])] for c in g['por_categoria']]
+        elementos += [
+            Spacer(1, 10),
+            _tabela(['Gastos por categoria', 'Lançamentos', 'Total', 'Particip.'], categorias,
+                    [LARGURA_UTIL * 0.4, LARGURA_UTIL * 0.2, LARGURA_UTIL * 0.2, LARGURA_UTIL * 0.2], (1, 2, 3)),
+        ]
+    lancamentos = [
+        [Paragraph(escape(e.description), CELULA), e.get_category_display(),
+         f'Mensal desde {e.date:%d/%m/%Y}' + (f' até {e.end_date:%d/%m/%Y}' if e.end_date else '') if e.recurring else f'{e.date:%d/%m/%Y}',
+         _reais(e.amount), _reais(e.total_periodo)]
+        for e in g['lancamentos'] if e.ocorrencias
+    ]
+    if lancamentos:
+        larguras = [0.26, 0.2, 0.24, 0.15, 0.15]
+        elementos += [
+            Spacer(1, 10),
+            _tabela(['Lançamento', 'Categoria', 'Cobrança', 'Valor', 'No período'], lancamentos,
+                    [LARGURA_UTIL * l for l in larguras], (3, 4)),
+        ]
+    return elementos
+
 def build_admin_report_pdf(data, periodo):
     buffer = BytesIO()
     doc = SimpleDocTemplate(
@@ -382,7 +418,7 @@ def build_admin_report_pdf(data, periodo):
             f'Gerado em {agora:%d/%m/%Y às %H:%M}', SUBTITULO,
         ),
     ]
-    for secao in (_secao_visao_geral, _secao_ranking, _secao_categorias, _secao_saude, _secao_compradores, _secao_moedas, _secao_cupons, _secao_leiloes, _secao_trocas):
+    for secao in (_secao_visao_geral, _secao_ranking, _secao_categorias, _secao_saude, _secao_compradores, _secao_moedas, _secao_cupons, _secao_leiloes, _secao_trocas, _secao_gastos):
         elementos += secao(data)
 
     doc.build(elementos, onFirstPage=_rodape, onLaterPages=_rodape)

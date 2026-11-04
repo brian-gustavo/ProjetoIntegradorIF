@@ -4360,3 +4360,40 @@ button.link {
         padding: 24px;
     }
 }
+.section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 40px 0 16px;
+}
+
+.section-head .section-title {
+    margin: 0;
+}
+
+dialog.modal.modal-wide {
+    max-width: 560px;
+}
+
+.form-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 16px;
+    margin-top: 16px;
+}
+
+.form-grid-2 [data-field="description"],
+.form-grid-2 [data-field="recurring"] {
+    grid-column: 1 / -1;
+}
+
+.form-grid-2 .form-group[hidden] {
+    display: none;
+}
+
+@media (max-width: 600px) {
+    .form-grid-2 {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

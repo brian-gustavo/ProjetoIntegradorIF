@@ -28,6 +28,7 @@
     <a href="#cupons">Cupons</a>
     <a href="#leiloes">Leilões</a>
     <a href="#trocas">Trocas</a>
+    <a href="#gastos">Gastos</a>
     <a href="#configuracoes">Configurações</a>
 </nav>
 
@@ -625,6 +626,142 @@
     {% endwith %}
 </section>
 
+<section class="dash-section" id="gastos">
+    <div class="section-head">
+        <h2 class="section-title">Gastos e resultado</h2>
+        <button type="button" class="btn btn-primary btn-sm" id="novoGasto">+ Novo gasto</button>
+    </div>
+    <p class="section-note">Receita líquida é a comissão após MegaCoins e cupons MegaGame, somada às taxas de troca recebidas. Gastos mensais contam uma vez a cada mês em que caem dentro do período.</p>
+    {% with g=gastos %}
+    <div class="stat-grid">
+        <div class="stat">
+            <p class="stat-label">Receita líquida</p>
+            <p class="stat-value positive">R$ {{ g.receita|brl }}</p>
+            {% include 'orders/_delta.html' with valor=g.receita_variacao %}
+        </div>
+        <div class="stat">
+            <p class="stat-label">Gastos no período</p>
+            <p class="stat-value negative">−R$ {{ g.total|brl }}</p>
+            <p class="stat-sub">R$ {{ g.custo_fixo_mensal|brl }}/mês em gastos recorrentes ativos</p>
+            {% include 'orders/_delta.html' with valor=g.total_variacao inverso=True %}
+        </div>
+        <div class="stat stat-hero">
+            <p class="stat-label">Resultado do período</p>
+            <p class="stat-value {% if g.resultado < 0 %}negative{% else %}positive{% endif %}">R$ {{ g.resultado|brl }}</p>
+            {% if g.receita %}<p class="stat-sub">Margem de {{ g.margem|floatformat:1 }}% sobre a receita líquida</p>{% endif %}
+            {% include 'orders/_delta.html' with valor=g.resultado_variacao %}
+        </div>
+    </div>
+    <div class="dash-split">
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Categoria</th>
+                        <th class="num">Total</th>
+                        <th>Participação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in g.por_categoria %}
+                        <tr>
+                            <td class="strong">{{ c.categoria }}</td>
+                            <td class="num">R$ {{ c.total|brl }}</td>
+                            <td>
+                                <div class="share">
+                                    <div class="share-bar"><div class="share-bar-fill" data-pct="{{ c.participacao|stringformat:'.2f' }}"></div></div>
+                                    <span>{{ c.participacao|floatformat:1 }}%</span>
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="3" class="empty">Nenhum gasto no período</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Lançamento</th>
+                        <th>Cobrança</th>
+                        <th class="num">No período</th>
+                        <th class="num">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for e in g.lancamentos %}
+                        <tr>
+                            <td>
+                                <p class="strong">{{ e.description }}</p>
+                                <p class="text-sm muted">{{ e.get_category_display }}</p>
+                            </td>
+                            <td class="text-sm">
+                                R$ {{ e.amount|brl }}
+                                {% if e.recurring %}
+                                    <span class="tag">Mensal</span>
+                                    <p class="muted">desde {{ e.date|date:"d/m/Y" }}{% if e.end_date %} até {{ e.end_date|date:"d/m/Y" }}{% endif %}</p>
+                                {% else %}
+                                    <p class="muted">em {{ e.date|date:"d/m/Y" }}</p>
+                                {% endif %}
+                            </td>
+                            <td class="num">R$ {{ e.total_periodo|brl }}{% if e.recurring %}<p class="text-sm muted">{{ e.ocorrencias }}×</p>{% endif %}</td>
+                            <td>
+                                <div class="table-actions">
+                                    <button type="button" class="btn btn-outline btn-sm" data-editar-gasto
+                                            data-action="{% url 'edit_expense' e.pk %}?{{ request.GET.urlencode }}"
+                                            data-description="{{ e.description }}"
+                                            data-category="{{ e.category }}"
+                                            data-amount="{{ e.amount|stringformat:'s' }}"
+                                            data-date="{{ e.date|date:'Y-m-d' }}"
+                                            data-recurring="{% if e.recurring %}1{% endif %}"
+                                            data-end-date="{{ e.end_date|date:'Y-m-d' }}">Editar</button>
+                                    <form method="post" action="{% url 'delete_expense' e.pk %}?{{ request.GET.urlencode }}" id="delete-expense-{{ e.pk }}">
+                                        {% csrf_token %}
+                                        <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('delete-expense-dialog-{{ e.pk }}').showModal()">Excluir</button>
+                                    </form>
+                                    <dialog id="delete-expense-dialog-{{ e.pk }}" class="modal">
+                                        <h3 class="modal-title">Excluir gasto?</h3>
+                                        <p class="modal-text">O lançamento <strong>{{ e.description }}</strong>{% if e.recurring %} e todas as suas cobranças mensais{% endif %} serão removidos permanentemente.</p>
+                                        <div class="modal-actions">
+                                            <button type="button" class="btn btn-outline" onclick="document.getElementById('delete-expense-dialog-{{ e.pk }}').close()">Cancelar</button>
+                                            <button type="submit" form="delete-expense-{{ e.pk }}" class="btn btn-danger">Excluir</button>
+                                        </div>
+                                    </dialog>
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="4" class="empty">Nenhum gasto lançado para o período</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endwith %}
+
+    <dialog id="expenseDialog" class="modal modal-wide" data-create-action="{% url 'create_expense' %}?{{ request.GET.urlencode }}"{% if expense_action %} data-open{% endif %}>
+        <h3 class="modal-title" id="expenseDialogTitle">{% if expense_form.instance.pk %}Editar gasto{% else %}Novo gasto{% endif %}</h3>
+        <form method="post" id="expenseForm" action="{% if expense_action %}{{ expense_action }}{% else %}{% url 'create_expense' %}?{{ request.GET.urlencode }}{% endif %}" novalidate>
+            {% csrf_token %}
+            <div class="form-grid-2">
+                {% for field in expense_form %}
+                    {% include 'coupons/_field.html' %}
+                {% endfor %}
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline" id="expenseCancel">Cancelar</button>
+                <button type="submit" class="btn btn-primary" id="expenseSubmit">Salvar gasto</button>
+            </div>
+        </form>
+    </dialog>
+</section>
+
 <section class="dash-section" id="configuracoes">
     <h2 class="section-title">Configurações da plataforma</h2>
     <p class="section-note">Valores aplicados a toda a plataforma a partir do momento em que forem salvos.</p>
@@ -744,6 +881,42 @@
             }
         });
     });
+
+    const expenseDialog = document.getElementById('expenseDialog');
+    const expenseForm = document.getElementById('expenseForm');
+    const campo = nome => expenseForm.elements[nome];
+    const fimRecorrencia = expenseForm.querySelector('[data-field="end_date"]');
+    const atualizarRecorrencia = () => { fimRecorrencia.hidden = !campo('recurring').checked; };
+    campo('recurring').addEventListener('change', atualizarRecorrencia);
+    atualizarRecorrencia();
+
+    const abrirGasto = (titulo, action, valores) => {
+        expenseForm.querySelectorAll('.errorlist').forEach(el => el.remove());
+        expenseForm.action = action;
+        document.getElementById('expenseDialogTitle').textContent = titulo;
+        Object.entries(valores).forEach(([nome, valor]) => {
+            if (nome === 'recurring') campo(nome).checked = valor;
+            else campo(nome).value = valor;
+        });
+        atualizarRecorrencia();
+        expenseDialog.showModal();
+    };
+
+    document.getElementById('novoGasto').addEventListener('click', () => {
+        abrirGasto('Novo gasto', expenseDialog.dataset.createAction, {
+            description: '', category: 'OTHER', amount: '', date: new Date().toLocaleDateString('en-CA'), recurring: false, end_date: '',
+        });
+    });
+    document.querySelectorAll('[data-editar-gasto]').forEach(botao => {
+        botao.addEventListener('click', () => {
+            const d = botao.dataset;
+            abrirGasto('Editar gasto', d.action, {
+                description: d.description, category: d.category, amount: d.amount, date: d.date, recurring: !!d.recurring, end_date: d.endDate,
+            });
+        });
+    });
+    document.getElementById('expenseCancel').addEventListener('click', () => expenseDialog.close());
+    if ('open' in expenseDialog.dataset) expenseDialog.showModal();
 
     const navLinks = [...document.querySelectorAll('#dashNav a')];
     const secoes = navLinks.map(a => document.querySelector(a.getAttribute('href')));

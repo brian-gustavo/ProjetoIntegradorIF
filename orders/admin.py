@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Order, Cart, CartItem, PlatformConfig, Commission, Dispute, DisputeMessage, DisputeEvidence, ReturnRequest, ReturnRequestImage
+from .models import Order, Cart, CartItem, PlatformConfig, Commission, Expense, Dispute, DisputeMessage, DisputeEvidence, ReturnRequest, ReturnRequestImage
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
@@ -30,6 +30,12 @@ class PlatformConfigAdmin(admin.ModelAdmin):
 class CommissionAdmin(admin.ModelAdmin):
     list_display = ('order', 'rate', 'gross_amount', 'commission_amount', 'net_amount', 'created_at')
     readonly_fields = ('order', 'rate', 'gross_amount', 'commission_amount', 'net_amount', 'created_at')
+
+@admin.register(Expense)
+class ExpenseAdmin(admin.ModelAdmin):
+    list_display = ('description', 'category', 'amount', 'date', 'recurring', 'end_date')
+    list_filter = ('category', 'recurring')
+    search_fields = ('description',)
 
 @admin.register(Dispute)
 class DisputeAdmin(admin.ModelAdmin):

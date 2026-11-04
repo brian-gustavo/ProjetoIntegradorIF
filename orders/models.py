@@ -1,4 +1,5 @@
-import random, string
+import calendar, random, string
+from datetime import date
 from decimal import Decimal
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
@@ -276,6 +277,55 @@ class Commission(models.Model):
 
     def __str__(self):
         return f"Comissão do pedido #{self.order.pk}"
+
+class Expense(models.Model):
+    CATEGORY_CHOICES = [
+        ('INFRA', 'Infraestrutura e servidores'),
+        ('SUBSCRIPTIONS', 'Assinaturas e serviços'),
+        ('MARKETING', 'Marketing'),
+        ('FEES', 'Pagamentos e taxas'),
+        ('STAFF', 'Pessoal'),
+        ('TAXES', 'Impostos'),
+        ('OTHER', 'Outros'),
+    ]
+
+    description = models.CharField(max_length=120, verbose_name="Descrição")
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='OTHER', verbose_name="Categoria")
+    amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))], verbose_name="Valor (R$)")
+    date = models.DateField(verbose_name="Data", help_text="Nos gastos mensais, a data da primeira cobrança")
+    recurring = models.BooleanField(default=False, verbose_name="Repetir todo mês")
+    end_date = models.DateField(null=True, blank=True, verbose_name="Última cobrança", help_text="Deixe em branco enquanto o gasto continuar")
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name="Lançado por")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Criado em")
+
+    class Meta:
+        ordering = ['-date', '-pk']
+        verbose_name = "Gasto"
+        verbose_name_plural = "Gastos"
+
+    def __str__(self):
+        return self.description
+
+    @classmethod
+    def between(cls, inicio, fim):
+        ativos = models.Q(end_date__isnull=True) | models.Q(end_date__gte=inicio)
+        return cls.objects.filter(date__lte=fim).filter(
+            models.Q(recurring=False, date__gte=inicio) | (models.Q(recurring=True) & ativos)
+        )
+
+    def occurrences(self, inicio, fim):
+        if not self.recurring:
+            return [self.date] if inicio <= self.date <= fim else []
+        ultimo = min(fim, self.end_date) if self.end_date else fim
+        datas = []
+        ano, mes = self.date.year, self.date.month
+        while True:
+            dia = date(ano, mes, min(self.date.day, calendar.monthrange(ano, mes)[1]))
+            if dia > ultimo:
+                return datas
+            if dia >= inicio:
+                datas.append(dia)
+            ano, mes = (ano + 1, 1) if mes == 12 else (ano, mes + 1)
 
 class Dispute(models.Model):
     STATUS_CHOICES = [

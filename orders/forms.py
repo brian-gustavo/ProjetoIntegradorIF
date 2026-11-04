@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Dispute, DisputeMessage, PlatformConfig, ReturnRequest
+from .models import Dispute, DisputeMessage, Expense, PlatformConfig, ReturnRequest
 
 class PlatformConfigForm(forms.ModelForm):
     class Meta:
@@ -33,6 +33,29 @@ class PlatformConfigForm(forms.ModelForm):
         if any(len(linha) > 100 for linha in linhas):
             raise forms.ValidationError('Cada motivo pode ter no máximo 100 caracteres')
         return '\n'.join(linhas)
+
+class ExpenseForm(forms.ModelForm):
+    class Meta:
+        model = Expense
+        fields = ('description', 'category', 'amount', 'date', 'recurring', 'end_date')
+        widgets = {
+            'date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+            'end_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            if not isinstance(field.widget, forms.CheckboxInput):
+                field.widget.attrs['class'] = 'input'
+
+    def clean(self):
+        dados = super().clean()
+        if not dados.get('recurring'):
+            dados['end_date'] = None
+        elif dados.get('end_date') and dados.get('date') and dados['end_date'] < dados['date']:
+            self.add_error('end_date', 'A última cobrança não pode ser anterior à primeira')
+        return dados
 
 class ReturnRequestForm(forms.ModelForm):
     reason_category = forms.ChoiceField(label='Motivo da devolução')

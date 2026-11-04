@@ -4,10 +4,10 @@ from django.db import transaction
 from django.db.models import F, Q, Sum
 from django.utils import timezone
 
+from .models import OWNER, PROPOSER, TradeEvent, TradeItem, TradeProposal
 from catalog.models import Product, ProductVariant
 from catalog.templatetags.catalog_extras import brl
 from orders.models import Commission, Order, PlatformConfig
-from .models import OWNER, PROPOSER, TradeEvent, TradeItem, TradeProposal
 
 MAX_ITEMS = 5
 MESSAGE_MAX_LENGTH = 500
@@ -396,6 +396,11 @@ OUTCOMES = [
     ('EXPIRED', 'Expiradas sem resposta'),
     ('WITHDRAWN', 'Retiradas pelo autor'),
 ]
+
+def fees_between(inicio, fim):
+    return Order.objects.filter(
+        trade__status='ACCEPTED', trade__closed_at__date__gte=inicio, trade__closed_at__date__lte=fim, trade_paid=True,
+    ).aggregate(total=Sum('trade_fee'))['total'] or Decimal('0.00')
 
 def report(periodo):
     expire_trades()

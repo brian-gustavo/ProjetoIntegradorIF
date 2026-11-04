@@ -13,9 +13,10 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 
-from .forms import DisputeForm, DisputeMessageForm, DisputeResolutionForm, PlatformConfigForm, ReturnRequestForm
-from .models import Order, Cart, CartItem, generate_tracking_code, PlatformConfig, Commission, Dispute, DisputeMessage, DisputeEvidence, ReturnRequestImage, commission_for
+from .forms import DisputeForm, DisputeMessageForm, DisputeResolutionForm, ExpenseForm, PlatformConfigForm, ReturnRequestForm
+from .models import Order, Cart, CartItem, generate_tracking_code, PlatformConfig, Commission, Dispute, Expense, DisputeMessage, DisputeEvidence, ReturnRequestImage, commission_for
 from .reports import build_admin_report_pdf
 from .tracking import simulate_tracking
 from accounts.models import MercadoPagoAccount
@@ -26,7 +27,7 @@ from coupons.models import Coupon
 from coupons.services import available_coupons, build_quote, parse_choice, redeem_code, save_redemptions, selected_ids, valid_now
 from rewards.models import CoinTransaction
 from rewards.services import annotate_orders, apply_redemption, coins_to_brl, sync_wallet
-from trades.services import awaiting_payment as awaiting_trade_payment, mark_paid as mark_trade_paid, report as trades_report
+from trades.services import awaiting_payment as awaiting_trade_payment, fees_between as trade_fees_between, mark_paid as mark_trade_paid, report as trades_report
 
 @login_required
 def add_to_cart(request, product_id):
@@ -755,6 +756,7 @@ def _programa_moedas(periodo, commissions_periodo, commissions_anterior, comissa
         'descontos_variacao': _variacao(desconto_atual, desconto_anterior),
         'descontos_historico': Commission.objects.aggregate(total=Sum('order__coins_discount'))['total'] or Decimal('0'),
         'comissao_liquida': liquida_atual,
+        'comissao_liquida_anterior': liquida_anterior,
         'comissao_liquida_variacao': _variacao(liquida_atual, liquida_anterior),
         'pct_comissao': _pct(desconto_atual, comissao_periodo),
         'pedidos_com_moedas': pedidos_com_moedas,
@@ -907,6 +909,52 @@ def _programa_leiloes(periodo, commissions_periodo, commissions_anterior, gmv_at
         'ofertas_pendentes_agora': SecondChanceOffer.objects.filter(status='PENDING', expires_at__gt=timezone.now()).count(),
     }
 
+def _total_gastos(lancamentos, inicio, fim):
+    return sum((gasto.amount * len(gasto.occurrences(inicio, fim)) for gasto in lancamentos), Decimal('0'))
+
+def _gastos(periodo, receita, receita_anterior):
+    inicio, fim = periodo['inicio'], periodo['fim']
+    lancamentos = list(Expense.between(inicio, fim))
+    for gasto in lancamentos:
+        gasto.ocorrencias = len(gasto.occurrences(inicio, fim))
+        gasto.total_periodo = gasto.amount * gasto.ocorrencias
+
+    total = sum((gasto.total_periodo for gasto in lancamentos), Decimal('0'))
+    total_anterior = _total_gastos(
+        Expense.between(periodo['inicio_anterior'], periodo['fim_anterior']), periodo['inicio_anterior'], periodo['fim_anterior'],
+    )
+    resultado = receita - total
+    resultado_anterior = receita_anterior - total_anterior
+
+    nomes = dict(Expense.CATEGORY_CHOICES)
+    agrupado = {}
+    for gasto in lancamentos:
+        if gasto.ocorrencias:
+            grupo = agrupado.setdefault(gasto.category, {'categoria': nomes[gasto.category], 'lancamentos': 0, 'total': Decimal('0')})
+            grupo['lancamentos'] += 1
+            grupo['total'] += gasto.total_periodo
+    por_categoria = sorted(agrupado.values(), key=lambda g: g['total'], reverse=True)
+    for grupo in por_categoria:
+        grupo['participacao'] = _pct(grupo['total'], total)
+
+    hoje = timezone.localdate()
+    custo_fixo_mensal = Expense.objects.filter(recurring=True, date__lte=hoje).filter(
+        Q(end_date__isnull=True) | Q(end_date__gte=hoje)
+    ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
+
+    return {
+        'total': total,
+        'total_variacao': _variacao(total, total_anterior),
+        'receita': receita,
+        'receita_variacao': _variacao(receita, receita_anterior),
+        'resultado': resultado,
+        'resultado_variacao': _variacao(resultado, resultado_anterior) if resultado_anterior > 0 else None,
+        'margem': _pct(resultado, receita),
+        'custo_fixo_mensal': custo_fixo_mensal,
+        'por_categoria': por_categoria,
+        'lancamentos': lancamentos,
+    }
+
 def _build_report_data(periodo):
     _close_expired_return_requests()
     close_expired_auctions()
@@ -982,6 +1030,14 @@ def _build_report_data(periodo):
         compradores['pct_recorrentes'], compradores_anterior['pct_recorrentes'], compradores_anterior['ativos']
     )
 
+    moedas = _programa_moedas(
+        periodo, commissions_periodo, commissions_anterior,
+        comissao_periodo, comissao_periodo_anterior, pedidos_periodo,
+    )
+    trocas = trades_report(periodo)
+    receita = moedas['comissao_liquida'] + trocas['taxas']
+    receita_anterior = moedas['comissao_liquida_anterior'] + trade_fees_between(periodo['inicio_anterior'], periodo['fim_anterior'])
+
     return {
         'total_vendas': total_vendas,
         'total_transacionado': total_transacionado,
@@ -1005,15 +1061,13 @@ def _build_report_data(periodo):
         'saude': saude,
         'disputas_abertas_agora': Dispute.objects.filter(status='OPEN').count(),
         'compradores': compradores,
-        'moedas': _programa_moedas(
-            periodo, commissions_periodo, commissions_anterior,
-            comissao_periodo, comissao_periodo_anterior, pedidos_periodo,
-        ),
+        'moedas': moedas,
         'cupons': _programa_cupons(
             commissions_periodo, commissions_anterior, comissao_periodo, pedidos_periodo, config.ranking_size,
         ),
         'leiloes': _programa_leiloes(periodo, commissions_periodo, commissions_anterior, gmv_atual, gmv_anterior),
-        'trocas': trades_report(periodo),
+        'trocas': trocas,
+        'gastos': _gastos(periodo, receita, receita_anterior),
     }
 
 @login_required
@@ -1032,14 +1086,52 @@ def admin_dashboard(request):
     else:
         config_form = PlatformConfigForm(instance=config)
 
-    periodo = _get_period_range(request)
+    return _render_admin_dashboard(request, config_form)
 
+def _render_admin_dashboard(request, config_form=None, expense_form=None, expense_action=None):
+    periodo = _get_period_range(request)
     return render(request, 'orders/admin_dashboard.html', {
         **_build_report_data(periodo),
         'periodo': periodo,
         'periodo_opcoes': PERIODO_OPCOES,
-        'config_form': config_form,
+        'config_form': config_form or PlatformConfigForm(instance=PlatformConfig.load()),
+        'expense_form': expense_form or ExpenseForm(initial={'date': timezone.localdate()}),
+        'expense_action': expense_action,
     })
+
+def _dashboard_url(request, ancora):
+    query = request.GET.urlencode()
+    return reverse('admin_dashboard') + (f'?{query}' if query else '') + ancora
+
+@login_required
+@require_POST
+def save_expense(request, expense_id=None):
+    if not request.user.is_staff:
+        return redirect('home')
+
+    gasto = get_object_or_404(Expense, pk=expense_id) if expense_id else None
+    form = ExpenseForm(request.POST, instance=gasto)
+    if not form.is_valid():
+        messages.error(request, 'Não foi possível salvar o gasto; confira os campos destacados')
+        return _render_admin_dashboard(request, expense_form=form, expense_action=request.get_full_path())
+
+    novo = form.save(commit=False)
+    if gasto is None:
+        novo.created_by = request.user
+    novo.save()
+    messages.success(request, f'Gasto "{novo.description}" {"atualizado" if gasto else "lançado"}')
+    return redirect(_dashboard_url(request, '#gastos'))
+
+@login_required
+@require_POST
+def delete_expense(request, expense_id):
+    if not request.user.is_staff:
+        return redirect('home')
+
+    gasto = get_object_or_404(Expense, pk=expense_id)
+    gasto.delete()
+    messages.success(request, f'Gasto "{gasto.description}" excluído')
+    return redirect(_dashboard_url(request, '#gastos'))
 
 @login_required
 def admin_dashboard_pdf(request):
