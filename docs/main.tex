@@ -1,3 +1,9 @@
+% !TEX program = xelatex
+
+\RequirePackage{silence}
+\WarningFilter{babel}{Name 'brazil' is deprecated}
+\WarningFilter{memoir}{\settocpreprocessor}
+
 \documentclass[
   12pt,
   a4paper,
@@ -23,6 +29,7 @@
 
 \usepackage{amsmath,amssymb}
 \usepackage{longtable,booktabs,array}
+\AddToHook{env/longtable/begin}{\renewcommand{\_}{\textunderscore\allowbreak}}
 \newcommand{\real}[1]{#1}
 \usepackage{xcolor}
 
@@ -52,7 +59,9 @@ Desenvolvimento de Sistemas.}
 
 \pretextual
 
+\hypersetup{pageanchor=false}
 \imprimircapa
+\hypersetup{pageanchor=true}
 \imprimirfolhaderosto
 
 \begin{folhadeaprovacao}
@@ -296,7 +305,7 @@ de forma independente em um ``pacote'' coeso.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.8\textwidth]{./media/image1.png}
+  \includegraphics[width=0.8\textwidth]{images/image1.png}
   \caption{Logo da UML}
   \label{fig:uml-logo}
   \legend{Fonte: \citeonline{wikipediaUmlLogo}.}
@@ -333,7 +342,7 @@ linguagem anterior conhecida como ABC, e é uma das linguagens de
 programação mais populares e acessíveis do mundo.
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.6\textwidth]{./media/image2.png}
+  \includegraphics[width=0.6\textwidth]{images/image2.png}
   \caption{Logo do Django}
   \label{fig:django-logo}
   \legend{Fonte: \citeonline{wikipediaDjango}.}
@@ -341,7 +350,7 @@ programação mais populares e acessíveis do mundo.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.25\textwidth]{./media/image3.png}
+  \includegraphics[width=0.25\textwidth]{images/image3.png}
   \caption{Logo do Python}
   \label{fig:python-logo}
   \legend{Fonte: \citeonline{wikipediaPythonLogo}.}
@@ -359,7 +368,7 @@ facilitar a gestão.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.55\textwidth]{./media/image4.png}
+  \includegraphics[width=0.55\textwidth]{images/image4.png}
   \caption{Demonstração do painel administrativo do Django}
   \label{fig:django-admin}
   \legend{Fonte: \citeonline{wikipediaDjango}.}
@@ -385,7 +394,7 @@ similar que é de posse do Google.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.85\textwidth,alt={Logo do Supabase}]{./media/image5.jpeg}
+  \includegraphics[width=0.85\textwidth,alt={Logo do Supabase}]{images/image5.jpeg}
   \caption{Logo do Supabase}
   \label{fig:supabase-logo}
   \legend{Fonte: \citeonline{supabaseLogo}.}
@@ -405,7 +414,7 @@ de \emph{wireframes} pras principais páginas do site, de modo a definir
 o design geral.
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.9\textwidth]{./media/image6.png}
+  \includegraphics[width=0.9\textwidth]{images/image6.png}
   \caption{\emph{Wireframe} da página inicial do MegaGame}
   \label{fig:wireframe-home}
   \legend{Fonte: Autor (2026).}
@@ -642,7 +651,7 @@ usuários compradores e os usuários vendedores.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.9\textwidth]{./media/image7.png}
+  \includegraphics[width=0.9\textwidth]{images/image7.png}
   \caption{Diagrama de casos de uso do gestor}
   \label{fig:usecase-gestor}
   \legend{Fonte: Autor (2026).}
@@ -650,7 +659,7 @@ usuários compradores e os usuários vendedores.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.9\textwidth]{./media/image8.png}
+  \includegraphics[width=0.9\textwidth]{images/image8.png}
   \caption{Diagrama de casos de uso do comprador}
   \label{fig:usecase-comprador}
   \legend{Fonte: Autor (2026).}
@@ -658,7 +667,7 @@ usuários compradores e os usuários vendedores.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.9\textwidth]{./media/image9.png}
+  \includegraphics[width=0.9\textwidth]{images/image9.png}
   \caption{Diagrama de casos de uso do vendedor}
   \label{fig:usecase-vendedor}
   \legend{Fonte: Autor (2026).}
@@ -1341,7 +1350,7 @@ um novo projeto, ao invés de ser criado pelo desenvolvedor).
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.75\textwidth]{./media/image10.png}
+  \includegraphics[width=0.75\textwidth]{images/image10.png}
   \caption{Estrutura de arquivos geral do projeto}
   \label{fig:estrutura-geral}
   \legend{Fonte: Autor (2026).}
@@ -1349,7 +1358,7 @@ um novo projeto, ao invés de ser criado pelo desenvolvedor).
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.6\textwidth]{./media/image11.png}
+  \includegraphics[width=0.6\textwidth]{images/image11.png}
   \caption{Detalhamento da estrutura de arquivos \#1}
   \label{fig:estrutura-detalhe-1}
   \legend{Fonte: Autor (2026).}
@@ -1357,7 +1366,7 @@ um novo projeto, ao invés de ser criado pelo desenvolvedor).
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.75\textwidth]{./media/image12.png}
+  \includegraphics[width=0.75\textwidth]{images/image12.png}
   \caption{Detalhamento da estrutura de arquivos \#2}
   \label{fig:estrutura-detalhe-2}
   \legend{Fonte: Autor (2026).}
@@ -1388,7 +1397,7 @@ entidade-relacionamento (DER) de todo o banco e também possui um editor
 SQL embutido caso precisem ser feitas mudanças espontâneas.
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.95\textwidth]{./media/image13.png}
+  \includegraphics[width=0.95\textwidth]{images/image13.png}
   \caption{DER do banco de dados}
   \label{fig:der-bd}
   \legend{Fonte: Autor (2026).}
@@ -1404,8 +1413,8 @@ são componentes padrão do Django).
 {\captionsetup{name=Quadro}
 \begin{longtable}[]{@{}
   >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1765}}
-  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.3529}}
-  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1176}}
+  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2941}}
+  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1765}}
   >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2353}}
   >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1176}}@{}}
 \caption{Usuários}\label{qua:usuarios}\\
@@ -1515,8 +1524,8 @@ user\_id & ID do usuário & int4 & SIM & FK \\
 {\captionsetup{name=Quadro}
 \begin{longtable}[]{@{}
   >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1765}}
-  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.3530}}
-  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1176}}
+  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2941}}
+  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1765}}
   >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2352}}
   >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1176}}@{}}
 \caption{Carrinhos}\label{qua:carrinhos}\\
@@ -1549,8 +1558,8 @@ FK \\
 {\captionsetup{name=Quadro}
 \begin{longtable}[]{@{}
   >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1765}}
-  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.3529}}
-  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1176}}
+  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2941}}
+  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1765}}
   >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2353}}
   >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1176}}@{}}
 \caption{Produtos}\label{qua:produtos}\\
@@ -1592,8 +1601,8 @@ deleted & O produto foi deletado pelo usuário? & bool & SIM & \\
 {\captionsetup{name=Quadro}
 \begin{longtable}[]{@{}
   >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1765}}
-  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.3530}}
-  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1176}}
+  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2941}}
+  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1765}}
   >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2352}}
   >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1176}}@{}}
 \caption{Avaliações de vendedor}\label{qua:avaliacoes-vendedor}\\
@@ -1629,8 +1638,8 @@ edited & A avaliação foi editada? & bool & SIM & \\
 {\captionsetup{name=Quadro}
 \begin{longtable}[]{@{}
   >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1765}}
-  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.3530}}
-  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1176}}
+  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2941}}
+  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1765}}
   >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2352}}
   >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1176}}@{}}
 \caption{Avaliações de produto}\label{qua:avaliacoes-produto}\\
@@ -1737,8 +1746,8 @@ SIM & FK \\
 \begin{longtable}[]{@{}
 %
   >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1765}}
-  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.3530}}
-  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1176}}
+  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2941}}
+  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1765}}
   >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2352}}
   >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1176}}@{}}
 \caption{Pedidos}\label{qua:pedidos}\\
@@ -1857,8 +1866,8 @@ comprada & int8 & SIM & FK \\
 \begin{longtable}[]{@{}
 %
   >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1765}}
-  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.3530}}
-  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1176}}
+  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2941}}
+  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1765}}
   >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2352}}
   >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1176}}@{}}
 \caption{Configurações da plataforma}\label{qua:config-plataforma}\\
@@ -1891,8 +1900,8 @@ commission\_rate & Taxa de comissão definida pelo gestor & numeric & SIM
 \begin{longtable}[]{@{}
 %
   >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1765}}
-  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.3530}}
-  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1176}}
+  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2941}}
+  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1765}}
   >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2352}}
   >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1176}}@{}}
 \caption{Comissões}\label{qua:comissoes}\\
@@ -1936,7 +1945,7 @@ na prática.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.95\textwidth]{./media/image14.png}
+  \includegraphics[width=0.95\textwidth]{images/image14.png}
   \caption{Captura de tela da \emph{home} do MegaGame}
   \label{fig:home}
   \legend{Fonte: Autor (2026).}
@@ -1944,7 +1953,7 @@ na prática.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.95\textwidth]{./media/image15.png}
+  \includegraphics[width=0.95\textwidth]{images/image15.png}
   \caption{Captura de tela da pesquisa do MegaGame}
   \label{fig:pesquisa}
   \legend{Fonte: Autor (2026).}
@@ -1952,7 +1961,7 @@ na prática.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.95\textwidth]{./media/image16.png}
+  \includegraphics[width=0.95\textwidth]{images/image16.png}
   \caption{Captura de tela das categorias do MegaGame}
   \label{fig:categorias}
   \legend{Fonte: Autor (2026).}
@@ -1960,7 +1969,7 @@ na prática.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.95\textwidth]{./media/image17.png}
+  \includegraphics[width=0.95\textwidth]{images/image17.png}
   \caption{Captura de tela da busca por categoria do MegaGame}
   \label{fig:busca-por-categoria}
   \legend{Fonte: Autor (2026).}
@@ -1968,7 +1977,7 @@ na prática.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.95\textwidth]{./media/image18.png}
+  \includegraphics[width=0.95\textwidth]{images/image18.png}
   \caption{Captura de tela da edição de perfil do MegaGame}
   \label{fig:edicao-perfil}
   \legend{Fonte: Autor (2026).}
@@ -1976,7 +1985,7 @@ na prática.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.95\textwidth]{./media/image19.png}
+  \includegraphics[width=0.95\textwidth]{images/image19.png}
   \caption{\emph{Dashboard} de gestor do MegaGame}
   \label{fig:dashboard-gestor}
   \legend{Fonte: Autor (2026).}
@@ -1984,7 +1993,7 @@ na prática.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.95\textwidth]{./media/image20.png}
+  \includegraphics[width=0.95\textwidth]{images/image20.png}
   \caption{Captura de tela do \emph{login} do MegaGame}
   \label{fig:login}
   \legend{Fonte: Autor (2026).}
@@ -1992,7 +2001,7 @@ na prática.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.95\textwidth]{./media/image21.png}
+  \includegraphics[width=0.95\textwidth]{images/image21.png}
   \caption{Captura de tela do cadastro do MegaGame}
   \label{fig:cadastro}
   \legend{Fonte: Autor (2026).}
@@ -2000,7 +2009,7 @@ na prática.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.95\textwidth]{./media/image22.png}
+  \includegraphics[width=0.95\textwidth]{images/image22.png}
   \caption{Captura de tela da lista de anúncios do MegaGame}
   \label{fig:lista-anuncios}
   \legend{Fonte: Autor (2026).}
@@ -2008,7 +2017,7 @@ na prática.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.55\textwidth]{./media/image23.png}
+  \includegraphics[width=0.55\textwidth]{images/image23.png}
   \caption{Captura de tela do \emph{dropdown menu} do MegaGame}
   \label{fig:dropdown-menu}
   \legend{Fonte: Autor (2026).}
@@ -2016,7 +2025,7 @@ na prática.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.75\textwidth]{./media/image24.png}
+  \includegraphics[width=0.75\textwidth]{images/image24.png}
   \caption{Captura de tela de um \emph{pop-up} de aviso do MegaGame}
   \label{fig:popup-aviso}
   \legend{Fonte: Autor (2026).}
@@ -2024,7 +2033,7 @@ na prática.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.95\textwidth]{./media/image25.png}
+  \includegraphics[width=0.95\textwidth]{images/image25.png}
   \caption{Captura de tela da edição de anúncio do MegaGame}
   \label{fig:edicao-anuncio}
   \legend{Fonte: Autor (2026).}
@@ -2032,7 +2041,7 @@ na prática.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.95\textwidth]{./media/image26.png}
+  \includegraphics[width=0.95\textwidth]{images/image26.png}
   \caption{Captura de tela da criação de anúncio do MegaGame}
   \label{fig:criacao-anuncio}
   \legend{Fonte: Autor (2026).}
@@ -2040,7 +2049,7 @@ na prática.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.95\textwidth]{./media/image27.png}
+  \includegraphics[width=0.95\textwidth]{images/image27.png}
   \caption{Criação de variações do MegaGame}
   \label{fig:criacao-variacoes}
   \legend{Fonte: Autor (2026).}
@@ -2048,7 +2057,7 @@ na prática.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.6\textwidth]{./media/image28.png}
+  \includegraphics[width=0.6\textwidth]{images/image28.png}
   \caption{Rascunhos de anúncio do MegaGame}
   \label{fig:rascunhos-anuncio}
   \legend{Fonte: Autor (2026).}
@@ -2056,7 +2065,7 @@ na prática.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.95\textwidth]{./media/image29.png}
+  \includegraphics[width=0.95\textwidth]{images/image29.png}
   \caption{\emph{Dashboard} de vendedor do MegaGame}
   \label{fig:dashboard-vendedor}
   \legend{Fonte: Autor (2026).}
@@ -2064,7 +2073,7 @@ na prática.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.95\textwidth]{./media/image30.png}
+  \includegraphics[width=0.95\textwidth]{images/image30.png}
   \caption{Captura de tela dos pedidos recebidos do MegaGame}
   \label{fig:pedidos-recebidos}
   \legend{Fonte: Autor (2026).}
@@ -2072,7 +2081,7 @@ na prática.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.95\textwidth]{./media/image31.png}
+  \includegraphics[width=0.95\textwidth]{images/image31.png}
   \caption{Captura de tela dos anúncios do MegaGame}
   \label{fig:anuncios}
   \legend{Fonte: Autor (2026).}
@@ -2080,7 +2089,7 @@ na prática.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.95\textwidth]{./media/image32.png}
+  \includegraphics[width=0.95\textwidth]{images/image32.png}
   \caption{Captura de tela do carrinho do MegaGame}
   \label{fig:carrinho}
   \legend{Fonte: Autor (2026).}
@@ -2088,7 +2097,7 @@ na prática.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.95\textwidth]{./media/image33.png}
+  \includegraphics[width=0.95\textwidth]{images/image33.png}
   \caption{Captura de tela dos pedidos feitos do MegaGame}
   \label{fig:pedidos-feitos}
   \legend{Fonte: Autor (2026).}
@@ -2096,7 +2105,7 @@ na prática.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.95\textwidth]{./media/image34.png}
+  \includegraphics[width=0.95\textwidth]{images/image34.png}
   \caption{Avaliação de produto do MegaGame}
   \label{fig:avaliacao-produto}
   \legend{Fonte: Autor (2026).}
@@ -2104,7 +2113,7 @@ na prática.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.95\textwidth]{./media/image35.png}
+  \includegraphics[width=0.95\textwidth]{images/image35.png}
   \caption{Avaliação de vendedor do MegaGame}
   \label{fig:avaliacao-vendedor}
   \legend{Fonte: Autor (2026).}

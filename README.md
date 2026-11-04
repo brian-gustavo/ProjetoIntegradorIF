@@ -4,4 +4,4 @@ Este é o software desenvolvido como projeto integrador do curso de Análise e D
 
 É um marketplace customer-to-customer (C2C) voltado para jogos, sejam eles físicos, digitais ou até mesmo de tabuleiro, em adição à quaisquer periféricos ou outros itens relacionados. Seu nome é MegaGame.
 
-Para maiores detalhes, consulte o documento formal do projeto (docs/main.tex), que está disponível neste repositório.
+Para maiores detalhes, consulte o documento formal do projeto (docs/main.pdf), que está disponível neste repositório.

@@ -6,8 +6,10 @@
 *$py.class
 __pycache__/
 CLAUDE.md
+docs/build
 env/
 ENV/
+main.synctex.gz
 media/
 Thumbs.db
 venv/
