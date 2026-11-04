@@ -1,9 +1,11 @@
-import random
+import random, zlib
 from datetime import timedelta
 from decimal import Decimal, ROUND_DOWN
+from pathlib import Path
+from django.conf import settings
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
@@ -14,7 +16,7 @@ from auctions.services import (
     apply_bid, close_auction, increment_for, minimum_bid, publish as publish_auction, respond_second_chance,
     retract_bids, second_chance_candidates, send_second_chance,
 )
-from catalog.models import Category, Product, ProductVariant, ProductReview
+from catalog.models import Category, Product, ProductImage, ProductVariant, ProductReview
 from coupons.models import Coupon, CouponRedemption
 from orders.models import Order, Cart, CartItem, PlatformConfig, Commission, Dispute, DisputeMessage, ReturnRequest, commission_for, generate_tracking_code
 from trades.models import OWNER, PROPOSER, TradeEvent, TradeProposal
@@ -42,12 +44,28 @@ FRANCHISES = [
     'Trono de Cinzas', 'Ilha Perdida', 'Deuses de Neon', 'Ecos do Abismo',
 ]
 
-CONSOLE_MODELS = ['PlayStation 5', 'Xbox Series X', 'Nintendo Switch', 'Steam Deck']
+SEED_IMAGES_PATH = 'products/seed'
+GAME_COVERS = ['jogo1.webp', 'jogo2.jpg', 'jogo3.webp']
+CONSOLE_IMAGES = {
+    'PlayStation 5': 'ps5.jpg', 'Xbox Series X': 'xbox.jpg', 'Nintendo Switch': 'switch.jpg', 'Steam Deck': 'steamdeck.jpg',
+}
+PERIPHERAL_IMAGES = {
+    'Controle': 'controle.jpg', 'Headset': 'headset.jpg', 'Mouse Gamer': 'mouse.webp',
+    'Teclado Mecânico': 'teclado.webp', 'Volante': 'volante.webp',
+}
+INGAME_IMAGES = {
+    'Moeda Premium': 'moedas.jpg', 'Pacote de Skins': 'skins.jpg', 'Passe de Batalha': 'battlepass.webp', 'Pacote de Gemas': 'gemas.jpg',
+}
+CATEGORY_IMAGES = {
+    'jogos-de-tabuleiro': 'jogotabuleiro.jpeg', 'action-figures': 'actionfigure.jpg', 'bottons': 'botton.webp', 'posteres': 'poster.webp',
+}
+
+CONSOLE_MODELS = list(CONSOLE_IMAGES)
 CONSOLE_VARIANTS = ['Padrão', '1TB', '2TB']
 PLATFORM_VARIANTS = ['PS5', 'PS4', 'Xbox Series X', 'Xbox One', 'Nintendo Switch', 'PC']
 KEY_STORES = ['Steam', 'PlayStation Store', 'Xbox Store', 'Nintendo eShop', 'Epic Games']
-PERIPHERAL_ITEMS = ['Controle', 'Headset', 'Mouse Gamer', 'Teclado Mecânico', 'Volante']
-INGAME_ITEMS = ['Moeda Premium', 'Pacote de Skins', 'Passe de Batalha', 'Pacote de Gemas']
+PERIPHERAL_ITEMS = list(PERIPHERAL_IMAGES)
+INGAME_ITEMS = list(INGAME_IMAGES)
 INGAME_VARIANTS = ['100 unidades', '500 unidades', '1000 unidades']
 COLLECTIBLE_VARIANTS = ['Padrão', 'Edição Especial', 'Edição de Colecionador']
 PERIPHERAL_MODELS = [
@@ -113,6 +131,18 @@ RESOLUTION_NOTES = [
     'Não foram apresentadas evidências suficientes para a alegação.',
     'Caso encerrado após análise da equipe de mediação.',
 ]
+
+def stock_image_for(product):
+    slug, title = product.category.slug, product.title
+    if slug in ('games', 'keys'):
+        return GAME_COVERS[zlib.crc32(title.encode()) % len(GAME_COVERS)]
+    if slug == 'consoles':
+        return next((imagem for modelo, imagem in CONSOLE_IMAGES.items() if modelo in title), None)
+    if slug == 'perifericos':
+        return next((imagem for item, imagem in PERIPHERAL_IMAGES.items() if title.startswith(item)), None)
+    if slug == 'itens-in-game':
+        return next((imagem for item, imagem in INGAME_IMAGES.items() if title.startswith(item)), None)
+    return CATEGORY_IMAGES.get(slug)
 
 def comment_for(rating):
     if random.random() >= 0.7:
@@ -267,8 +297,16 @@ class Command(BaseCommand):
         parser.add_argument('--trades', type=int, default=40)
         parser.add_argument('--days', type=int, default=365)
         parser.add_argument('--flush', action='store_true')
+        parser.add_argument('--only-images', action='store_true')
 
     def handle(self, *args, **options):
+        self._check_stock_images()
+        if options['only_images']:
+            sem_imagem = list(Product.objects.filter(images__isnull=True).select_related('category'))
+            criadas = self._attach_images(sem_imagem)
+            self.stdout.write(self.style.SUCCESS(f'Imagens adicionadas a {criadas} produtos sem imagem.'))
+            return
+
         if options['flush']:
             self._flush()
 
@@ -303,6 +341,22 @@ class Command(BaseCommand):
         Category.objects.all().delete()
         User.objects.filter(is_staff=False).delete()
         self.stdout.write('Dados fictícios anteriores removidos.')
+
+    def _check_stock_images(self):
+        pasta = Path(settings.MEDIA_ROOT) / SEED_IMAGES_PATH
+        nomes = set(GAME_COVERS) | set(CONSOLE_IMAGES.values()) | set(PERIPHERAL_IMAGES.values()) \
+            | set(INGAME_IMAGES.values()) | set(CATEGORY_IMAGES.values())
+        faltando = sorted(nome for nome in nomes if not (pasta / nome).is_file())
+        if faltando:
+            raise CommandError(f'Imagens não encontradas em {pasta}: {", ".join(faltando)}')
+
+    def _attach_images(self, products):
+        imagens = [
+            ProductImage(product=product, image=f'{SEED_IMAGES_PATH}/{nome}')
+            for product in products if (nome := stock_image_for(product))
+        ]
+        ProductImage.objects.bulk_create(imagens, batch_size=500)
+        return len(imagens)
 
     def _seed_categories(self):
         categories = []
@@ -387,6 +441,7 @@ class Command(BaseCommand):
             product.created_at = product.seed_date
             product.updated_at = product.seed_date
         Product.objects.bulk_update(products, ['created_at', 'updated_at'], batch_size=500)
+        self._attach_images(products)
 
         variants = []
         for product in products:
@@ -829,6 +884,7 @@ class Command(BaseCommand):
                 accepts_pickup=random.random() < 0.3,
             )
             Product.objects.filter(pk=product.pk).update(created_at=starts_at, updated_at=starts_at)
+            self._attach_images([product])
             auction = publish_auction(product, Auction(
                 start_price=start, reserve_price=reserve, buy_now_price=buy_now, duration_days=duration,
             ), agora=starts_at)

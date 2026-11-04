@@ -10,6 +10,9 @@ docs/build
 env/
 ENV/
 main.synctex.gz
-media/
+media/*
+!media/products/
+media/products/*
+!media/products/seed/
 Thumbs.db
 venv/
