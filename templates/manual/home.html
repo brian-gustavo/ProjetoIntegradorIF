@@ -1,0 +1,18 @@
+{% if query %}
+<div data-passo data-alvo=".page-title" data-titulo="Resultados da busca">
+    <p>Esta página mostra os anúncios que combinam com o que você digitou na barra de busca. Para buscar outra coisa, é só digitar de novo lá em cima.</p>
+</div>
+{% include 'manual/_resultados.html' %}
+{% else %}
+<div data-passo data-alvo=".shelf .shelf-head" data-titulo="Prateleiras">
+    <p>A página inicial é organizada em prateleiras: as ofertas mais novas e algumas categorias em destaque.</p>
+    <p>Clique em "Ver todos" para abrir a categoria completa, com filtros e ordenação.</p>
+</div>
+<div data-passo data-alvo=".shelf .carousel" data-titulo="Navegando pela prateleira">
+    <p>Clique nas setas nas laterais da prateleira, ou arraste-a para o lado, para ver mais produtos. Os pontinhos no topo indicam em que parte da prateleira você está.</p>
+</div>
+<div data-passo data-alvo=".shelf .product-card" data-titulo="Card de produto">
+    <p>Clique em um dos cards de produtos para observar aquele produto específico em maiores detalhes.</p>
+    <p>O card mostra o menor preço entre as variações do anúncio, a cidade do vendedor e a nota do produto. Leilões mostram o lance atual e o tempo restante, e anúncios que aceitam troca ganham uma etiqueta verde.</p>
+</div>
+{% endif %}

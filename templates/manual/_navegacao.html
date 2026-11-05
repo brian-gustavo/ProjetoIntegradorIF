@@ -1,0 +1,73 @@
+<div data-passo data-titulo="Bem-vindo à MegaGame">
+    <p>Este tour mostra o cabeçalho, que fica no topo de todas as páginas e leva você a qualquer parte do site.</p>
+    <p>Use os botões abaixo ou as setas do teclado para avançar e voltar. Para sair, pressione <strong>Esc</strong>.</p>
+</div>
+<div data-passo data-alvo=".site-header .brand" data-titulo="Logo">
+    <p>Clique no logo da MegaGame para voltar à página inicial.</p>
+</div>
+<div data-passo data-alvo=".header-search" data-titulo="Barra de busca">
+    <p>Clique na barra de pesquisa e digite o produto que você procura para começar a buscá-lo.</p>
+    <p>A partir da terceira letra, aparecem sugestões de anúncios; clique em uma delas para ir direto ao resultado.</p>
+</div>
+<div data-passo data-alvo=".header-nav" data-titulo="Menu principal">
+    <ul>
+        <li><strong>Categorias</strong>: navegue pelos anúncios de cada tipo de produto</li>
+        <li><strong>Leilões</strong>: veja os leilões em andamento e dê seus lances</li>
+        <li><strong>Trocas</strong>: encontre anúncios que aceitam troca por itens seus</li>
+        {% if user.is_staff %}
+            <li><strong>Painel</strong>: abre o painel administrativo, com os dados de toda a plataforma</li>
+            <li><strong>Disputas</strong>: lista as disputas abertas, para que você possa supervisioná-las e moderá-las</li>
+            <li><strong>Cupons</strong>: crie e gerencie os cupons MegaGame, válidos em todas as lojas</li>
+        {% elif user.is_authenticated %}
+            <li><strong>Minhas compras</strong>: acompanhe os pedidos feitos por você</li>
+        {% endif %}
+    </ul>
+</div>
+{% if user.is_authenticated %}
+<div data-passo data-alvo=".user-dropdown .only-narrow" data-abrir="#userMenu" data-titulo="Menu principal">
+    <p>Em telas menores, os links principais ficam dentro do seu menu de usuário:</p>
+    <ul>
+        <li><strong>Categorias</strong>, <strong>Leilões</strong> e <strong>Trocas</strong>, para navegar pelos anúncios</li>
+        {% if user.is_staff %}
+            <li><strong>Painel administrativo</strong>, <strong>Disputas</strong> e <strong>Cupons</strong>, para administrar a plataforma</li>
+        {% else %}
+            <li><strong>Minhas compras</strong>, para acompanhar os pedidos feitos por você</li>
+        {% endif %}
+    </ul>
+</div>
+{% endif %}
+{% if not user.is_staff %}
+<div data-passo data-alvo=".header-actions .btn-accent" data-titulo="Anunciar">
+    <p>Clique em "Anunciar" para colocar um produto à venda, seja com preço fixo ou em leilão.{% if not user.is_authenticated %} Você precisará entrar na sua conta antes.{% endif %}</p>
+</div>
+{% endif %}
+{% if user.is_authenticated and not user.is_staff %}
+<div data-passo data-alvo=".coin-pill" data-titulo="MegaCoins">
+    <p>Aqui fica o seu saldo de MegaCoins, as moedas de recompensa da MegaGame. Você as ganha comprando, avaliando e fazendo o check-in diário, e pode usá-las como desconto nas compras.</p>
+    <p>Clique no saldo para ver seu extrato e as formas de ganhar mais moedas.</p>
+</div>
+<div data-passo data-alvo=".cart-btn" data-titulo="Carrinho">
+    <p>Clique no ícone do carrinho para ver os produtos que você separou para comprar. O número indica quantos itens estão nele.</p>
+</div>
+{% endif %}
+{% if user.is_authenticated %}
+<div data-passo data-alvo=".user-dropdown" data-abrir="#userMenu" data-titulo="Seu menu">
+    <p>Clique na sua inicial para abrir este menu. Nele, clique em um dos botões para fazer a ação correspondente:</p>
+    <ul>
+        {% if not user.is_staff %}
+            <li><strong>Meus lances</strong> e <strong>Minhas trocas</strong> mostram os leilões de que você participa e suas negociações de troca; o número ao lado das trocas indica quantas aguardam sua resposta</li>
+            <li><strong>MegaCoins e recompensas</strong> e <strong>Meus cupons</strong> mostram suas moedas e os cupons de desconto que você pode usar</li>
+            <li>Em <strong>Vendas</strong>, você gerencia seus anúncios, os pedidos recebidos, os cupons da sua loja e o painel com suas estatísticas de vendedor</li>
+        {% endif %}
+        <li><strong>Configurações do perfil</strong> te leva para uma página na qual você pode configurar seu perfil (alterar senha, email, localização...)</li>
+        <li><strong>Sair</strong> te desloga da sua conta</li>
+    </ul>
+</div>
+{% else %}
+<div data-passo data-alvo=".header-login" data-titulo="Entrar">
+    <p>Caso ainda não tenha feito login, clique em "Entrar" para ir à tela de login. Por lá, você também pode criar sua conta.</p>
+</div>
+{% endif %}
+<div data-passo data-alvo=".manual-fab" data-titulo="Manual de usuário">
+    <p>Sempre que tiver dúvidas, clique neste botão. Ele mostra como usar a página em que você está e, se quiser, repete este tour pelo cabeçalho.</p>
+</div>

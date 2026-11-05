@@ -1,0 +1,76 @@
+<div data-passo data-alvo=".gallery" data-titulo="Fotos do produto">
+    <p>Aqui ficam as fotos do anúncio. Quando houver mais de uma, clique nas miniaturas ao lado para trocar a foto em destaque.</p>
+</div>
+<div data-passo data-alvo=".buybox-title" data-titulo="Resumo do anúncio">
+    <p>Acima do título, você vê o estado do produto (novo ou usado) e a categoria. Logo abaixo, ficam a nota média dada pelos compradores, o preço, a cidade do vendedor e se ele aceita retirada em mãos ou trocas.</p>
+</div>
+{% if auction %}
+<div data-passo data-alvo="#leilao" data-titulo="Situação do leilão">
+    <p>Este anúncio é um leilão. Aqui aparecem o lance atual, a quantidade de lances e participantes e quanto tempo falta para o leilão terminar.</p>
+    <p>Clique na quantidade de lances para ver o histórico completo. Se o vendedor definiu um preço de reserva, o leilão só termina em venda quando ele for atingido.</p>
+</div>
+{% if user == product.seller %}
+<div data-passo data-alvo=".auction-seller" data-titulo="Seu leilão">
+    <p>Como este leilão é seu, aqui ficam os valores que você definiu e quantas pessoas o acompanham.</p>
+    <p>Enquanto ele estiver aberto, você pode editar o anúncio ou encerrá-lo antes do prazo. Depois que ele terminar, aparecem as opções de acompanhar o pedido, relistar o item ou enviar uma oferta de segunda chance a outro participante.</p>
+</div>
+{% else %}
+<div data-passo data-alvo=".auction-status" data-titulo="Sua posição">
+    <p>Este aviso mostra se você é o maior lance no momento ou se foi superado por outro participante.</p>
+</div>
+<div data-passo data-alvo="#bid-form" data-titulo="Dar um lance">
+    <p>Digite o máximo que você aceita pagar pelo item, ou clique em um dos valores sugeridos, e clique em "Dar lance". Uma janela pedirá sua confirmação.</p>
+    <p>O sistema cobre os lances dos outros participantes por você, com o menor incremento possível, até esse limite. Ao confirmar, você se compromete a comprar o item caso vença.</p>
+</div>
+<div data-passo data-alvo=".buybox .btn-accent" data-titulo="Comprar agora">
+    <p>Se não quiser esperar o fim do leilão, clique aqui para comprar o item pelo preço fixo definido pelo vendedor. O leilão é encerrado na hora e você é levado ao pagamento.</p>
+</div>
+<div data-passo data-alvo=".watch-form" data-titulo="Acompanhar">
+    <p>Clique em "Acompanhar" para guardar este leilão na sua página de lances, mesmo sem dar nenhum lance. Clique de novo para deixar de acompanhá-lo.</p>
+</div>
+<div data-passo data-alvo=".buybox a[href$='/lances/retirar/']" data-titulo="Retirar lance">
+    <p>Em casos excepcionais, como ter digitado um valor errado, clique aqui para pedir a retirada do seu lance.</p>
+</div>
+<div data-passo data-alvo=".auction-explainer" data-titulo="Como funcionam os lances">
+    <p>Clique aqui para ler um resumo das regras dos lances automáticos e do que acontece se você vencer.</p>
+</div>
+<div data-passo data-alvo=".offer-actions" data-titulo="Oferta de segunda chance">
+    <p>O vendedor está oferecendo este item a você pelo seu lance máximo. Clique em "Aceitar e pagar" para comprá-lo ou em "Recusar" para dispensar a oferta.</p>
+</div>
+{% endif %}
+{% else %}
+<div data-passo data-alvo=".store-coupons" data-titulo="Cupons da loja">
+    <p>Estes são os cupons de desconto que o vendedor oferece. Eles são aplicados automaticamente ao finalizar a compra, se o carrinho atender às condições de cada um.</p>
+</div>
+<div data-passo data-alvo=".variant-list" data-titulo="Variações">
+    <p>Um mesmo anúncio pode ter várias variações (plataforma, edição, capacidade...), cada uma com seu preço e sua quantidade em estoque.</p>
+</div>
+{% if user == product.seller %}
+<div data-passo data-alvo=".buybox a[href$='/editar/']" data-titulo="Editar anúncio">
+    <p>Como este anúncio é seu, clique aqui para editar suas informações, fotos e variações.</p>
+</div>
+{% else %}
+<div data-passo data-alvo=".buybox a[href*='/carrinho/adicionar/'], .buybox a[href*='/login/']" data-titulo="Comprar">
+    <p>{% if user.is_authenticated %}Clique em "Adicionar ao carrinho" para escolher a variação e a quantidade desejadas.{% else %}Para comprar, clique aqui e entre na sua conta.{% endif %}</p>
+</div>
+{% endif %}
+<div data-passo data-alvo=".buybox .trade-btn" data-titulo="Trocas">
+    {% if user == product.seller %}
+        <p>Clique aqui para ver as propostas de troca que outros usuários fizeram por este anúncio e que aguardam sua resposta.</p>
+    {% else %}
+        <p>Este anúncio aceita trocas. Clique aqui para oferecer um ou mais itens que você anunciou, com ou sem volta em dinheiro, no lugar do pagamento. Se o anunciante disse o que procura, isso aparece logo acima.</p>
+    {% endif %}
+</div>
+{% endif %}
+<div data-passo data-alvo=".buybox a[href*='/anuncios/'][href$='/avaliar/']" data-titulo="Avaliar produto">
+    <p>Como você já recebeu este produto, clique aqui para dar uma nota e deixar um comentário. Cada avaliação rende MegaCoins na primeira vez.</p>
+</div>
+<div data-passo data-alvo="[data-manual='vendedor']" data-titulo="Vendedor">
+    <p>Aqui você vê quem está vendendo e a nota média que outros compradores deram a ele.{% if can_review_seller %} Como você já comprou desta loja, clique em "Avaliar vendedor" para dar sua nota.{% endif %}</p>
+</div>
+<div data-passo data-alvo=".pd-description" data-titulo="Descrição">
+    <p>Leia a descrição escrita pelo vendedor para conhecer os detalhes do produto antes de comprar.</p>
+</div>
+<div data-passo data-alvo="[data-manual='avaliacoes']" data-titulo="Avaliações">
+    <p>Aqui ficam as notas e os comentários de quem já comprou este produto.</p>
+</div>

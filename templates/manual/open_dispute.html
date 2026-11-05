@@ -1,0 +1,18 @@
+<div data-passo data-alvo=".page-title" data-titulo="{{ heading }}">
+    <p>Uma disputa leva o caso para a equipe da MegaGame, que analisa os relatos e as evidências dos dois lados e toma a decisão final. Enquanto isso, o pedido fica marcado como "Em disputa".</p>
+</div>
+{% if return_request %}
+<div data-passo data-alvo=".card:has(.card-title)" data-titulo="Solicitação de devolução">
+    <p>Aqui aparece o que o comprador informou ao pedir a devolução, para você consultar enquanto escreve.</p>
+</div>
+{% endif %}
+<div data-passo data-alvo=".form-group:has(#id_reason_category)" data-titulo="Motivo">
+    <p>Escolha o motivo que melhor descreve o problema.</p>
+</div>
+<div data-passo data-alvo=".form-group:has(#id_reason)" data-titulo="Descrição">
+    <p>Explique o caso com detalhes, incluindo o que já foi tentado para resolvê-lo.</p>
+</div>
+{% include 'manual/_evidencias.html' %}
+<div data-passo data-alvo=".form-footer-actions" data-titulo="Enviar">
+    <p>Clique em "{{ submit_label }}" e confirme na janela que se abrir. A partir daí, a conversa continua na página da disputa, onde você também pode enviar mais imagens.</p>
+</div>

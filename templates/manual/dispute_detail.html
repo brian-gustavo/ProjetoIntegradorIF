@@ -1,0 +1,19 @@
+<div data-passo data-alvo=".page-head .badge" data-titulo="Situação da disputa">
+    <p>Esta etiqueta mostra se a disputa ainda está aberta ou, se já foi resolvida, a favor de quem.</p>
+</div>
+<div data-passo data-alvo=".narrow-lg > .card" data-titulo="Detalhes">
+    <p>Aqui ficam o comprador, o vendedor, quem abriu a disputa, o motivo informado e as evidências enviadas na abertura.{% if return_request %} Logo abaixo, aparece também a solicitação de devolução que originou o caso.{% endif %}</p>
+</div>
+<div data-passo data-alvo=".resolution" data-titulo="Resolução">
+    <p>A decisão da equipe da MegaGame e as observações sobre ela ficam registradas aqui.</p>
+</div>
+<div data-passo data-alvo=".card:has([name='resolution'])" data-titulo="Resolver disputa">
+    <p>Depois de analisar o caso e as mensagens, escolha a decisão: a favor do comprador, com ou sem devolução do produto, ou a favor do vendedor. Se quiser, explique o motivo em "Notas da decisão", que ficarão visíveis para as duas partes.</p>
+    <p>Clique em "Confirmar decisão" para encerrar a disputa.</p>
+</div>
+<div data-passo data-alvo=".thread" data-titulo="Mensagens">
+    <p>Toda a conversa da disputa fica aqui, em ordem. As mensagens da equipe da MegaGame aparecem destacadas.</p>
+</div>
+<div data-passo data-alvo="form:has([name='send_message'])" data-titulo="Enviar mensagem">
+    <p>Escreva uma mensagem e, se quiser, anexe imagens como evidência. Depois, clique em "Enviar mensagem".</p>
+</div>

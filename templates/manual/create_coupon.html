@@ -1,0 +1,28 @@
+<div data-passo data-alvo=".page-sub" data-titulo="{% if coupon %}Editar cupom{% else %}Novo cupom{% endif %}">
+    {% if is_platform %}
+        <p>Cupons MegaGame valem em todas as lojas e são custeados pela comissão da plataforma, então o desconto em cada pedido nunca ultrapassa a comissão.</p>
+    {% else %}
+        <p>Cupons da loja valem apenas nos seus anúncios, e o desconto sai do valor das suas vendas.</p>
+    {% endif %}
+</div>
+<div data-passo data-alvo=".alert-info" data-titulo="Cupom já usado">
+    <p>Este cupom já foi usado. As alterações valem apenas para os próximos usos; os pedidos já feitos mantêm o desconto original.</p>
+</div>
+<div data-passo data-alvo="[data-field='code']" data-titulo="Código">
+    <p>{% if coupon %}O código não pode ser alterado depois de criado.{% else %}Escolha o código que os compradores vão digitar, com letras e números, ou deixe em branco para gerar um automaticamente. Depois de criado, ele não pode ser alterado.{% endif %}</p>
+</div>
+<div data-passo data-alvo="[data-field='kind']" data-titulo="Tipo de desconto">
+    <p>Escolha se o desconto é um percentual do valor da compra ou um valor fixo em reais, e informe o valor logo abaixo. Nos descontos percentuais, você pode definir um teto em "Desconto máximo".</p>
+</div>
+<div data-passo data-alvo="[data-field='min_order_value']" data-titulo="Regras de uso">
+    <p>Nesta seção, defina o valor mínimo da compra, se o cupom vale só para uma categoria, quantas vezes cada cliente pode usá-lo e se ele é exclusivo para a primeira compra.</p>
+</div>
+<div data-passo data-alvo="[data-field='starts_at']" data-titulo="Validade e quantidade">
+    <p>Defina quando o cupom começa e termina de valer (deixe o fim em branco para que ele não expire) e, se quiser, quantos cupons ficam disponíveis no total.</p>
+</div>
+<div data-passo data-alvo="[data-field='is_public']" data-titulo="Divulgação">
+    <p>Cupons públicos aparecem automaticamente para os compradores; os privados só podem ser usados por quem digitar o código.</p>
+</div>
+<div data-passo data-alvo=".form-footer-actions" data-titulo="Salvar">
+    <p>Clique em "{% if coupon %}Salvar alterações{% else %}Criar cupom{% endif %}" para concluir, ou em "Cancelar" para voltar sem salvar.</p>
+</div>

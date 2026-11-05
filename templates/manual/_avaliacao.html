@@ -1,0 +1,16 @@
+<div data-passo data-alvo=".page-sub" data-titulo="{% if editing %}Editar avaliação{% else %}Avaliação{% endif %}">
+    {% if editing %}
+        <p>Aqui você pode corrigir a avaliação que já enviou. Atenção: uma avaliação só pode ser editada uma vez.</p>
+    {% else %}
+        <p>Aqui você avalia {{ sobre }} que aparece logo acima. Na primeira avaliação de cada um, você ganha MegaCoins.</p>
+    {% endif %}
+</div>
+<div data-passo data-alvo=".form-group:has(#id_rating)" data-titulo="Nota">
+    <p>Dê uma nota de 0,5 a 5, em intervalos de meio ponto. Use ponto como separador decimal (por exemplo, 4.5).</p>
+</div>
+<div data-passo data-alvo=".form-group:has(#id_comment)" data-titulo="Comentário">
+    <p>Se quiser, conte como foi sua experiência com o produto. O comentário aparece junto da nota na página do anúncio.</p>
+</div>
+<div data-passo data-alvo=".form-footer-actions" data-titulo="Enviar">
+    <p>{% if editing %}Clique em "Salvar alterações" e confirme na janela que se abrir.{% else %}Clique em "Enviar avaliação" para publicá-la.{% endif %}</p>
+</div>

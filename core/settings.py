@@ -65,6 +65,7 @@ TEMPLATES = [
                 'orders.context_processors.cart_count',
                 'rewards.context_processors.coin_balance',
                 'trades.context_processors.trade_count',
+                'core.context_processors.manual',
             ],
         },
     },

@@ -1,0 +1,5 @@
+<div data-passo data-alvo=".trade-steps" data-titulo="Como funcionam as trocas">
+    <p>Nas trocas, você oferece itens que já anunciou no lugar do pagamento, com ou sem uma volta em dinheiro. O anunciante pode aceitar, recusar ou fazer uma contraproposta; fechada a troca, cada lado envia o seu item, com rastreio e devolução como numa compra.</p>
+    {% if user.is_authenticated and not user.is_staff %}<p>Clique em "Minhas trocas" para acompanhar suas negociações.</p>{% endif %}
+</div>
+{% include 'manual/_resultados.html' %}

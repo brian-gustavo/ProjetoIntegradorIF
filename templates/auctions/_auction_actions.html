@@ -154,7 +154,7 @@
     <details class="auction-explainer">
         <summary>Como funcionam os lances</summary>
         <p>Informe o máximo que você pagaria. O sistema dá lances automáticos por você, só o suficiente para mantê-lo na frente, até esse limite. Se dois participantes oferecerem o mesmo máximo, vence quem deu o lance primeiro.</p>
-        <p>O valor do seu lance máximo fica em sigilo. Lances não podem ser retirados e, se você vencer, terá um pedido aguardando pagamento.</p>
+        <p>O valor do seu lance máximo fica em sigilo. Lances são um compromisso de compra e só podem ser retirados em situações excepcionais, como um valor digitado errado; se você vencer, terá um pedido aguardando pagamento.</p>
     </details>
 
 {% elif user.is_authenticated and is_winner and auction.order.status == 'CANCELLED' %}

@@ -1,0 +1,18 @@
+{% if auction_form.locked %}
+<div data-passo data-alvo="form .alert-info" data-titulo="Leilão travado">
+    <p>Como este leilão já recebeu lances ou já terminou, as condições de venda não podem mais ser alteradas. Você ainda pode editar as informações e as fotos do produto.</p>
+</div>
+{% else %}
+<div data-passo data-alvo=".form-group:has(#id_start_price)" data-titulo="Lance inicial">
+    <p>Defina o valor a partir do qual os lances começam. Lances iniciais baixos costumam atrair mais participantes.</p>
+</div>
+<div data-passo data-alvo=".form-group:has([name='duration_days'])" data-titulo="Duração">
+    <p>Escolha por quantos dias o leilão ficará aberto. Ele começa assim que for publicado e termina exatamente após esse período.</p>
+</div>
+<div data-passo data-alvo=".form-group:has(#id_reserve_price)" data-titulo="Preço de reserva">
+    <p>Opcional. É o valor mínimo, mantido em sigilo, para que o item seja vendido: se nenhum lance atingi-lo, o leilão termina sem venda. Deixe em branco para vender ao maior lance, qualquer que seja.</p>
+</div>
+<div data-passo data-alvo=".form-group:has(#id_buy_now_price)" data-titulo="Comprar agora">
+    <p>Opcional. Permite que alguém compre o item na hora por esse valor, encerrando o leilão. Precisa ser pelo menos 30% maior que o lance inicial, e a opção some após o primeiro lance (ou, havendo reserva, quando ela for atingida).</p>
+</div>
+{% endif %}

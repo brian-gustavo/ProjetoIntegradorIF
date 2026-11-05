@@ -1,0 +1,16 @@
+<div data-passo data-alvo=".page-actions .btn-primary" data-titulo="Novo cupom">
+    <p>Clique em "+ Novo cupom" para criar {% if user.is_staff %}uma campanha da plataforma, válida em qualquer loja{% else %}um cupom de desconto válido apenas nos seus anúncios{% endif %}.</p>
+</div>
+<div data-passo data-alvo=".stat-grid" data-titulo="Resumo">
+    <p>Aqui você vê quantos cupons estão ativos, quantas vezes eles foram usados, o total de descontos concedidos e o valor das vendas feitas com cupom.</p>
+</div>
+<div data-passo data-alvo=".table tbody tr:has(.coupon-code-tag)" data-titulo="Seus cupons">
+    <p>Cada linha mostra o código, as condições, a validade, quantas vezes o cupom já foi usado, o total de descontos e a situação dele.</p>
+</div>
+<div data-passo data-alvo=".table .table-actions" data-titulo="Ações">
+    <ul>
+        <li><strong>Editar</strong> para mudar as regras do cupom</li>
+        <li><strong>Encerrar</strong> para que ele deixe de valer, ou <strong>Reativar</strong> para que volte a valer</li>
+        <li><strong>Excluir</strong> para apagá-lo de vez, o que só é possível enquanto ninguém o tiver usado</li>
+    </ul>
+</div>

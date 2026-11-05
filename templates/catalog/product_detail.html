@@ -39,7 +39,7 @@
             <p class="pd-description">{{ product.description }}</p>
         </div>
 
-        <div class="card">
+        <div class="card" data-manual="avaliacoes">
             <div class="card-head">
                 <h2 class="card-title">Avaliações do produto</h2>
                 {% if product_rating %}
@@ -138,7 +138,7 @@
             {% endif %}
         </div>
 
-        <div class="card">
+        <div class="card" data-manual="vendedor">
             <p class="field-label">Vendedor</p>
             <div class="seller-box">
                 <span class="user-avatar">{{ product.seller.username|first|upper }}</span>

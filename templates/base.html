@@ -122,6 +122,24 @@
     {% block content %}{% endblock %}
 </main>
 
+<template data-manual="navegacao" data-nome="Como navegar pelo site">{% include 'manual/_navegacao.html' %}</template>
+{% if manual_template %}<template data-manual="pagina" data-nome="Como usar esta página">{% include manual_template %}</template>{% endif %}
+<div class="manual-help" id="manualHelp">
+    <div class="manual-hint">
+        <span><strong>Novo por aqui?</strong> Clique no botão abaixo para ver como usar {% if manual_template %}esta página{% else %}o site{% endif %}.</span>
+        <button type="button" class="manual-hint-close" aria-label="Dispensar dica">&times;</button>
+    </div>
+    <div class="manual-menu" role="menu" hidden>
+        <p class="manual-menu-title">Manual de usuário</p>
+        <button type="button" role="menuitem" data-tour="pagina">Como usar esta página</button>
+        <button type="button" role="menuitem" data-tour="navegacao">Como navegar pelo site</button>
+    </div>
+    <button type="button" class="manual-fab" aria-label="Manual de usuário" aria-haspopup="true" aria-expanded="false" title="Manual de usuário">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="11"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+    </button>
+</div>
+<script src="{% static 'js/manual.js' %}" defer></script>
+
 <script>
     const userMenu = document.getElementById('userMenu');
     if (userMenu) {

@@ -1,0 +1,28 @@
+<div data-passo data-alvo=".page-actions .badge" data-titulo="Situação da troca">
+    <p>Esta etiqueta mostra em que ponto a negociação está: aguardando uma resposta, aguardando pagamento, com os itens a caminho, concluída ou encerrada sem acordo.</p>
+</div>
+<div data-passo data-alvo=".narrow-xl > .alert" data-titulo="Próximo passo">
+    <p>Este aviso explica o que falta para a troca avançar e o prazo para isso. Se uma proposta não for respondida até o prazo, ela expira.</p>
+</div>
+<div data-passo data-alvo=".trade-board" data-titulo="Termos da troca">
+    <p>Aqui ficam os itens que cada lado oferece e a volta em dinheiro, se houver, com o valor de referência de cada lado calculado pelos preços anunciados. Clique em um item para abrir o anúncio dele.</p>
+</div>
+<div data-passo data-alvo=".trade-actions" data-titulo="Responder">
+    {% if proposal.my_turn %}
+        <p>É a sua vez de responder:</p>
+        <ul>
+            <li><strong>Aceitar troca</strong> fecha o negócio nos termos acima; cada lado recebe um pedido para enviar o seu item</li>
+            <li><strong>Fazer contraproposta</strong> permite mudar os itens ou a volta e devolver a decisão para a outra parte</li>
+            <li><strong>Recusar</strong> encerra a negociação</li>
+        </ul>
+    {% else %}
+        <p>Enquanto a outra parte não responde, você pode clicar em "Retirar proposta" para desistir da troca.</p>
+    {% endif %}
+</div>
+<div data-passo data-alvo=".table-wrap" data-titulo="Envios da troca">
+    <p>Fechada a troca, cada item vira um pedido. Esta tabela mostra quem envia para quem, a volta e a taxa de cada pedido e a situação de cada envio.</p>
+    <p>Se houver algo para você pagar, clique em "Pagar"; os envios são feitos em "Pedidos recebidos" e o recebimento é confirmado em "Minhas compras". Enquanto nada tiver sido enviado, qualquer um dos lados pode cancelar a troca.</p>
+</div>
+<div data-passo data-alvo=".trade-history" data-titulo="Histórico da negociação">
+    <p>Todas as propostas, contrapropostas, mensagens e respostas ficam registradas aqui, da mais recente à mais antiga.</p>
+</div>

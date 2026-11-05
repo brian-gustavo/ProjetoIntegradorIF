@@ -1,0 +1,22 @@
+{% if proposal %}
+<div data-passo data-alvo=".alert-info" data-titulo="Termos atuais">
+    <p>Este resumo mostra a proposta que está na mesa. Na contraproposta, você pode mudar os itens e a volta; a outra parte poderá então aceitar, recusar ou contrapropor de novo.</p>
+</div>
+{% endif %}
+<div data-passo data-alvo=".empty-state" data-titulo="Sem itens para oferecer">
+    <p>Numa troca, só entram itens já anunciados na MegaGame, fora de leilões e com estoque. {% if sou_proponente %}Clique em "Anunciar um item" para cadastrar o que você quer trocar e depois volte aqui.{% endif %}</p>
+</div>
+<div data-passo data-alvo=".trade-board" data-titulo="O que entra na troca">
+    <p>À esquerda fica o que você oferece; à direita, o que você recebe.</p>
+    <p>No lado com a lista de itens, marque {% if sou_proponente %}os anúncios seus{% else %}os anúncios de {{ contraparte.username }}{% endif %} que entram na troca. No outro lado, se o anúncio tiver mais de uma variação, escolha qual delas será trocada.</p>
+</div>
+<div data-passo data-alvo=".trade-terms > .card" data-titulo="Volta e mensagem">
+    <p>Se os valores não estiverem equilibrados, escolha quem paga a volta em dinheiro e informe o valor. Se quiser, escreva uma mensagem para a outra parte.</p>
+</div>
+<div data-passo data-alvo=".trade-balance" data-titulo="Balanço da troca">
+    <p>Aqui você compara o valor do que oferece com o do que recebe, calculados pelos preços anunciados. Se houver diferença, clique em "Equilibrar com volta" para preencher a volta automaticamente.</p>
+    <p>A taxa da troca, dividida entre os dois lados, só é cobrada se ela for aceita.</p>
+</div>
+<div data-passo data-alvo="#trade-submit" data-titulo="Enviar">
+    <p>Clique em "{% if proposal %}Enviar contraproposta{% else %}Enviar proposta{% endif %}" e confirme. Se {{ contraparte.username }} aceitar, a troca é fechada na hora e cada lado recebe um pedido para enviar o seu item.</p>
+</div>

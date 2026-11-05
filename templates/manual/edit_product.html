@@ -1,0 +1,15 @@
+<div data-passo data-alvo=".page-actions" data-titulo="Editar anúncio">
+    <p>Aqui você altera qualquer informação do seu anúncio. Clique em "Ver anúncio" para conferir como ele aparece para os compradores.</p>
+</div>
+<div data-passo data-alvo="#edit-form .form-section" data-titulo="Informações do produto">
+    <p>Altere o título, a categoria, a descrição, a condição e as opções de retirada em mãos e de trocas, como na criação do anúncio.</p>
+</div>
+{% include 'manual/_imagens.html' %}
+{% if auction %}
+{% include 'manual/_campos_leilao.html' %}
+{% else %}
+{% include 'manual/_variacoes.html' %}
+{% endif %}
+<div data-passo data-alvo=".form-footer-actions" data-titulo="Salvar">
+    <p>Clique em "Salvar alterações" e confirme na janela que se abrir. As mudanças ficam visíveis imediatamente para todos os usuários.</p>
+</div>
