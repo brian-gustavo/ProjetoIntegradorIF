@@ -45,7 +45,7 @@
                 {% if product_rating %}
                     <div class="reviews-summary">
                         <span class="reviews-score">{{ product_rating }}</span>
-                        <span class="muted text-sm">de 5 · {{ reviews|length }} avaliação{{ reviews|length|pluralize:"ões" }}</span>
+                        <span class="muted text-sm">de 5 · {{ reviews|length }} avalia{{ reviews|length|pluralize:"ção,ções" }}</span>
                     </div>
                 {% endif %}
             </div>
