@@ -312,20 +312,20 @@ de jogos, principalmente os eletrônicos, e de itens associados. O
 projeto parte da constatação de que esse mercado cresce de forma
 expressiva, tanto em retorno financeiro quanto em número de
 interessados, e de que, no Brasil, a venda desses produtos está
-espalhada por plataformas generalistas. O objetivo foi construir um
-sistema em que compradores e vendedores negociem diretamente entre si.
-Para isso, foram levantados os requisitos funcionais e não funcionais,
-modelados os casos de uso com a \emph{Unified Modeling Language} (UML) e
-projetado o banco de dados relacional. A implementação usou a linguagem
-Python com o \emph{framework} Django, com renderização no lado do
-servidor, o banco de dados SQLite e HTML, CSS e JavaScript na interface,
-e os pagamentos são processados pelo Mercado Pago. O resultado é uma
-plataforma com compra direta, leilões e trocas, carrinho, acompanhamento
-de pedidos, devoluções e disputas mediadas pelo gestor, avaliações de
-produtos e vendedores, cupons de desconto, uma moeda virtual de
-recompensas e painéis financeiros para vendedores e gestores. O sistema
-funciona de ponta a ponta em ambiente de testes, e sua entrada em
-produção depende principalmente da hospedagem e da integração com um serviço real de rastreio.
+espalhada por diversas plataformas generalistas. Com esse cenário em mente, surgiu a ideia
+de se criar um sistema com enfoque nesses produtos, assim fornecendo
+um local de comércio centralizado para entusiastas. Para isso, inicialmente foram levantados os requisitos
+funcionais e não funcionais, modelados os casos de uso com a \emph{Unified Modeling Language} (UML) e
+projetado o banco de dados relacional. Aí, a implementação utilizou a linguagem
+Python com adição do \emph{framework} Django, empregando a técnica de \emph{server-side rendering}, além do
+banco de dados SQLite e HTML/CSS/JavaScript na interface, com pagamentos sendo processados pela API
+do Mercado Pago. O resultado foi uma plataforma que permite compras diretas, leilões e trocas,
+contemplando o fluxo completo de um pedido (incluindo devolução e mediação de disputas) e gestão
+financeira/administrativa via \emph{dashboards}, também incluindo funcionalidades
+como avaliação de usuários e produtos, gamificação e afins. O sistema
+funciona de ponta a ponta em ambiente de testes, mas sua entrada em produção
+foi inviabilizada por uma questão de hospedagem e de integração com serviços reais
+de rastreio e geolocalização.
 
 \vspace{\onelineskip}
 \noindent\textbf{Palavras-chave:} \emph{marketplace}; jogos eletrônicos; comércio eletrônico; Django; engenharia de \emph{software}.
@@ -338,21 +338,20 @@ This work presents the development of MegaGame, a customer-to-customer
 games, and related items. The project stems from the observation that
 this market is growing significantly, both in financial return and in
 number of consumers, and that, in Brazil, the sale of these products is
-scattered across general-purpose platforms. The goal was to build a
-system in which buyers and sellers trade directly with each other. To
-that end, the functional and non-functional requirements were gathered,
-the use cases were modeled with the Unified Modeling Language (UML) and
-the relational database was designed. The implementation used the Python
-language with the Django framework, with server-side rendering, the
-SQLite database and HTML, CSS and JavaScript for the interface, while
-payments are processed by Mercado Pago. The result is a platform with
-direct purchases, auctions and trades, a shopping cart, order tracking,
-returns and disputes mediated by the manager, product and seller
-reviews, discount coupons, a virtual reward currency and financial
-dashboards for sellers and managers. The system works end to end in a
-test environment, and putting it into production depends mainly on
-hosting and integrating a real
-parcel tracking service.
+scattered across several general-purpose platforms. With that situation in mind, the
+idea of creating a system with a focus in such products was born, in order to provide enthusiasts
+with a centralized commerce spot. To that end, initially, the functional and non-functional requirements
+were gathered, the use cases were modeled with the Unified Modeling Language (UML)
+and the relational database was designed. Then, the implementation used the Python
+language with the addition of the Django framework, employing server-side rendering, plus the
+SQLite database and HTML/CSS/JavaScript on the interface, with
+payments being processed by Mercado Pago's API. The result is a platform which allows
+direct purchases, auctions and trades, encompassing the entire ordering flow (including
+returns and disputes) and financial/administrative managing via dashboards, also
+including functionalities such as seller and product reviews, gamification and so forth. The system 
+works end to end in a test environment, but putting it into production turned out to be unviable due
+to problems with hosting and integrating real services for parcel tracking and
+geolocalization.
 
 \vspace{\onelineskip}
 \noindent\textbf{Keywords:} marketplace; video games; e-commerce; Django; software engineering.
