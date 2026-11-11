@@ -1,13 +1,16 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
+from django.templatetags.static import static as static_url
 from django.urls import path, include
+from django.views.generic import RedirectView
 
 from accounts.views import register, profile_settings, review_seller, edit_seller_review, mp_connect, mp_callback
 from catalog.views import home, create_product, product_detail, category_detail, category_list, my_products, autocomplete, review_product, manage_variants, unpublish_product, edit_product, republish_product, edit_product_review, delete_product
 from orders.views import admin_dashboard
 
 urlpatterns = [
+    path('favicon.ico', RedirectView.as_view(url=static_url('favicon.ico'), permanent=True)),
     path('admin/', admin.site.urls),
     path('accounts/', include('django.contrib.auth.urls')),
     path('accounts/register/', register, name='register'),
